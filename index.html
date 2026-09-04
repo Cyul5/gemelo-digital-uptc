@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UPTC - Gemelo Digital Sede Central Tunja</title>
     
-    <!-- Librería SheetJS para lectura de archivos Excel -->
+    <!-- Librería SheetJS para lectura de Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <style>
@@ -72,6 +72,8 @@
         .st-libre { color: #27ae60; font-weight: bold; }
         .st-ocupado { color: #c0392b; font-weight: bold; }
         .status-badge { font-size: 12px; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
+        
+        .debug-box { margin-top: 10px; padding: 8px; background: #f8f9fa; border: 1px border #ccc; border-radius: 4px; font-size: 11px; color: #555; }
     </style>
 </head>
 <body>
@@ -157,7 +159,7 @@
                     <rect x="30" y="120" width="440" height="40" fill="#e2e8f0" stroke="#003366" stroke-width="2"/>
                     <text x="250" y="145" class="texto-svg" fill="#64748b" text-anchor="middle">CORREDOR PRINCIPAL</text>
 
-                    <!-- Salones del plano (IDs normalizados H-101, H-102, H-103) -->
+                    <!-- Salones -->
                     <rect id="H-101" class="salon" x="30" y="20" width="130" height="100" fill="#2ecc71" />
                     <text x="95" y="65" class="texto-svg" text-anchor="middle">Aula A-101</text>
                     <text id="lbl-H-101" x="95" y="85" font-size="11" text-anchor="middle">LIBRE</text>
@@ -179,6 +181,9 @@
             <div id="info-contenido">
                 <p style="color:#64748b;">Selecciona un salón para consultar la programación asignada.</p>
             </div>
+            <div id="debug-info" class="debug-box">
+                <b>Estado de Carga:</b> Inicializando...
+            </div>
         </div>
     </div>
 
@@ -186,71 +191,142 @@
         let dbHunza = {};
         let aulaSeleccionada = "H-101";
 
+        const TODAS_HORAS = ["06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "16:00", "17:00", "18:00"];
+        const TODOS_DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+
         function quitarTildes(texto) {
             return String(texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
         }
 
         async function cargarExcelAutomatico() {
             const badge = document.getElementById('excel-status');
-            const posiblesNombres = ['Plantilla_Levantamiento_Edificio.xlsx', 'Plantilla_Levantamiento_Edificio_2.xlsx'];
+            const debugLog = document.getElementById('debug-info');
+            const archivos = ['Plantilla_Levantamiento_Edificio.xlsx', 'Plantilla_Levantamiento_Edificio_2.xlsx', 'plantilla.xlsx'];
             let arrayBuffer = null;
+            let nombreCargado = "";
 
-            for (let nombre of posiblesNombres) {
+            for (let nombre of archivos) {
                 try {
                     const res = await fetch(nombre);
                     if (res.ok) {
                         arrayBuffer = await res.arrayBuffer();
+                        nombreCargado = nombre;
                         break;
                     }
                 } catch (e) {}
             }
 
-            try {
-                if (!arrayBuffer) throw new Error("No se halló el archivo de Excel.");
+            if (!arrayBuffer) {
+                badge.innerText = "⚠️ Usando Datos por Defecto";
+                badge.style.background = "#fff3cd";
+                badge.style.color = "#856404";
+                debugLog.innerHTML = "<b>Aviso:</b> No se detectó archivo `.xlsx` en el servidor HTTP. Cargando estructura base.";
+                inicializarDatosBase();
+                actualizarEstadoTiempo();
+                return;
+            }
 
-                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-                let sheetName = workbook.SheetNames.find(n => quitarTildes(n).includes("horario")) || workbook.SheetNames[0];
+            try {
+                // Configurar SheetJS con raw: false para interpretar celdas de formato de texto/hora correctamente
+                const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
+                let sheetName = workbook.SheetNames.find(n => quitarTildes(n).includes("horario") || quitarTildes(n).includes("hunza")) || workbook.SheetNames[0];
                 const sheet = workbook.Sheets[sheetName];
                 
-                const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+                const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: "" });
                 procesarMatrizExcel(rawData);
 
                 badge.innerText = "🟢 Excel Sincronizado";
                 badge.style.background = "#d4edda";
                 badge.style.color = "#155724";
 
+                let cantSalones = Object.keys(dbHunza).length;
+                debugLog.innerHTML = `<b>Archivo:</b> ${nombreCargado}<br><b>Hoja:</b> ${sheetName}<br><b>Salones detectados:</b> ${cantSalones}`;
+
                 actualizarEstadoTiempo();
             } catch (error) {
-                console.error("Error al cargar Excel:", error);
-                badge.innerText = "🔴 Archivo No Encontrado";
+                console.error("Error al procesar Excel:", error);
+                badge.innerText = "🔴 Error al Procesar Excel";
                 badge.style.background = "#f8d7da";
                 badge.style.color = "#721c24";
+                debugLog.innerHTML = `<b>Error:</b> ${error.message}`;
+                inicializarDatosBase();
+                actualizarEstadoTiempo();
             }
         }
 
+        function crearEstructuraVaciaEspacio(idSVG, codigoNombre) {
+            let obj = {
+                nombre: `Aula ${codigoNombre}`,
+                aforo: "35",
+                horarios: {}
+            };
+            TODOS_DIAS.forEach(d => {
+                obj.horarios[d] = {};
+                TODAS_HORAS.forEach(h => {
+                    obj.horarios[d][h] = { est: "Libre", materia: "Disponible", docente: "" };
+                });
+            });
+            return obj;
+        }
+
+        function inicializarDatosBase() {
+            dbHunza = {
+                "H-101": crearEstructuraVaciaEspacio("H-101", "101"),
+                "H-102": crearEstructuraVaciaEspacio("H-102", "102"),
+                "H-103": crearEstructuraVaciaEspacio("H-103", "103")
+            };
+        }
+
+        function desgloseHorasRango(horaTexto) {
+            let texto = String(horaTexto || "").trim();
+            let matches = texto.match(/\d{1,2}/g);
+            if (!matches || matches.length === 0) return ["07:00"];
+
+            let hInicio = parseInt(matches[0], 10);
+            let hFin = matches.length > 1 ? parseInt(matches[1], 10) : hInicio + 1;
+
+            if (hInicio < 6) hInicio += 12; // Formato 12 horas p.ej., 4-6 PM
+            if (hFin < hInicio && hFin <= 8) hFin += 12;
+
+            let franjas = [];
+            for (let h = hInicio; h < hFin; h++) {
+                let formatted = (h < 10 ? '0' : '') + h + ':00';
+                if (TODAS_HORAS.includes(formatted)) {
+                    franjas.push(formatted);
+                }
+            }
+
+            if (franjas.length === 0) {
+                let def = (hInicio < 10 ? '0' : '') + hInicio + ':00';
+                franjas.push(def);
+            }
+            return franjas;
+        }
+
         function procesarMatrizExcel(matrix) {
-            dbHunza = {};
+            inicializarDatosBase();
             if (!matrix || matrix.length === 0) return;
 
-            let headerRowIdx = -1;
+            let headerIdx = -1;
             for (let r = 0; r < Math.min(15, matrix.length); r++) {
                 let rowStr = quitarTildes(matrix[r].join(" "));
-                if (rowStr.includes("lunes") || rowStr.includes("hora") || rowStr.includes("espacio") || rowStr.includes("codigo")) {
-                    headerRowIdx = r;
+                if (rowStr.includes("lunes") || rowStr.includes("hora") || rowStr.includes("espacio") || rowStr.includes("codigo") || rowStr.includes("aula") || rowStr.includes("dia")) {
+                    headerIdx = r;
                     break;
                 }
             }
-            if (headerRowIdx === -1) headerRowIdx = 0;
+            if (headerIdx === -1) headerIdx = 0;
 
-            const headers = matrix[headerRowIdx].map(h => quitarTildes(h));
-            
-            let colCode = headers.findIndex(h => h.includes("cod") || h.includes("espacio") || h.includes("aula") || h.includes("salon"));
-            let colHora = headers.findIndex(h => h.includes("hora"));
-            let colAforo = headers.findIndex(h => h.includes("aforo") || h.includes("usuario") || h.includes("estudiante") || h.includes("capacidad"));
-            let colMateria = headers.findIndex(h => h.includes("materia") || h.includes("actividad") || h.includes("asignatura") || h.includes("evento"));
-            let colDocente = headers.findIndex(h => h.includes("docente") || h.includes("profesor") || h.includes("responsable"));
+            const headers = matrix[headerIdx].map(h => quitarTildes(h));
 
-            const diasMap = {
+            let colCode = headers.findIndex(h => h.includes("cod") || h.includes("espacio") || h.includes("aula") || h.includes("salon") || h.includes("salon"));
+            let colHora = headers.findIndex(h => h.includes("hora") || h.includes("franja") || h.includes("horario"));
+            let colDia = headers.findIndex(h => h.includes("dia"));
+            let colAforo = headers.findIndex(h => h.includes("aforo") || h.includes("capacidad"));
+            let colMateria = headers.findIndex(h => h.includes("materia") || h.includes("asignatura") || h.includes("actividad"));
+            let colDocente = headers.findIndex(h => h.includes("docente") || h.includes("profesor"));
+
+            const colDiasMatriz = {
                 "Lunes": headers.findIndex(h => h.includes("lunes")),
                 "Martes": headers.findIndex(h => h.includes("martes")),
                 "Miércoles": headers.findIndex(h => h.includes("miercoles")),
@@ -258,71 +334,70 @@
                 "Viernes": headers.findIndex(h => h.includes("viernes"))
             };
 
-            if (colCode === -1) colCode = 0;
-            if (colHora === -1) colHora = 1;
+            let esFormatoLista = (colDia !== -1);
+            let ultimoCod = "101";
 
-            let ultimoCodigo = "101";
-
-            for (let r = headerRowIdx + 1; r < matrix.length; r++) {
+            for (let r = headerIdx + 1; r < matrix.length; r++) {
                 const row = matrix[r];
                 if (!row || row.length === 0) continue;
 
-                let codRaw = String(row[colCode] || "").trim();
-                if (codRaw) ultimoCodigo = codRaw;
+                let codRaw = String(row[colCode !== -1 ? colCode : 0] || "").trim();
+                if (codRaw) ultimoCod = codRaw;
 
-                let numPuro = ultimoCodigo.replace(/\D/g, ""); 
-                let idSVG = numPuro ? `H-${numPuro}` : `H-${ultimoCodigo}`;
+                let numPuro = ultimoCod.replace(/\D/g, "");
+                let idSVG = numPuro ? `H-${numPuro}` : `H-${ultimoCod}`;
 
                 if (!dbHunza[idSVG]) {
-                    let aforoVal = (colAforo !== -1 && row[colAforo]) ? String(row[colAforo]).trim() : "35";
-                    dbHunza[idSVG] = {
-                        codigoOriginal: ultimoCodigo,
-                        nombre: `Aula ${ultimoCodigo}`,
-                        aforo: aforoVal || "35",
-                        horarios: {}
-                    };
+                    dbHunza[idSVG] = crearEstructuraVaciaEspacio(idSVG, ultimoCod);
                 }
 
-                let horaRaw = String(row[colHora] || "").trim();
+                if (colAforo !== -1 && row[colAforo]) {
+                    dbHunza[idSVG].aforo = String(row[colAforo]).trim();
+                }
+
+                let horaRaw = String(row[colHora !== -1 ? colHora : 1] || "").trim();
                 if (!horaRaw) continue;
 
-                let horaNorm = normalizarHora(horaRaw);
+                let franjasHorarias = desgloseHorasRango(horaRaw);
 
-                Object.keys(diasMap).forEach(dia => {
-                    if (!dbHunza[idSVG].horarios[dia]) {
-                        dbHunza[idSVG].horarios[dia] = {};
+                if (esFormatoLista) {
+                    let diaRaw = String(row[colDia] || "").trim();
+                    let diaEncontrado = TODOS_DIAS.find(d => quitarTildes(d) === quitarTildes(diaRaw));
+                    let materia = (colMateria !== -1 && row[colMateria]) ? String(row[colMateria]).trim() : "Clase Asignada";
+                    let docente = (colDocente !== -1 && row[colDocente]) ? String(row[colDocente]).trim() : "";
+
+                    if (diaEncontrado && materia && quitarTildes(materia) !== "libre" && quitarTildes(materia) !== "disponible" && materia !== "-") {
+                        franjasHorarias.forEach(fh => {
+                            if (dbHunza[idSVG].horarios[diaEncontrado]) {
+                                dbHunza[idSVG].horarios[diaEncontrado][fh] = {
+                                    est: "Ocupado",
+                                    materia: materia,
+                                    docente: docente
+                                };
+                            }
+                        });
                     }
-
-                    let colDiaIdx = diasMap[dia];
-                    let valDia = (colDiaIdx !== -1 && row[colDiaIdx]) ? String(row[colDiaIdx]).trim() : "";
-                    let valGral = (colMateria !== -1 && row[colMateria]) ? String(row[colMateria]).trim() : "";
-                    let materiaFinal = valDia || valGral;
-
-                    let materiaLimpia = quitarTildes(materiaFinal);
-
-                    if (materiaFinal && materiaFinal !== "-" && materiaLimpia !== "libre" && materiaLimpia !== "disponible") {
-                        let docVal = (colDocente !== -1 && row[colDocente]) ? String(row[colDocente]).trim() : "";
-                        dbHunza[idSVG].horarios[dia][horaNorm] = {
-                            est: "Ocupado",
-                            materia: materiaFinal,
-                            docente: docVal
-                        };
-                    } else {
-                        dbHunza[idSVG].horarios[dia][horaNorm] = {
-                            est: "Libre",
-                            materia: "Disponible",
-                            docente: ""
-                        };
-                    }
-                });
+                } else {
+                    // Formato Matriz
+                    Object.keys(colDiasMatriz).forEach(dia => {
+                        let cIdx = colDiasMatriz[dia];
+                        if (cIdx !== -1) {
+                            let valMateria = String(row[cIdx] || "").trim();
+                            if (valMateria && valMateria !== "-" && quitarTildes(valMateria) !== "libre" && quitarTildes(valMateria) !== "disponible") {
+                                franjasHorarias.forEach(fh => {
+                                    if (dbHunza[idSVG].horarios[dia]) {
+                                        dbHunza[idSVG].horarios[dia][fh] = {
+                                            est: "Ocupado",
+                                            materia: valMateria,
+                                            docente: ""
+                                        };
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
             }
-        }
-
-        function normalizarHora(horaStr) {
-            let match = String(horaStr).match(/(\d{1,2})/);
-            if (!match) return "07:00";
-            let h = parseInt(match[1], 10);
-            return (h < 10 ? '0' : '') + h + ':00';
         }
 
         function buscarDatosAula(idElemento) {
@@ -344,7 +419,7 @@
                 let data = buscarDatosAula(id);
                 let lbl = document.getElementById(`lbl-${id}`);
 
-                let infoH = (data && data.horarios[diaSel] && data.horarios[diaSel][horaSel]) 
+                let infoH = (data && data.horarios && data.horarios[diaSel] && data.horarios[diaSel][horaSel]) 
                             ? data.horarios[diaSel][horaSel] 
                             : { est: "Libre", materia: "Disponible" };
 
