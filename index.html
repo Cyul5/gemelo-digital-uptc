@@ -27,7 +27,6 @@
             padding: 8px 14px; border-radius: 5px; cursor: pointer; font-weight: bold;
         }
         .btn:hover { background-color: #e6b800; }
-        .btn-secundario { background-color: #5c6b73; color: white; }
 
         .time-bar {
             background: #ffffff; padding: 10px 20px; border-radius: 8px; margin-bottom: 15px;
@@ -173,25 +172,34 @@
 
     <script>
         let dbHunza = {};
-        let aulaActual = null;
+        let aulaActual = "H-101";
 
-        // CARGA AUTOMÁTICA DEL ARCHIVO EXCEL AL INICIAR
         async function cargarExcelAutomatico() {
             const badge = document.getElementById('excel-status');
+            const nombresPosibles = ['Plantilla_Levantamiento_Edificio.xlsx', 'Plantilla_Levantamiento_Edificio_2.xlsx'];
+            let arrayBuffer = null;
+
+            for (let nombre of nombresPosibles) {
+                try {
+                    const response = await fetch(nombre);
+                    if (response.ok) {
+                        arrayBuffer = await response.arrayBuffer();
+                        break;
+                    }
+                } catch (e) {
+                    console.log("Intentando buscar archivo...");
+                }
+            }
+
             try {
-                const response = await fetch('Plantilla_Levantamiento_Edificio_2.xlsx');
-                if (!response.ok) throw new Error("No se pudo obtener el archivo Excel.");
+                if (!arrayBuffer) throw new Error("No se encontró el archivo Excel en GitHub.");
 
-                const arrayBuffer = await response.arrayBuffer();
                 const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-                const sheet = workbook.Sheets["Horarios de Uso"] || workbook.Sheets["Horarios de uso"];
-                if (!sheet) throw new Error("Hoja 'Horarios de Uso' no encontrada");
-
-                // Lee desde la Fila 3 (encabezados reales de la plantilla)
-                const jsonRows = XLSX.utils.sheet_to_json(sheet, { range: 2, defval: "" });
-
-                procesarFilasExcel(jsonRows);
+                let sheetName = workbook.SheetNames.find(n => n.toLowerCase().includes("horario")) || workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                
+                const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+                procesarMatrizExcel(rawData);
 
                 badge.innerText = "🟢 Excel Sincronizado";
                 badge.style.background = "#d4edda";
@@ -200,52 +208,87 @@
                 actualizarEstadoTiempo();
             } catch (error) {
                 console.error("Detalle de carga:", error);
-                badge.innerText = "🔴 Servidor/GitHub Requerido";
+                badge.innerText = "🔴 Archivo No Encontrado";
                 badge.style.background = "#f8d7da";
                 badge.style.color = "#721c24";
             }
         }
 
-        function procesarFilasExcel(filas) {
+        function procesarMatrizExcel(matrix) {
             dbHunza = {};
-            let ultimoCodigo = "A-101"; 
+            if (!matrix || matrix.length === 0) return;
 
-            filas.forEach(fila => {
-                // Maneja celdas combinadas de la columna "Código de espacio"
-                let codRaw = String(fila["Código de espacio"] || fila["Codigo de espacio"] || "").trim();
+            let headerRowIdx = -1;
+            for (let r = 0; r < Math.min(15, matrix.length); r++) {
+                let rowStr = matrix[r].join(" ").toLowerCase();
+                if (rowStr.includes("lunes") || rowStr.includes("hora") || rowStr.includes("espacio") || rowStr.includes("codigo")) {
+                    headerRowIdx = r;
+                    break;
+                }
+            }
+            if (headerRowIdx === -1) headerRowIdx = 0;
+
+            const headers = matrix[headerRowIdx].map(h => String(h).toLowerCase().trim());
+            
+            let colCode = headers.findIndex(h => h.includes("cod") || h.includes("espacio") || h.includes("aula") || h.includes("salon"));
+            let colHora = headers.findIndex(h => h.includes("hora"));
+            let colAforo = headers.findIndex(h => h.includes("aforo") || h.includes("usuario") || h.includes("estudiante") || h.includes("capacidad"));
+            let colMateria = headers.findIndex(h => h.includes("materia") || h.includes("actividad") || h.includes("asignatura") || h.includes("evento"));
+            let colDocente = headers.findIndex(h => h.includes("docente") || h.includes("profesor") || h.includes("responsable"));
+
+            const diasMap = {
+                "Lunes": headers.findIndex(h => h.includes("lunes")),
+                "Martes": headers.findIndex(h => h.includes("martes")),
+                "Miércoles": headers.findIndex(h => h.includes("miercoles") || h.includes("miércoles")),
+                "Jueves": headers.findIndex(h => h.includes("jueves")),
+                "Viernes": headers.findIndex(h => h.includes("viernes"))
+            };
+
+            if (colCode === -1) colCode = 0;
+            if (colHora === -1) colHora = 1;
+
+            let ultimoCodigo = "101";
+
+            for (let r = headerRowIdx + 1; r < matrix.length; r++) {
+                const row = matrix[r];
+                if (!row || row.length === 0) continue;
+
+                let codRaw = String(row[colCode] || "").trim();
                 if (codRaw) ultimoCodigo = codRaw;
 
-                let idLimpio = ultimoCodigo.replace(/^[A-Za-z]-?/, ""); 
-                let idSVG = `H-${idLimpio}`; 
+                let numPuro = ultimoCodigo.replace(/\D/g, ""); 
+                let idSVG = numPuro ? `H-${numPuro}` : `H-${ultimoCodigo}`;
 
                 if (!dbHunza[idSVG]) {
+                    let aforoVal = (colAforo !== -1 && row[colAforo]) ? String(row[colAforo]).trim() : "35";
                     dbHunza[idSVG] = {
                         nombre: `Aula ${ultimoCodigo}`,
-                        aforo: fila["N.º de usuarios / estudiantes"] || "35",
+                        aforo: aforoVal || "35",
                         horarios: {}
                     };
                 }
 
-                let horaRaw = String(fila["Horas"] || "").trim(); // Ej: "6 - 7", "7 - 8"
-                if (!horaRaw) return;
+                let horaRaw = String(row[colHora] || "").trim();
+                if (!horaRaw) continue;
 
                 let horaNorm = normalizarHora(horaRaw);
 
-                const dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
-                dias.forEach(dia => {
+                Object.keys(diasMap).forEach(dia => {
                     if (!dbHunza[idSVG].horarios[dia]) {
                         dbHunza[idSVG].horarios[dia] = {};
                     }
 
-                    let materiaDia = String(fila[dia] || "").trim();
-                    let materiaGral = String(fila["Materia / Actividad / Evento"] || "").trim();
-                    let materiaFinal = materiaDia || materiaGral;
+                    let colDiaIdx = diasMap[dia];
+                    let valDia = (colDiaIdx !== -1 && row[colDiaIdx]) ? String(row[colDiaIdx]).trim() : "";
+                    let valGral = (colMateria !== -1 && row[colMateria]) ? String(row[colMateria]).trim() : "";
+                    let materiaFinal = valDia || valGral;
 
-                    if (materiaFinal && materiaFinal !== "-") {
+                    if (materiaFinal && materiaFinal !== "-" && materiaFinal.toLowerCase() !== "libre" && materiaFinal.toLowerCase() !== "disponible") {
+                        let docVal = (colDocente !== -1 && row[colDocente]) ? String(row[colDocente]).trim() : "";
                         dbHunza[idSVG].horarios[dia][horaNorm] = {
                             est: "Ocupado",
                             materia: materiaFinal,
-                            docente: fila["Docente / Responsable"] || ""
+                            docente: docVal
                         };
                     } else {
                         dbHunza[idSVG].horarios[dia][horaNorm] = {
@@ -255,12 +298,13 @@
                         };
                     }
                 });
-            });
+            }
         }
 
         function normalizarHora(horaStr) {
-            let inicio = horaStr.split('-')[0].trim();
-            let h = parseInt(inicio, 10);
+            let match = String(horaStr).match(/(\d{1,2})/);
+            if (!match) return "07:00";
+            let h = parseInt(match[1], 10);
             return (h < 10 ? '0' : '') + h + ':00';
         }
 
@@ -348,7 +392,6 @@
             s.addEventListener('click', function() { mostrarFichaExcel(this.getAttribute('id')); });
         });
 
-        // Iniciar en mapa y cargar Excel
         window.addEventListener('DOMContentLoaded', () => {
             irAVista('vista-campus');
             cargarExcelAutomatico();
