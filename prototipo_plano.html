@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UPTC - Gemelo Digital Sede Central Tunja</title>
+    
+    <!-- Librería SheetJS para lectura automática de Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 20px;
+            background-color: #f0f3f6; color: #2c3e50;
+        }
+        header {
+            background: #003366; color: white;
+            padding: 15px 20px; border-radius: 8px; margin-bottom: 15px;
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+        }
+        .header-title { font-size: 18px; font-weight: bold; }
+        .breadcrumb { font-size: 14px; color: #ffcc00; font-weight: 500; }
+        .btn {
+            background-color: #ffcc00; color: #003366; border: none;
+            padding: 8px 14px; border-radius: 5px; cursor: pointer; font-weight: bold;
+        }
+        .btn:hover { background-color: #e6b800; }
+        .btn-secundario { background-color: #5c6b73; color: white; }
+
+        .time-bar {
+            background: #ffffff; padding: 10px 20px; border-radius: 8px; margin-bottom: 15px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06); display: flex; align-items: center;
+            justify-content: space-between; border-left: 6px solid #003366; flex-wrap: wrap; gap: 10px;
+        }
+        .time-controls { display: flex; align-items: center; gap: 10px; }
+        select.time-select { padding: 6px 10px; font-size: 14px; font-weight: bold; border-radius: 4px; border: 1px solid #ccc; }
+
+        .main-container { display: flex; gap: 20px; min-height: 540px; }
+        .visor-box { flex: 2; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .info-box { flex: 1; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-top: 5px solid #003366; max-height: 580px; overflow-y: auto; }
+
+        .vista { display: none; }
+        .vista.activa { display: block; }
+
+        .map-wrapper { position: relative; width: 100%; max-height: 500px; border: 2px solid #ddd; border-radius: 8px; overflow: auto; background: #202020; user-select: none; }
+        .map-content { position: relative; width: 100%; }
+        .campus-img { width: 100%; height: auto; display: block; opacity: 0.95; }
+        .svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        .hotspot-edificio { fill: rgba(0, 51, 102, 0.4); stroke: #ffcc00; stroke-width: 3; cursor: pointer; }
+        .hotspot-edificio:hover { fill: rgba(255, 204, 0, 0.6); stroke: #003366; }
+
+        .salon { stroke: #003366; stroke-width: 3; cursor: pointer; transition: fill 0.3s; }
+        .salon:hover { stroke-width: 5; filter: brightness(0.9); }
+        .texto-svg { font-size: 14px; font-weight: bold; fill: #003366; pointer-events: none; }
+
+        #escena-3d-container { width: 100%; height: 360px; perspective: 800px; display: flex; justify-content: center; align-items: center; background: #eef2f7; border-radius: 8px; border: 1px solid #ddd; }
+        #edificio-3d { width: 220px; height: 260px; position: relative; transform-style: preserve-3d; transform: rotateX(-20deg) rotateY(-35deg); }
+        .piso-3d { position: absolute; width: 100%; height: 42px; background: rgba(0, 51, 102, 0.85); border: 2px solid #ffcc00; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; cursor: pointer; }
+
+        .tabla-horarios { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+        .tabla-horarios th, .tabla-horarios td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+        .tabla-horarios th { background-color: #003366; color: white; }
+        .fila-actual { background-color: #fff3cd; font-weight: bold; }
+        .st-libre { color: #27ae60; font-weight: bold; }
+        .st-ocupado { color: #c0392b; font-weight: bold; }
+        .status-badge { font-size: 12px; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <div class="header-title">🏛️ Universidad Pedagógica y Tecnológica de Colombia (UPTC)</div>
+            <div class="breadcrumb" id="ruta-nav">Ubicación: Sede Central Tunja (POFE 2026)</div>
+        </div>
+        <div id="btns-nav"></div>
+    </header>
+
+    <div class="time-bar">
+        <div class="time-controls">
+            <span>📅 <b>Día:</b></span>
+            <select id="select-dia" class="time-select" onchange="actualizarEstadoTiempo()">
+                <option value="Lunes" selected>Lunes</option>
+                <option value="Martes">Martes</option>
+                <option value="Miércoles">Miércoles</option>
+                <option value="Jueves">Jueves</option>
+                <option value="Viernes">Viernes</option>
+            </select>
+
+            <span style="margin-left:10px;">⏰ <b>Franja Horaria:</b></span>
+            <select id="select-hora" class="time-select" onchange="actualizarEstadoTiempo()">
+                <option value="06:00">6 - 7 AM</option>
+                <option value="07:00" selected>7 - 8 AM</option>
+                <option value="08:00">8 - 9 AM</option>
+                <option value="09:00">9 - 10 AM</option>
+                <option value="10:00">10 - 11 AM</option>
+                <option value="11:00">11 - 12 PM</option>
+                <option value="16:00">16 - 17 (4-5 PM)</option>
+                <option value="17:00">17 - 18 (5-6 PM)</option>
+                <option value="18:00">18 - 19 (6-7 PM)</option>
+            </select>
+        </div>
+        
+        <div>
+            <span id="excel-status" class="status-badge" style="background:#fff3cd; color:#856404;">🔄 Conectando a Excel...</span>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="visor-box">
+
+            <!-- VISTA 1: PLANO CENTRAL -->
+            <div id="vista-campus" class="vista activa">
+                <h3>Plan de Ordenamiento Físico-Espacial - Sede Central</h3>
+                <div class="map-wrapper">
+                    <div class="map-content">
+                        <img src="plano_uptc.jpg" class="campus-img" alt="Plano UPTC Sede Central">
+                        <svg class="svg-overlay" viewBox="0 0 1000 700">
+                            <polygon points="505,535 555,535 555,565 505,565" class="hotspot-edificio" onclick="cargarEdificio30()"/>
+                            <text x="530" y="552" fill="white" font-weight="bold" font-size="11" text-anchor="middle" pointer-events="none">30. HUNZA</text>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VISTA 2: MODELO 3D -->
+            <div id="vista-3d" class="vista">
+                <h3>Edificio 30: E. Aulas Hunza (Modelo Volumétrico)</h3>
+                <div id="escena-3d-container">
+                    <div id="edificio-3d">
+                        <div class="piso-3d" style="bottom:180px;" onclick="abrirPlanoPiso('Piso 5')">Piso 5</div>
+                        <div class="piso-3d" style="bottom:135px;" onclick="abrirPlanoPiso('Piso 4')">Piso 4</div>
+                        <div class="piso-3d" style="bottom:90px;" onclick="abrirPlanoPiso('Piso 3')">Piso 3</div>
+                        <div class="piso-3d" style="bottom:45px;" onclick="abrirPlanoPiso('Piso 2')">Piso 2</div>
+                        <div class="piso-3d" style="bottom:0px;" onclick="abrirPlanoPiso('Piso 1')">Piso 1</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VISTA 3: PLANO 2D -->
+            <div id="vista-2d" class="vista">
+                <h3 id="titulo-piso-2d">Edificio 30 Aulas Hunza - Planta 2D</h3>
+                <svg viewBox="0 0 500 280" width="100%" height="320">
+                    <rect x="30" y="120" width="440" height="40" fill="#e2e8f0" stroke="#003366" stroke-width="2"/>
+                    <text x="250" y="145" class="texto-svg" fill="#64748b" text-anchor="middle">CORREDOR PRINCIPAL</text>
+
+                    <!-- Salones vinculados al Excel (A-101 / H-101) -->
+                    <rect id="H-101" class="salon" x="30" y="20" width="130" height="100" fill="#2ecc71" />
+                    <text x="95" y="65" class="texto-svg" text-anchor="middle">Aula A-101</text>
+                    <text id="lbl-H-101" x="95" y="85" font-size="11" text-anchor="middle">LIBRE</text>
+
+                    <rect id="H-102" class="salon" x="185" y="20" width="130" height="100" fill="#2ecc71" />
+                    <text x="250" y="65" class="texto-svg" text-anchor="middle">Aula A-102</text>
+                    <text id="lbl-H-102" x="250" y="85" font-size="11" text-anchor="middle">LIBRE</text>
+
+                    <rect id="H-103" class="salon" x="340" y="20" width="130" height="100" fill="#2ecc71" />
+                    <text x="405" y="65" class="texto-svg" text-anchor="middle">Lab A-103</text>
+                    <text id="lbl-H-103" x="405" y="85" font-size="11" text-anchor="middle">LIBRE</text>
+                </svg>
+            </div>
+
+        </div>
+
+        <div class="info-box">
+            <h3 id="info-titulo">Levantamiento Físico UPTC</h3>
+            <div id="info-contenido">
+                <p style="color:#64748b;">Cargando datos del Excel...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let dbHunza = {};
+        let aulaActual = null;
+
+        // CARGA AUTOMÁTICA DEL ARCHIVO EXCEL AL INICIAR
+        async function cargarExcelAutomatico() {
+            const badge = document.getElementById('excel-status');
+            try {
+                const response = await fetch('Plantilla_Levantamiento_Edificio_2.xlsx');
+                if (!response.ok) throw new Error("No se pudo obtener el archivo Excel.");
+
+                const arrayBuffer = await response.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+                const sheet = workbook.Sheets["Horarios de Uso"] || workbook.Sheets["Horarios de uso"];
+                if (!sheet) throw new Error("Hoja 'Horarios de Uso' no encontrada");
+
+                // Lee desde la Fila 3 (encabezados reales de la plantilla)
+                const jsonRows = XLSX.utils.sheet_to_json(sheet, { range: 2, defval: "" });
+
+                procesarFilasExcel(jsonRows);
+
+                badge.innerText = "🟢 Excel Sincronizado";
+                badge.style.background = "#d4edda";
+                badge.style.color = "#155724";
+
+                actualizarEstadoTiempo();
+            } catch (error) {
+                console.error("Detalle de carga:", error);
+                badge.innerText = "🔴 Servidor/GitHub Requerido";
+                badge.style.background = "#f8d7da";
+                badge.style.color = "#721c24";
+            }
+        }
+
+        function procesarFilasExcel(filas) {
+            dbHunza = {};
+            let ultimoCodigo = "A-101"; 
+
+            filas.forEach(fila => {
+                // Maneja celdas combinadas de la columna "Código de espacio"
+                let codRaw = String(fila["Código de espacio"] || fila["Codigo de espacio"] || "").trim();
+                if (codRaw) ultimoCodigo = codRaw;
+
+                let idLimpio = ultimoCodigo.replace(/^[A-Za-z]-?/, ""); 
+                let idSVG = `H-${idLimpio}`; 
+
+                if (!dbHunza[idSVG]) {
+                    dbHunza[idSVG] = {
+                        nombre: `Aula ${ultimoCodigo}`,
+                        aforo: fila["N.º de usuarios / estudiantes"] || "35",
+                        horarios: {}
+                    };
+                }
+
+                let horaRaw = String(fila["Horas"] || "").trim(); // Ej: "6 - 7", "7 - 8"
+                if (!horaRaw) return;
+
+                let horaNorm = normalizarHora(horaRaw);
+
+                const dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+                dias.forEach(dia => {
+                    if (!dbHunza[idSVG].horarios[dia]) {
+                        dbHunza[idSVG].horarios[dia] = {};
+                    }
+
+                    let materiaDia = String(fila[dia] || "").trim();
+                    let materiaGral = String(fila["Materia / Actividad / Evento"] || "").trim();
+                    let materiaFinal = materiaDia || materiaGral;
+
+                    if (materiaFinal && materiaFinal !== "-") {
+                        dbHunza[idSVG].horarios[dia][horaNorm] = {
+                            est: "Ocupado",
+                            materia: materiaFinal,
+                            docente: fila["Docente / Responsable"] || ""
+                        };
+                    } else {
+                        dbHunza[idSVG].horarios[dia][horaNorm] = {
+                            est: "Libre",
+                            materia: "Disponible",
+                            docente: ""
+                        };
+                    }
+                });
+            });
+        }
+
+        function normalizarHora(horaStr) {
+            let inicio = horaStr.split('-')[0].trim();
+            let h = parseInt(inicio, 10);
+            return (h < 10 ? '0' : '') + h + ':00';
+        }
+
+        function actualizarEstadoTiempo() {
+            const horaSel = document.getElementById('select-hora').value;
+            const diaSel = document.getElementById('select-dia').value;
+
+            for (let id in dbHunza) {
+                const data = dbHunza[id];
+                const infoH = (data.horarios[diaSel] && data.horarios[diaSel][horaSel]) 
+                            ? data.horarios[diaSel][horaSel] 
+                            : { est: "Libre", materia: "Disponible" };
+
+                const el = document.getElementById(id);
+                const lbl = document.getElementById(`lbl-${id}`);
+
+                if (el) {
+                    if (infoH.est === "Libre") {
+                        el.style.fill = "#2ecc71";
+                        if (lbl) lbl.innerText = "LIBRE";
+                    } else {
+                        el.style.fill = "#e74c3c";
+                        if (lbl) lbl.innerText = "CLASE";
+                    }
+                }
+            }
+
+            if (aulaActual) mostrarFichaExcel(aulaActual);
+        }
+
+        function mostrarFichaExcel(id) {
+            aulaActual = id;
+            const horaSel = document.getElementById('select-hora').value;
+            const diaSel = document.getElementById('select-dia').value;
+
+            const data = dbHunza[id] || { nombre: `Aula ${id}`, aforo: "35", horarios: {} };
+            const infoH = (data.horarios[diaSel] && data.horarios[diaSel][horaSel]) 
+                        ? data.horarios[diaSel][horaSel] 
+                        : { est: "Libre", materia: "Disponible" };
+
+            let tablaHTML = `<table class="tabla-horarios"><thead><tr><th>Horario</th><th>Estado</th><th>Asignatura</th></tr></thead><tbody>`;
+            
+            const horasLista = [
+                { k: "06:00", t: "06:00 - 07:00" },
+                { k: "07:00", t: "07:00 - 08:00" },
+                { k: "08:00", t: "08:00 - 09:00" },
+                { k: "09:00", t: "09:00 - 10:00" },
+                { k: "10:00", t: "10:00 - 11:00" },
+                { k: "11:00", t: "11:00 - 12:00" },
+                { k: "16:00", t: "16:00 - 17:00" },
+                { k: "17:00", t: "17:00 - 18:00" },
+                { k: "18:00", t: "18:00 - 19:00" }
+            ];
+            
+            horasLista.forEach(hObj => {
+                const row = (data.horarios[diaSel] && data.horarios[diaSel][hObj.k]) 
+                          ? data.horarios[diaSel][hObj.k] 
+                          : { est: "Libre", materia: "Disponible" };
+                const activeClass = (hObj.k === horaSel) ? 'class="fila-actual"' : '';
+                tablaHTML += `<tr ${activeClass}><td>${hObj.t}</td><td class="${row.est === 'Libre' ? 'st-libre':'st-ocupado'}">${row.est}</td><td>${row.materia}</td></tr>`;
+            });
+            tablaHTML += `</tbody></table>`;
+
+            document.getElementById('info-titulo').innerText = data.nombre;
+            document.getElementById('info-contenido').innerHTML = `
+                <p><b>Capacidad Aforo:</b> ${data.aforo} Personas</p>
+                <p><b>Día Consultado:</b> ${diaSel}</p>
+                <hr>
+                <b>Estado seleccionado:</b> <span class="${infoH.est === 'Libre' ? 'st-libre':'st-ocupado'}">${infoH.est}</span><br>
+                <b>Detalle:</b> ${infoH.materia} ${infoH.docente ? '('+infoH.docente+')' : ''}
+                <h4 style="margin-top:10px; margin-bottom:5px;">Programación ${diaSel}:</h4>
+                ${tablaHTML}
+            `;
+        }
+
+        function irAVista(idVista) {
+            document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
+            document.getElementById(idVista).classList.add('activa');
+        }
+
+        function cargarEdificio30() { irAVista('vista-3d'); }
+        function abrirPlanoPiso(piso) { irAVista('vista-2d'); actualizarEstadoTiempo(); }
+
+        document.querySelectorAll('.salon').forEach(s => {
+            s.addEventListener('click', function() { mostrarFichaExcel(this.getAttribute('id')); });
+        });
+
+        // Iniciar en mapa y cargar Excel
+        window.addEventListener('DOMContentLoaded', () => {
+            irAVista('vista-campus');
+            cargarExcelAutomatico();
+        });
+    </script>
+</body>
+</html>
