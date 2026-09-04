@@ -49,10 +49,39 @@
         .vista { display: none; }
         .vista.activa { display: block; }
 
-        .map-wrapper { position: relative; width: 100%; max-height: 500px; border: 2px solid #ddd; border-radius: 8px; overflow: auto; background: #202020; user-select: none; }
-        .map-content { position: relative; width: 100%; }
-        .campus-img { width: 100%; height: auto; display: block; opacity: 0.95; }
-        .svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        /* Mapa General encuadrado sin Scrollbar y con soporte Zoom/Pan */
+        .map-wrapper { 
+            position: relative; 
+            width: 100%; 
+            height: 500px; 
+            border: 2px solid #ddd; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            background: #101827; 
+            user-select: none; 
+            cursor: grab; 
+        }
+        .map-content { 
+            position: relative; 
+            width: 100%; 
+            height: 100%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            transform-origin: center center; 
+            transition: transform 0.05s ease-out; 
+        }
+        .campus-img { 
+            max-width: 100%; 
+            max-height: 100%; 
+            object-fit: contain; 
+            display: block; 
+        }
+        .svg-overlay { 
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+        }
         .hotspot-edificio { fill: rgba(0, 51, 102, 0.4); stroke: #ffcc00; stroke-width: 3; cursor: pointer; }
         .hotspot-edificio:hover { fill: rgba(255, 204, 0, 0.6); stroke: #003366; }
 
@@ -131,10 +160,10 @@
             <!-- VISTA 1: PLANO CENTRAL -->
             <div id="vista-campus" class="vista activa">
                 <h3>Plan de Ordenamiento Físico-Espacial - Sede Central</h3>
-                <div class="map-wrapper">
-                    <div class="map-content">
+                <div id="map-wrapper" class="map-wrapper">
+                    <div id="map-content" class="map-content">
                         <img src="plano_uptc.jpg" class="campus-img" alt="Plano UPTC Sede Central">
-                        <svg class="svg-overlay" viewBox="0 0 1000 700">
+                        <svg class="svg-overlay" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet">
                             <polygon points="505,535 555,535 555,565 505,565" class="hotspot-edificio" onclick="cargarEdificio30()"/>
                             <text x="530" y="552" fill="white" font-weight="bold" font-size="11" text-anchor="middle" pointer-events="none">30. HUNZA</text>
                         </svg>
@@ -205,6 +234,9 @@
         let aulaSeleccionada = "H-101";
         let vistaActual = "vista-campus";
 
+        // Control de Zoom y Pan en Mapa
+        let zoomScale = 1, panX = 0, panY = 0, isDragging = false, startX = 0, startY = 0;
+
         const TODAS_HORAS = ["06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"];
         const TODOS_DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
 
@@ -262,28 +294,23 @@
             try {
                 const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
                 
-                // 1. Cargar Hoja 'Datos Generales'
                 let sheetGeneralesName = workbook.SheetNames.find(n => quitarTildes(n).includes("general") || quitarTildes(n).includes("datos"));
                 if (sheetGeneralesName) {
                     const sheetGen = workbook.Sheets[sheetGeneralesName];
                     descombinarCeldas(sheetGen);
-                    const rawGen = XLSX.utils.sheet_to_json(sheetGen, { header: 1, raw: false, defval: "" });
-                    procesarDatosGenerales(rawGen);
+                    procesarDatosGenerales(XLSX.utils.sheet_to_json(sheetGen, { header: 1, raw: false, defval: "" }));
                 }
 
-                // 2. Cargar Hoja 'Horarios de Uso'
                 let sheetHorariosName = workbook.SheetNames.find(n => quitarTildes(n).includes("horario") || quitarTildes(n).includes("uso") || quitarTildes(n).includes("hunza")) || workbook.SheetNames[0];
                 const sheetHor = workbook.Sheets[sheetHorariosName];
                 descombinarCeldas(sheetHor);
-                const rawHor = XLSX.utils.sheet_to_json(sheetHor, { header: 1, raw: false, defval: "" });
-                procesarMatrizExcel(rawHor);
+                procesarMatrizExcel(XLSX.utils.sheet_to_json(sheetHor, { header: 1, raw: false, defval: "" }));
 
                 badge.innerText = "🟢 Excel Sincronizado";
                 badge.style.background = "#d4edda";
                 badge.style.color = "#155724";
 
-                let cantSalones = Object.keys(dbHunza).length;
-                debugLog.innerHTML = `<b>Archivo:</b> ${nombreCargado}<br><b>Hoja Datos:</b> ${sheetGeneralesName || 'N/A'}<br><b>Hoja Horarios:</b> ${sheetHorariosName}<br><b>Salones procesados:</b> ${cantSalones}`;
+                debugLog.innerHTML = `<b>Archivo:</b> ${nombreCargado}<br><b>Hoja Datos:</b> ${sheetGeneralesName || 'N/A'}<br><b>Hoja Horarios:</b> ${sheetHorariosName}<br><b>Salones:</b> ${Object.keys(dbHunza).length}`;
 
                 irAVista(vistaActual);
             } catch (error) {
@@ -333,16 +360,10 @@
         }
 
         function crearEstructuraVaciaEspacio(idSVG, codigoNombre) {
-            let obj = {
-                nombre: `Aula ${codigoNombre}`,
-                aforo: "35",
-                horarios: {}
-            };
+            let obj = { nombre: `Aula ${codigoNombre}`, aforo: "35", horarios: {} };
             TODOS_DIAS.forEach(d => {
                 obj.horarios[d] = {};
-                TODAS_HORAS.forEach(h => {
-                    obj.horarios[d][h] = { est: "Libre", materia: "Disponible", docente: "" };
-                });
+                TODAS_HORAS.forEach(h => { obj.horarios[d][h] = { est: "Libre", materia: "Disponible", docente: "" }; });
             });
             return obj;
         }
@@ -356,52 +377,38 @@
         }
 
         function desgloseHorasRango(horaTexto) {
-            let texto = String(horaTexto || "").trim();
-            let matches = texto.match(/\d{1,2}/g);
+            let matches = String(horaTexto || "").match(/\d{1,2}/g);
             if (!matches || matches.length === 0) return ["07:00"];
 
             let hInicio = parseInt(matches[0], 10);
             let hFin = matches.length > 1 ? parseInt(matches[1], 10) : hInicio + 1;
-
             if (hInicio < 6) hInicio += 12;
             if (hFin < hInicio && hFin <= 11) hFin += 12;
 
             let franjas = [];
             for (let h = hInicio; h < hFin; h++) {
                 let formatted = (h < 10 ? '0' : '') + h + ':00';
-                if (TODAS_HORAS.includes(formatted)) {
-                    franjas.push(formatted);
-                }
+                if (TODAS_HORAS.includes(formatted)) franjas.push(formatted);
             }
-
-            if (franjas.length === 0) {
-                let def = (hInicio < 10 ? '0' : '') + hInicio + ':00';
-                franjas.push(def);
-            }
-            return franjas;
+            return franjas.length ? franjas : [(hInicio < 10 ? '0' : '') + hInicio + ':00'];
         }
 
         function procesarMatrizExcel(matrix) {
             inicializarDatosBase();
             if (!matrix || matrix.length === 0) return;
 
-            let headerIdx = -1;
-            for (let r = 0; r < Math.min(15, matrix.length); r++) {
-                let rowStr = quitarTildes(matrix[r].join(" "));
-                if (rowStr.includes("lunes") || rowStr.includes("martes") || (rowStr.includes("horas") && (rowStr.includes("codigo") || rowStr.includes("espacio") || rowStr.includes("piso")))) {
-                    headerIdx = r;
-                    break;
-                }
-            }
+            let headerIdx = matrix.findIndex(r => {
+                let str = quitarTildes(r.join(" "));
+                return str.includes("lunes") || str.includes("martes") || str.includes("horas");
+            });
             if (headerIdx === -1) headerIdx = 0;
 
             const headers = matrix[headerIdx].map(h => quitarTildes(h));
-
-            let colCode = headers.findIndex(h => h.includes("cod") || h.includes("espacio") || h.includes("aula") || h.includes("salon"));
-            let colHora = headers.findIndex(h => h.includes("hora") || h.includes("franja") || h.includes("horario"));
-            let colMateria = headers.findIndex(h => h.includes("materia") || h.includes("actividad") || h.includes("evento") || h.includes("asignatura"));
-            let colDocente = headers.findIndex(h => h.includes("docente") || h.includes("responsable") || h.includes("profesor"));
-            let colAforo = headers.findIndex(h => h.includes("aforo") || h.includes("capacidad") || h.includes("usuarios") || h.includes("estudiantes"));
+            let colCode = headers.findIndex(h => h.includes("cod") || h.includes("espacio") || h.includes("aula"));
+            let colHora = headers.findIndex(h => h.includes("hora") || h.includes("franja"));
+            let colMateria = headers.findIndex(h => h.includes("materia") || h.includes("actividad"));
+            let colDocente = headers.findIndex(h => h.includes("docente") || h.includes("responsable"));
+            let colAforo = headers.findIndex(h => h.includes("aforo") || h.includes("capacidad") || h.includes("usuarios"));
 
             const colDiasMatriz = {
                 "Lunes": headers.findIndex(h => h.includes("lunes")),
@@ -423,30 +430,20 @@
                 let numPuro = ultimoCod.replace(/\D/g, "");
                 let idSVG = numPuro ? `H-${numPuro}` : `H-${ultimoCod}`;
 
-                if (!dbHunza[idSVG]) {
-                    dbHunza[idSVG] = crearEstructuraVaciaEspacio(idSVG, ultimoCod);
-                } else {
-                    dbHunza[idSVG].nombre = `Aula ${ultimoCod}`;
-                }
-
-                if (colAforo !== -1 && row[colAforo]) {
-                    dbHunza[idSVG].aforo = String(row[colAforo]).trim();
-                }
+                if (!dbHunza[idSVG]) dbHunza[idSVG] = crearEstructuraVaciaEspacio(idSVG, ultimoCod);
+                if (colAforo !== -1 && row[colAforo]) dbHunza[idSVG].aforo = String(row[colAforo]).trim();
 
                 let horaRaw = String(row[colHora !== -1 ? colHora : 2] || "").trim();
                 if (!horaRaw) continue;
 
                 let franjasHorarias = desgloseHorasRango(horaRaw);
-
                 let matGen = (colMateria !== -1 && row[colMateria]) ? String(row[colMateria]).trim() : "";
                 let docGen = (colDocente !== -1 && row[colDocente]) ? String(row[colDocente]).trim() : "";
 
                 TODOS_DIAS.forEach(dia => {
                     let cIdx = colDiasMatriz[dia];
                     let valDia = (cIdx !== -1 && row[cIdx]) ? String(row[cIdx]).trim() : "";
-
-                    let materiaAsignada = "";
-                    let esOcupado = false;
+                    let materiaAsignada = "", esOcupado = false;
 
                     if (valDia && valDia !== "-" && quitarTildes(valDia) !== "libre" && quitarTildes(valDia) !== "disponible") {
                         esOcupado = true;
@@ -459,11 +456,7 @@
                     if (esOcupado && materiaAsignada) {
                         franjasHorarias.forEach(fh => {
                             if (dbHunza[idSVG].horarios[dia]) {
-                                dbHunza[idSVG].horarios[dia][fh] = {
-                                    est: "Ocupado",
-                                    materia: materiaAsignada,
-                                    docente: docGen
-                                };
+                                dbHunza[idSVG].horarios[dia][fh] = { est: "Ocupado", materia: materiaAsignada, docente: docGen };
                             }
                         });
                     }
@@ -475,8 +468,7 @@
             if (dbHunza[idElemento]) return dbHunza[idElemento];
             let numPuro = String(idElemento).replace(/\D/g, "");
             for (let key in dbHunza) {
-                let keyNum = String(key).replace(/\D/g, "");
-                if (keyNum && keyNum === numPuro) return dbHunza[key];
+                if (String(key).replace(/\D/g, "") === numPuro) return dbHunza[key];
             }
             return null;
         }
@@ -489,60 +481,28 @@
                 let id = el.getAttribute('id');
                 let data = buscarDatosAula(id);
                 let lbl = document.getElementById(`lbl-${id}`);
-
                 let infoH = (data && data.horarios && data.horarios[diaSel] && data.horarios[diaSel][horaSel]) 
                             ? data.horarios[diaSel][horaSel] 
                             : { est: "Libre", materia: "Disponible" };
 
-                if (infoH.est === "Libre") {
-                    el.style.fill = "#2ecc71";
-                    if (lbl) lbl.innerText = "LIBRE";
-                } else {
-                    el.style.fill = "#e74c3c";
-                    if (lbl) lbl.innerText = "CLASE";
-                }
+                el.style.fill = infoH.est === "Libre" ? "#2ecc71" : "#e74c3c";
+                if (lbl) lbl.innerText = infoH.est === "Libre" ? "LIBRE" : "CLASE";
             });
 
-            if (vistaActual === 'vista-2d' && aulaSeleccionada) {
-                mostrarFichaExcel(aulaSeleccionada);
-            }
+            if (vistaActual === 'vista-2d' && aulaSeleccionada) mostrarFichaExcel(aulaSeleccionada);
         }
 
         function mostrarFichaExcel(id) {
             aulaSeleccionada = id;
             const horaSel = document.getElementById('select-hora').value;
             const diaSel = document.getElementById('select-dia').value;
-
             const data = buscarDatosAula(id) || { nombre: `Aula ${id}`, aforo: "35", horarios: {} };
-            const infoH = (data.horarios && data.horarios[diaSel] && data.horarios[diaSel][horaSel]) 
-                        ? data.horarios[diaSel][horaSel] 
-                        : { est: "Libre", materia: "Disponible" };
+            const infoH = (data.horarios && data.horarios[diaSel] && data.horarios[diaSel][horaSel]) ? data.horarios[diaSel][horaSel] : { est: "Libre", materia: "Disponible" };
 
             let tablaHTML = `<table class="tabla-horarios"><thead><tr><th>Horario</th><th>Estado</th><th>Asignatura</th></tr></thead><tbody>`;
-            
-            const horasLista = [
-                { k: "06:00", t: "06:00 - 07:00" },
-                { k: "07:00", t: "07:00 - 08:00" },
-                { k: "08:00", t: "08:00 - 09:00" },
-                { k: "09:00", t: "09:00 - 10:00" },
-                { k: "10:00", t: "10:00 - 11:00" },
-                { k: "11:00", t: "11:00 - 12:00" },
-                { k: "12:00", t: "12:00 - 13:00" },
-                { k: "13:00", t: "13:00 - 14:00" },
-                { k: "14:00", t: "14:00 - 15:00" },
-                { k: "15:00", t: "15:00 - 16:00" },
-                { k: "16:00", t: "16:00 - 17:00" },
-                { k: "17:00", t: "17:00 - 18:00" },
-                { k: "18:00", t: "18:00 - 19:00" },
-                { k: "19:00", t: "19:00 - 20:00" }
-            ];
-            
-            horasLista.forEach(hObj => {
-                const row = (data.horarios && data.horarios[diaSel] && data.horarios[diaSel][hObj.k]) 
-                          ? data.horarios[diaSel][hObj.k] 
-                          : { est: "Libre", materia: "Disponible" };
-                const activeClass = (hObj.k === horaSel) ? 'class="fila-actual"' : '';
-                tablaHTML += `<tr ${activeClass}><td>${hObj.t}</td><td class="${row.est === 'Libre' ? 'st-libre':'st-ocupado'}">${row.est}</td><td>${row.materia}</td></tr>`;
+            TODAS_HORAS.forEach(h => {
+                const row = (data.horarios && data.horarios[diaSel] && data.horarios[diaSel][h]) ? data.horarios[diaSel][h] : { est: "Libre", materia: "Disponible" };
+                tablaHTML += `<tr ${h === horaSel ? 'class="fila-actual"' : ''}><td>${h}</td><td class="${row.est === 'Libre' ? 'st-libre':'st-ocupado'}">${row.est}</td><td>${row.materia}</td></tr>`;
             });
             tablaHTML += `</tbody></table>`;
 
@@ -556,6 +516,16 @@
                 <h4 style="margin-top:12px; margin-bottom:5px;">Programación ${diaSel}:</h4>
                 ${tablaHTML}
             `;
+        }
+
+        function resetZoom() {
+            zoomScale = 1; panX = 0; panY = 0;
+            aplicarTransformMapa();
+        }
+
+        function aplicarTransformMapa() {
+            const mc = document.getElementById('map-content');
+            if (mc) mc.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomScale})`;
         }
 
         function irAVista(idVista) {
@@ -572,14 +542,13 @@
             if (idVista === 'vista-campus') {
                 document.getElementById('btn-campus').classList.add('btn-activo');
                 rutaNav.innerText = "Ubicación: Sede Central Tunja (Mapa General)";
+                resetZoom();
                 mostrarInformacionGeneralEdificio();
             } else if (idVista === 'vista-3d') {
                 document.getElementById('btn-3d').classList.add('btn-activo');
                 rutaNav.innerText = "Ubicación: Edificio 30 Hunza (Modelo 3D)";
                 document.getElementById('info-titulo').innerText = "🏢 Edificio 30 - Vista Volumétrica";
-                document.getElementById('info-contenido').innerHTML = `
-                    <p style="color:#64748b;">Haz clic en cualquiera de los pisos del modelo 3D para desplegar la planta 2D interactiva y ver la disponibilidad de sus aulas.</p>
-                `;
+                document.getElementById('info-contenido').innerHTML = `<p style="color:#64748b;">Haz clic en cualquiera de los pisos del modelo 3D para desplegar la planta 2D interactiva.</p>`;
             } else if (idVista === 'vista-2d') {
                 document.getElementById('btn-2d').classList.add('btn-activo');
                 rutaNav.innerText = "Ubicación: Edificio 30 Hunza (Planta 2D)";
@@ -589,6 +558,37 @@
 
         function cargarEdificio30() { irAVista('vista-3d'); }
         function abrirPlanoPiso(piso) { irAVista('vista-2d'); }
+
+        // Eventos Zoom + Pan
+        const mapWrapper = document.getElementById('map-wrapper');
+        mapWrapper.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 0.2 : -0.2;
+            zoomScale = Math.min(Math.max(1, zoomScale + delta), 4);
+            if (zoomScale === 1) { panX = 0; panY = 0; }
+            aplicarTransformMapa();
+        });
+
+        mapWrapper.addEventListener('mousedown', (e) => {
+            if (zoomScale > 1) {
+                isDragging = true;
+                startX = e.clientX - panX;
+                startY = e.clientY - panY;
+                mapWrapper.style.cursor = 'grabbing';
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            panX = e.clientX - startX;
+            panY = e.clientY - startY;
+            aplicarTransformMapa();
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+            if (mapWrapper) mapWrapper.style.cursor = 'grab';
+        });
 
         document.querySelectorAll('.salon').forEach(s => {
             s.addEventListener('click', function() { mostrarFichaExcel(this.getAttribute('id')); });
