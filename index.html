@@ -3,408 +3,4434 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemelo Digital UPTC - Visor IFC</title>
+    <title>UPTC - Gemelo Digital Sede Central Tunja</title>
+
+    <!-- Librería SheetJS para Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <!-- =========================================================
+         THREE.JS
+         ========================================================= -->
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.149.0/examples/jsm/"
+      }
+    }
+    </script>
+
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+        * { box-sizing: border-box; }
 
         body {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            background-color: #0f172a;
-            color: #f8fafc;
-            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f3f6;
+            color: #2c3e50;
         }
 
-        /* Encabezado */
         header {
+            background: #003366;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 24px;
-            background-color: #1e293b;
-            border-bottom: 1px solid #334155;
-        }
-
-        .title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #38bdf8;
-        }
-
-        .nav-buttons {
-            display: flex;
+            flex-wrap: wrap;
             gap: 10px;
         }
 
-        .btn-secundario {
-            background-color: #334155;
-            color: #f8fafc;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .btn-secundario:hover {
-            background-color: #475569;
-        }
-
-        .btn-secundario.btn-activo {
-            background-color: #0284c7;
+        .header-title {
+            font-size: 18px;
             font-weight: bold;
         }
 
-        /* Contenedor Principal */
-        .main-container {
-            display: flex;
-            flex: 1;
-            position: relative;
-            overflow: hidden;
+        .breadcrumb {
+            font-size: 14px;
+            color: #ffcc00;
+            font-weight: 500;
         }
 
-        /* Vistas */
+        .nav-container {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background-color: #ffcc00;
+            color: #003366;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background-color: #e6b800;
+            transform: translateY(-1px);
+        }
+
+        .btn-secundario {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .btn-secundario:hover {
+            background-color: rgba(255, 255, 255, 0.35);
+            color: white;
+        }
+
+        .btn-activo {
+            background-color: #ffcc00 !important;
+            color: #003366 !important;
+        }
+
+        .time-bar {
+            background: #ffffff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-left: 6px solid #003366;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .time-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        select.time-select {
+            padding: 6px 10px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        .main-container {
+            display: flex;
+            gap: 20px;
+            min-height: 540px;
+        }
+
+        .visor-box {
+            flex: 2;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-box {
+            flex: 1;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-top: 5px solid #003366;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
         .vista {
             display: none;
-            width: 100%;
-            height: 100%;
-            position: relative;
         }
 
         .vista.activa {
-            display: flex;
+            display: block;
         }
 
-        /* Panel Lateral (Sidebar) */
-        .sidebar {
-            width: 300px;
-            background-color: #1e293b;
-            border-right: 1px solid #334155;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            z-index: 10;
-        }
+        /* =========================================================
+           MAPA GENERAL
+           ========================================================= */
 
-        .panel-card {
-            background-color: #0f172a;
-            padding: 15px;
+        .map-wrapper {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            border: 2px solid #ddd;
             border-radius: 8px;
-            border: 1px solid #334155;
+            overflow: hidden;
+            background: #101827;
+            user-select: none;
+            cursor: grab;
         }
 
-        /* Visor 3D */
-        #ifc-canvas-container {
-            flex: 1;
+        .map-content {
+            position: relative;
             width: 100%;
             height: 100%;
-            position: relative;
-            background-color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform-origin: center center;
+            transition: transform 0.05s ease-out;
         }
 
-        /* Overlays de estado */
-        .overlay-status {
+        .campus-img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .svg-overlay {
             position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(15, 23, 42, 0.9);
-            backdrop-filter: blur(8px);
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #334155;
-            color: #fff;
-            z-index: 5;
-            display: none;
-            max-width: 300px;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
         }
 
-        .spinner {
-            border: 3px solid rgba(255, 255, 255, 0.1);
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            border-left-color: #38bdf8;
-            animation: spin 1s linear infinite;
+        .hotspot-edificio {
+            fill: rgba(0, 51, 102, 0.4);
+            stroke: #ffcc00;
+            stroke-width: 3;
+            cursor: pointer;
+        }
+
+        .hotspot-edificio:hover {
+            fill: rgba(255, 204, 0, 0.6);
+            stroke: #003366;
+        }
+
+        /* =========================================================
+           VISUALIZADOR IFC 3D
+           ========================================================= */
+
+        .ifc-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #eef2f7;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .ifc-layout {
+            display: flex;
+            gap: 10px;
+            height: 440px;
+            position: relative;
+        }
+
+        #ifc-canvas-container {
+            flex: 1;
+            height: 100%;
+            min-width: 0;
+            background: #1a1a2e;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #ifc-canvas-container canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .ifc-layers-panel {
+            width: 220px;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 13px;
+        }
+
+        .ifc-layers-panel h4 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #003366;
+            border-bottom: 2px solid #003366;
+            padding-bottom: 4px;
+        }
+
+        .layer-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+
+        .nav-hint {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 5px;
+        }
+
+        /* =========================================================
+           PLANTA 2D
+           ========================================================= */
+
+        .salon {
+            stroke: #003366;
+            stroke-width: 3;
+            cursor: pointer;
+            transition: fill 0.3s;
+        }
+
+        .salon:hover {
+            stroke-width: 5;
+            filter: brightness(0.9);
+        }
+
+        .texto-svg {
+            font-size: 14px;
+            font-weight: bold;
+            fill: #003366;
+            pointer-events: none;
+        }
+
+        /* =========================================================
+           TABLAS / ESTADOS
+           ========================================================= */
+
+        .tabla-horarios {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        .tabla-horarios th,
+        .tabla-horarios td {
+            border: 1px solid #ddd;
+            padding: 6px;
+            text-align: left;
+        }
+
+        .tabla-horarios th {
+            background-color: #003366;
+            color: white;
+        }
+
+        .fila-actual {
+            background-color: #fff3cd;
+            font-weight: bold;
+        }
+
+        .st-libre {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .st-ocupado {
+            color: #c0392b;
+            font-weight: bold;
+        }
+
+        .status-badge {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        /* =========================================================
+           DEBUG
+           ========================================================= */
+
+        .debug-box {
+            margin-top: 10px;
+            padding: 8px;
+            background: #f8f9fa;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #555;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .loading-spinner {
             display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #ccc;
+            border-top: 2px solid #003366;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
             vertical-align: middle;
-            margin-right: 8px;
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
-        /* Vista Marcador de Posición */
-        .vista-placeholder {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 100%;
-            height: 100%;
-            font-size: 1.1rem;
-            color: #94a3b8;
+        .log-entry {
+            padding: 3px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .log-error {
+            color: #c0392b;
+            font-weight: bold;
+        }
+
+        .log-success {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .log-info {
+            color: #003366;
+        }
+
+        .ifc-error-box {
+            position: absolute;
+            left: 15px;
+            right: 15px;
+            top: 15px;
+            background: rgba(255,255,255,0.96);
+            border-left: 5px solid #c0392b;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 20;
+            display: none;
+        }
+
+        .ifc-loading-box {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.95);
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 10;
+            font-size: 13px;
+            font-weight: bold;
+            color: #003366;
+            text-align: center;
+            min-width: 220px;
+        }
+
+        @media (max-width: 900px) {
+            .main-container {
+                flex-direction: column;
+            }
+
+            .ifc-layout {
+                height: 500px;
+            }
+
+            .ifc-layers-panel {
+                width: 180px;
+            }
+        }
+
+        @media (max-width: 650px) {
+            .ifc-layout {
+                flex-direction: column;
+                height: auto;
+            }
+
+            #ifc-canvas-container {
+                height: 420px;
+            }
+
+            .ifc-layers-panel {
+                width: 100%;
+                max-height: 180px;
+            }
         }
     </style>
 </head>
+
 <body>
 
-    <!-- Encabezado -->
-    <header>
-        <div class="title">🏛️ Gemelo Digital UPTC - Edificio 30 Aulas</div>
-        <div class="nav-buttons">
-            <button id="btn-campus" class="btn-secundario btn-activo" onclick="irAVista('vista-campus')">Campus</button>
-            <button id="btn-3d" class="btn-secundario" onclick="irAVista('vista-3d')">Visor 3D IFC</button>
-            <button id="btn-2d" class="btn-secundario" onclick="irAVista('vista-2d')">Planos 2D</button>
+<header>
+    <div>
+        <div class="header-title">
+            🏛️ Universidad Pedagógica y Tecnológica de Colombia (UPTC)
         </div>
-    </header>
 
-    <!-- Contenido Principal -->
-    <div class="main-container">
+        <div class="breadcrumb" id="ruta-nav">
+            Ubicación: Sede Central Tunja (Mapa General)
+        </div>
+    </div>
 
-        <!-- VISTA CAMPUS -->
+    <div id="btns-nav" class="nav-container">
+
+        <button
+            id="btn-campus"
+            class="btn btn-secundario btn-activo"
+            onclick="irAVista('vista-campus')">
+            🗺️ Mapa General
+        </button>
+
+        <button
+            id="btn-3d"
+            class="btn btn-secundario"
+            onclick="irAVista('vista-3d')">
+            🏢 Visualizador 3D
+        </button>
+
+        <button
+            id="btn-2d"
+            class="btn btn-secundario"
+            onclick="irAVista('vista-2d')">
+            📐 Planta 2D
+        </button>
+
+    </div>
+</header>
+
+
+<!-- =========================================================
+     BARRA DE TIEMPO
+     ========================================================= -->
+
+<div class="time-bar">
+
+    <div class="time-controls">
+
+        <span>
+            📅 <b>Día:</b>
+        </span>
+
+        <select
+            id="select-dia"
+            class="time-select"
+            onchange="actualizarEstadoTiempo()">
+
+            <option value="Lunes" selected>Lunes</option>
+            <option value="Martes">Martes</option>
+            <option value="Miércoles">Miércoles</option>
+            <option value="Jueves">Jueves</option>
+            <option value="Viernes">Viernes</option>
+
+        </select>
+
+
+        <span style="margin-left:10px;">
+            ⏰ <b>Franja Horaria:</b>
+        </span>
+
+        <select
+            id="select-hora"
+            class="time-select"
+            onchange="actualizarEstadoTiempo()">
+
+            <option value="06:00">6 - 7 AM</option>
+            <option value="07:00" selected>7 - 8 AM</option>
+            <option value="08:00">8 - 9 AM</option>
+            <option value="09:00">9 - 10 AM</option>
+            <option value="10:00">10 - 11 AM</option>
+            <option value="11:00">11 - 12 PM</option>
+            <option value="12:00">12 - 13 PM</option>
+            <option value="13:00">13 - 14 PM</option>
+            <option value="14:00">14 - 15 PM</option>
+            <option value="15:00">15 - 16 PM</option>
+            <option value="16:00">16 - 17 PM</option>
+            <option value="17:00">17 - 18 PM</option>
+            <option value="18:00">18 - 19 PM</option>
+            <option value="19:00">19 - 20 PM</option>
+
+        </select>
+
+    </div>
+
+
+    <div>
+        <span
+            id="excel-status"
+            class="status-badge"
+            style="background:#fff3cd; color:#856404;">
+            🔄 Conectando a Excel...
+        </span>
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     CONTENIDO PRINCIPAL
+     ========================================================= -->
+
+<div class="main-container">
+
+    <div class="visor-box">
+
+
+        <!-- =====================================================
+             VISTA 1 — MAPA
+             ===================================================== -->
+
         <div id="vista-campus" class="vista activa">
-            <div class="vista-placeholder">
-                <div style="text-align: center;">
-                    <h2>Vista General del Campus UPTC</h2>
-                    <p style="margin-top: 10px;">Selecciona el <b>Edificio 30 Aulas Hunza</b> para explorar el modelo 3D IFC.</p>
-                    <button class="btn-secundario btn-activo" style="margin-top: 15px;" onclick="cargarEdificio30()">Abrir Edificio 30 Aulas (3D)</button>
+
+            <h3>
+                Plan de Ordenamiento Físico-Espacial - Sede Central
+            </h3>
+
+            <div id="map-wrapper" class="map-wrapper">
+
+                <div id="map-content" class="map-content">
+
+                    <img
+                        src="plano_uptc.jpg"
+                        class="campus-img"
+                        alt="Plano UPTC Sede Central"
+                        onerror="this.style.display='none'">
+
+                    <svg
+                        class="svg-overlay"
+                        viewBox="0 0 1000 700"
+                        preserveAspectRatio="xMidYMid meet">
+
+                        <polygon
+                            points="505,535 555,535 555,565 505,565"
+                            class="hotspot-edificio"
+                            onclick="cargarEdificio30()"/>
+
+                        <text
+                            x="530"
+                            y="552"
+                            fill="white"
+                            font-weight="bold"
+                            font-size="11"
+                            text-anchor="middle"
+                            pointer-events="none">
+                            30. HUNZA
+                        </text>
+
+                    </svg>
+
                 </div>
+
             </div>
+
         </div>
 
-        <!-- VISTA 3D IFC -->
+
+        <!-- =====================================================
+             VISTA 2 — VISUALIZADOR 3D
+             ===================================================== -->
+
         <div id="vista-3d" class="vista">
-            <!-- Sidebar Panel -->
-            <div class="sidebar">
-                <h3>Información del Modelo</h3>
-                <div class="panel-card" id="ifc-info">
-                    <p><b>Estado:</b> <span id="ifc-status">Pendiente</span></p>
-                    <p style="font-size: 12px; color: #94a3b8; margin-top: 5px;">Edificio 30 Aulas Hunza (UPTC)</p>
-                </div>
-                <button class="btn-secundario btn-activo" onclick="window.reencuadrarCamara()">Encuadrar Modelo</button>
+
+            <h3>
+                Visualizador 3D - Edificio 30 Aulas Hunza
+            </h3>
+
+
+            <div class="ifc-toolbar">
+
+                <span
+                    style="font-size:13px; color:#003366; font-weight:bold;">
+                    📦 Fuente: GitHub (Cyul5/gemelo-digital-uptc)
+                </span>
+
+                <span
+                    id="ifc-status"
+                    style="font-size:12px; font-weight:bold; color:#003366;">
+
+                    <span class="loading-spinner"></span>
+                    Inicializando...
+
+                </span>
+
             </div>
 
-            <!-- Contenedor del Lienzo Three.js -->
-            <div id="ifc-canvas-container">
-                <!-- Overlay de Carga -->
-                <div id="ifc-loading-box" class="overlay-status">
-                    <div class="spinner"></div>
-                    <span id="loading-text">Cargando modelo IFC...</span>
+
+            <div class="ifc-layout">
+
+
+                <div id="ifc-canvas-container">
+
+                    <div
+                        id="ifc-loading-box"
+                        class="ifc-loading-box">
+
+                        <span class="loading-spinner"></span>
+                        <br>
+                        Preparando visualizador 3D...
+
+                    </div>
+
+
+                    <div
+                        id="ifc-error-box"
+                        class="ifc-error-box">
+                    </div>
+
                 </div>
 
-                <!-- Overlay de Error -->
-                <div id="ifc-error-box" class="overlay-status" style="border-color: #ef4444; color: #fca5a5;"></div>
+
+                <div class="ifc-layers-panel">
+
+                    <h4>
+                        Información
+                    </h4>
+
+                    <div id="ifc-info">
+
+                        <p
+                            style="
+                            color:#94a3b8;
+                            font-style:italic;
+                            font-size:12px;
+                            ">
+
+                            Cargando modelo 3D...
+
+                        </p>
+
+                    </div>
+
+                </div>
+
             </div>
+
+
+            <div class="nav-hint">
+
+                🖱️ <b>Navegación:</b>
+                Clic Izq: Rotar |
+                Clic Der / Shift+Clic: Desplazar |
+                Rueda: Zoom
+
+            </div>
+
         </div>
 
-        <!-- VISTA 2D -->
+
+        <!-- =====================================================
+             VISTA 3 — PLANTA 2D
+             ===================================================== -->
+
         <div id="vista-2d" class="vista">
-            <div class="vista-placeholder">
-                <p>Planos 2D / Esquemas en desarrollo.</p>
-            </div>
+
+            <h3 id="titulo-piso-2d">
+                Edificio 30 Aulas Hunza - Planta 2D
+            </h3>
+
+
+            <svg
+                viewBox="0 0 500 280"
+                width="100%"
+                height="320">
+
+                <rect
+                    x="30"
+                    y="120"
+                    width="440"
+                    height="40"
+                    fill="#e2e8f0"
+                    stroke="#003366"
+                    stroke-width="2"/>
+
+                <text
+                    x="250"
+                    y="145"
+                    class="texto-svg"
+                    fill="#64748b"
+                    text-anchor="middle">
+
+                    CORREDOR PRINCIPAL
+
+                </text>
+
+
+                <!-- AULA 101 -->
+
+                <rect
+                    id="H-101"
+                    class="salon"
+                    x="30"
+                    y="20"
+                    width="130"
+                    height="100"
+                    fill="#2ecc71"/>
+
+                <text
+                    x="95"
+                    y="65"
+                    class="texto-svg"
+                    text-anchor="middle">
+
+                    Aula A-101
+
+                </text>
+
+                <text
+                    id="lbl-H-101"
+                    x="95"
+                    y="85"
+                    font-size="11"
+                    text-anchor="middle">
+
+                    LIBRE
+
+                </text>
+
+
+                <!-- AULA 102 -->
+
+                <rect
+                    id="H-102"
+                    class="salon"
+                    x="185"
+                    y="20"
+                    width="130"
+                    height="100"
+                    fill="#2ecc71"/>
+
+                <text
+                    x="250"
+                    y="65"
+                    class="texto-svg"
+                    text-anchor="middle">
+
+                    Aula A-102
+
+                </text>
+
+                <text
+                    id="lbl-H-102"
+                    x="250"
+                    y="85"
+                    font-size="11"
+                    text-anchor="middle">
+
+                    LIBRE
+
+                </text>
+
+
+                <!-- AULA 103 -->
+
+                <rect
+                    id="H-103"
+                    class="salon"
+                    x="340"
+                    y="20"
+                    width="130"
+                    height="100"
+                    fill="#2ecc71"/>
+
+                <text
+                    x="405"
+                    y="65"
+                    class="texto-svg"
+                    text-anchor="middle">
+
+                    Lab A-103
+
+                </text>
+
+                <text
+                    id="lbl-H-103"
+                    x="405"
+                    y="85"
+                    font-size="11"
+                    text-anchor="middle">
+
+                    LIBRE
+
+                </text>
+
+            </svg>
+
         </div>
 
     </div>
 
-    <!-- Módulo JS: Three.js + Web-IFC -->
-    <script type="module">
-        import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-        import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
-        import { IFCLoader } from 'https://cdn.jsdelivr.net/npm/web-ifc-three@0.0.126/IFCLoader.js';
 
-        /* =========================================================
-           CONFIGURACIÓN Y VARIABLES GLOBALES
-           ========================================================= */
-        const URL_IFC = 'https://raw.githubusercontent.com/Cyul5/gemelo-digital-uptc/main/001-PRO-F2STUDIO-M3D-ARQ-001.ifc';
-        const URL_WASM = 'https://cdn.jsdelivr.net/npm/web-ifc@0.0.36/';
+    <!-- =========================================================
+         PANEL DE INFORMACIÓN
+         ========================================================= -->
 
-        let scene, camera, renderer, controls, ifcLoader, currentModel;
-        let is3DInitialized = false;
-        let modelLoaded = false;
+    <div class="info-box">
 
-        /* =========================================================
-           NAVEGACIÓN ENTRE PESTAÑAS
-           ========================================================= */
-        window.irAVista = function(vistaId) {
-            document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
-            document.querySelectorAll('.btn-secundario').forEach(b => b.classList.remove('btn-activo'));
+        <h3 id="info-titulo">
+            Información del Espacio
+        </h3>
 
-            const vistaTarget = document.getElementById(vistaId);
-            if (vistaTarget) vistaTarget.classList.add('activa');
+        <div id="info-contenido">
 
-            if (vistaId === 'vista-campus') document.getElementById('btn-campus')?.classList.add('btn-activo');
-            if (vistaId === 'vista-3d') document.getElementById('btn-3d')?.classList.add('btn-activo');
-            if (vistaId === 'vista-2d') document.getElementById('btn-2d')?.classList.add('btn-activo');
+            <p style="color:#64748b;">
+                Selecciona un área para consultar la información.
+            </p>
 
-            if (vistaId === 'vista-3d') {
-                setTimeout(() => {
-                    if (!is3DInitialized) {
-                        init3DViewer();
-                    } else {
-                        ajustarTamanoRenderer();
-                    }
-                    if (!modelLoaded) {
-                        cargarModeloIFC();
-                    }
-                }, 100);
-            }
-        };
+        </div>
 
-        /* =========================================================
-           INICIALIZACIÓN DE THREE.JS
-           ========================================================= */
-        function init3DViewer() {
-            const container = document.getElementById('ifc-canvas-container');
-            if (!container || container.clientWidth === 0) return;
 
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0f172a);
+        <div id="debug-info" class="debug-box">
 
-            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100000);
-            camera.position.set(50, 50, 50);
+            <div class="log-entry log-info">
+                <b>Estado:</b>
+                Inicializando sistema...
+            </div>
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.setSize(container.clientWidth, container.clientHeight);
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =============================================================
+     SCRIPT PRINCIPAL — THREE.JS + IFC
+     ============================================================= -->
+
+<script type="module">
+
+    import * as THREE from 'three';
+
+    import {
+        OrbitControls
+    } from 'three/addons/controls/OrbitControls.js';
+
+
+    /*
+     * IFCLoader.
+     *
+     * Usamos la versión 0.0.126 de web-ifc-three.
+     *
+     * Esta librería utiliza web-ifc para interpretar
+     * realmente la geometría IFC.
+     */
+
+    import {
+        IFCLoader
+    } from 'https://cdn.jsdelivr.net/npm/web-ifc-three@0.0.126/IFCLoader.js';
+
+
+    /* =========================================================
+       CONFIGURACIÓN
+       ========================================================= */
+
+    const URL_IFC =
+        'https://raw.githubusercontent.com/Cyul5/gemelo-digital-uptc/main/001-PRO-F2STUDIO-M3D-ARQ-001.ifc';
+
+
+    /*
+     * CDN donde está el WASM de web-ifc.
+     *
+     * El parser IFC utiliza WebAssembly para interpretar
+     * el archivo IFC.
+     */
+
+    const URL_WASM =
+        'https://cdn.jsdelivr.net/npm/web-ifc@0.0.39/';
+
+
+    let scene = null;
+    let camera = null;
+    let renderer = null;
+    let controls = null;
+
+    let ifcLoader = null;
+    let model = null;
+
+    let is3DInitialized = false;
+    let isIFCLoading = false;
+
+
+    /* =========================================================
+       SISTEMA DE DEBUG
+       ========================================================= */
+
+    const debugLog = {
+
+        log: (msg, type = 'info') => {
+
+            const logBox =
+                document.getElementById('debug-info');
+
+            if (!logBox) return;
+
+            const entry =
+                document.createElement('div');
+
+            entry.className =
+                `log-entry log-${type}`;
+
+            const time =
+                new Date().toLocaleTimeString();
+
+            entry.textContent =
+                `[${time}] ${msg}`;
+
+            logBox.appendChild(entry);
+
+            logBox.scrollTop =
+                logBox.scrollHeight;
+
+            console.log(`[${type}]`, msg);
+        },
+
+        error: (msg) => {
+            debugLog.log(msg, 'error');
+        },
+
+        success: (msg) => {
+            debugLog.log(msg, 'success');
+        },
+
+        info: (msg) => {
+            debugLog.log(msg, 'info');
+        }
+
+    };
+
+
+    /* =========================================================
+       ESTADO VISUAL IFC
+       ========================================================= */
+
+    function actualizarStatus(texto, tipo = 'info') {
+
+        const statusLabel =
+            document.getElementById('ifc-status');
+
+        if (!statusLabel) return;
+
+        statusLabel.textContent = texto;
+
+        if (tipo === 'error') {
+            statusLabel.style.color = '#c0392b';
+        }
+
+        else if (tipo === 'success') {
+            statusLabel.style.color = '#27ae60';
+        }
+
+        else {
+            statusLabel.style.color = '#003366';
+        }
+    }
+
+
+    function mostrarCarga(texto) {
+
+        const box =
+            document.getElementById('ifc-loading-box');
+
+        if (!box) return;
+
+        box.style.display = 'block';
+
+        box.innerHTML = `
+            <span class="loading-spinner"></span>
+            <br><br>
+            ${texto}
+        `;
+    }
+
+
+    function ocultarCarga() {
+
+        const box =
+            document.getElementById('ifc-loading-box');
+
+        if (!box) return;
+
+        box.style.display = 'none';
+    }
+
+
+    function mostrarErrorVisual(texto) {
+
+        const box =
+            document.getElementById('ifc-error-box');
+
+        if (!box) return;
+
+        box.style.display = 'block';
+
+        box.innerHTML = `
+            <b>⚠️ No se pudo cargar el modelo IFC</b>
+            <br><br>
+            ${texto}
+        `;
+    }
+
+
+    /* =========================================================
+       INICIALIZAR THREE.JS
+       ========================================================= */
+
+    function init3DViewer() {
+
+        if (is3DInitialized) {
+
+            /*
+             * Si ya existe el visor simplemente comprobamos
+             * que el canvas tenga el tamaño correcto.
+             */
+
+            ajustarTamanoRenderer();
+
+            return true;
+        }
+
+
+        const container =
+            document.getElementById(
+                'ifc-canvas-container'
+            );
+
+
+        if (!container) {
+
+            debugLog.error(
+                'No existe #ifc-canvas-container'
+            );
+
+            return false;
+        }
+
+
+        if (
+            container.clientWidth === 0 ||
+            container.clientHeight === 0
+        ) {
+
+            debugLog.error(
+                'El contenedor 3D todavía no tiene dimensiones visibles'
+            );
+
+            return false;
+        }
+
+
+        try {
+
+            debugLog.info(
+                'Creando escena Three.js...'
+            );
+
+
+            /* -------------------------------------------------
+               ESCENA
+               ------------------------------------------------- */
+
+            scene =
+                new THREE.Scene();
+
+            scene.background =
+                new THREE.Color(0x1a1a2e);
+
+
+            /* -------------------------------------------------
+               CÁMARA
+               ------------------------------------------------- */
+
+            camera =
+                new THREE.PerspectiveCamera(
+                    45,
+                    container.clientWidth /
+                    container.clientHeight,
+                    0.01,
+                    1000000
+                );
+
+            camera.position.set(
+                50,
+                40,
+                50
+            );
+
+
+            /* -------------------------------------------------
+               RENDERER
+               ------------------------------------------------- */
+
+            renderer =
+                new THREE.WebGLRenderer({
+                    antialias: true,
+                    alpha: false
+                });
+
+            renderer.setPixelRatio(
+                Math.min(
+                    window.devicePixelRatio || 1,
+                    2
+                )
+            );
+
+            renderer.setSize(
+                container.clientWidth,
+                container.clientHeight
+            );
+
+
+            /*
+             * Activar sombras.
+             */
+
             renderer.shadowMap.enabled = true;
-            container.appendChild(renderer.domElement);
 
-            controls = new OrbitControls(camera, renderer.domElement);
+
+            container.appendChild(
+                renderer.domElement
+            );
+
+
+            /* -------------------------------------------------
+               CONTROLES
+               ------------------------------------------------- */
+
+            controls =
+                new OrbitControls(
+                    camera,
+                    renderer.domElement
+                );
+
             controls.enableDamping = true;
+
             controls.dampingFactor = 0.05;
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
-            scene.add(ambientLight);
+            controls.enablePan = true;
 
-            const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.5);
-            dirLight1.position.set(100, 200, 100);
-            scene.add(dirLight1);
+            controls.screenSpacePanning = true;
 
-            const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.6);
-            dirLight2.position.set(-100, 100, -100);
-            scene.add(dirLight2);
+            controls.minDistance = 0.1;
 
-            const gridHelper = new THREE.GridHelper(200, 20, 0x0284c7, 0x334155);
-            scene.add(gridHelper);
+            controls.maxDistance = 100000;
+
+
+            /* -------------------------------------------------
+               ILUMINACIÓN
+               ------------------------------------------------- */
+
+            const ambientLight =
+                new THREE.AmbientLight(
+                    0xffffff,
+                    1.2
+                );
+
+            scene.add(
+                ambientLight
+            );
+
+
+            const directionalLight =
+                new THREE.DirectionalLight(
+                    0xffffff,
+                    1.5
+                );
+
+            directionalLight.position.set(
+                100,
+                200,
+                100
+            );
+
+            directionalLight.castShadow = true;
+
+            scene.add(
+                directionalLight
+            );
+
+
+            const directionalLight2 =
+                new THREE.DirectionalLight(
+                    0xffffff,
+                    0.6
+                );
+
+            directionalLight2.position.set(
+                -100,
+                100,
+                -100
+            );
+
+            scene.add(
+                directionalLight2
+            );
+
+
+            /* -------------------------------------------------
+               GRID
+               ------------------------------------------------- */
+
+            const gridHelper =
+                new THREE.GridHelper(
+                    200,
+                    20,
+                    0x003366,
+                    0x334155
+                );
+
+            gridHelper.name =
+                'Grid_Helper';
+
+            scene.add(
+                gridHelper
+            );
+
+
+            /* -------------------------------------------------
+               ANIMACIÓN
+               ------------------------------------------------- */
 
             function animate() {
-                requestAnimationFrame(animate);
-                controls.update();
-                renderer.render(scene, camera);
+
+                requestAnimationFrame(
+                    animate
+                );
+
+                if (controls) {
+                    controls.update();
+                }
+
+                if (renderer && scene && camera) {
+
+                    renderer.render(
+                        scene,
+                        camera
+                    );
+
+                }
+
             }
+
             animate();
 
-            window.addEventListener('resize', ajustarTamanoRenderer);
+
+            /* -------------------------------------------------
+               RESIZE
+               ------------------------------------------------- */
+
+            window.addEventListener(
+                'resize',
+                ajustarTamanoRenderer
+            );
+
+
             is3DInitialized = true;
+
+
+            debugLog.success(
+                'Three.js inicializado correctamente'
+            );
+
+
+            actualizarStatus(
+                'Three.js listo',
+                'success'
+            );
+
+
+            return true;
+
         }
 
-        function ajustarTamanoRenderer() {
-            const container = document.getElementById('ifc-canvas-container');
-            if (!container || !renderer || !camera) return;
-            
-            const width = container.clientWidth;
-            const height = container.clientHeight;
-            
-            if (width > 0 && height > 0) {
-                camera.aspect = width / height;
-                camera.updateProjectionMatrix();
-                renderer.setSize(width, height);
+        catch (error) {
+
+            debugLog.error(
+                `Error inicializando Three.js: ${error.message}`
+            );
+
+            actualizarStatus(
+                '❌ Error Three.js',
+                'error'
+            );
+
+            mostrarErrorVisual(
+                `Error al inicializar Three.js: ${error.message}`
+            );
+
+            return false;
+        }
+    }
+
+
+    /* =========================================================
+       RESIZE
+       ========================================================= */
+
+    function ajustarTamanoRenderer() {
+
+        const container =
+            document.getElementById(
+                'ifc-canvas-container'
+            );
+
+        if (
+            !container ||
+            !renderer ||
+            !camera
+        ) {
+            return;
+        }
+
+
+        const width =
+            container.clientWidth;
+
+        const height =
+            container.clientHeight;
+
+
+        if (
+            width <= 0 ||
+            height <= 0
+        ) {
+            return;
+        }
+
+
+        camera.aspect =
+            width / height;
+
+        camera.updateProjectionMatrix();
+
+
+        renderer.setSize(
+            width,
+            height,
+            false
+        );
+    }
+
+
+    /* =========================================================
+       CONFIGURAR IFC LOADER
+       ========================================================= */
+
+    async function configurarIFCLoader() {
+
+        debugLog.info(
+            'Creando IFCLoader...'
+        );
+
+
+        ifcLoader =
+            new IFCLoader();
+
+
+        /*
+         * Configuración del WASM.
+         *
+         * web-ifc necesita encontrar web-ifc.wasm.
+         */
+
+        debugLog.info(
+            `Configurando WASM: ${URL_WASM}`
+        );
+
+
+        await ifcLoader.ifcManager.setWasmPath(
+            URL_WASM,
+            true
+        );
+
+
+        debugLog.success(
+            'Ruta WASM configurada'
+        );
+
+
+        /*
+         * Algunas categorías IFC que no necesitamos
+         * inicialmente pueden desactivarse para reducir
+         * complejidad de carga.
+         *
+         * Dejamos la configuración mínima para esta primera
+         * prueba.
+         */
+
+
+        try {
+
+            await ifcLoader.ifcManager.applyWebIfcConfig({
+                COORDINATE_TO_ORIGIN: true,
+                USE_FAST_BOOLS: true
+            });
+
+            debugLog.success(
+                'Configuración web-ifc aplicada'
+            );
+
+        }
+
+        catch (configError) {
+
+            debugLog.log(
+                `Aviso configurando web-ifc: ${configError.message}`,
+                'info'
+            );
+
+        }
+
+
+        return ifcLoader;
+    }
+
+
+    /* =========================================================
+       CARGAR IFC REAL
+       ========================================================= */
+
+    async function cargarModeloDesdeGitHub() {
+
+        if (isIFCLoading) {
+
+            debugLog.info(
+                'El IFC ya se está cargando'
+            );
+
+            return;
+        }
+
+
+        isIFCLoading = true;
+
+
+        const statusLabel =
+            document.getElementById(
+                'ifc-status'
+            );
+
+
+        ocultarCarga();
+
+        mostrarCarga(
+            'Descargando y procesando modelo IFC...'
+        );
+
+
+        actualizarStatus(
+            '⏳ Cargando IFC...',
+            'info'
+        );
+
+
+        debugLog.info(
+            '========================================'
+        );
+
+        debugLog.info(
+            'INICIO CARGA IFC'
+        );
+
+        debugLog.info(
+            `URL IFC: ${URL_IFC}`
+        );
+
+
+        try {
+
+            /* -------------------------------------------------
+               1. Comprobar Three.js
+               ------------------------------------------------- */
+
+            if (!THREE) {
+
+                throw new Error(
+                    'Three.js no está disponible.'
+                );
+
             }
-        }
 
-        /* =========================================================
-           CARGA Y PROCESAMIENTO DEL ARCHIVO IFC
-           ========================================================= */
-        async function cargarModeloIFC() {
-            if (modelLoaded) return;
+            debugLog.success(
+                'Three.js disponible'
+            );
 
-            const loadingBox = document.getElementById('ifc-loading-box');
-            const errorBox = document.getElementById('ifc-error-box');
-            const statusLabel = document.getElementById('ifc-status');
 
-            try {
-                if (loadingBox) loadingBox.style.display = 'block';
-                if (errorBox) errorBox.style.display = 'none';
+            /* -------------------------------------------------
+               2. Comprobar WebGL
+               ------------------------------------------------- */
 
-                ifcLoader = new IFCLoader();
-                await ifcLoader.ifcManager.setWasmPath(URL_WASM);
+            if (!renderer) {
 
-                ifcLoader.load(
+                throw new Error(
+                    'Renderer WebGL no está inicializado.'
+                );
+
+            }
+
+            debugLog.success(
+                'Renderer WebGL disponible'
+            );
+
+
+            /* -------------------------------------------------
+               3. Crear loader
+               ------------------------------------------------- */
+
+            await configurarIFCLoader();
+
+
+            /* -------------------------------------------------
+               4. Descargar IFC
+               ------------------------------------------------- */
+
+            debugLog.info(
+                'Descargando archivo IFC desde GitHub...'
+            );
+
+
+            const response =
+                await fetch(
                     URL_IFC,
-                    (ifcModel) => {
-                        currentModel = ifcModel;
-                        scene.add(ifcModel);
-                        modelLoaded = true;
-
-                        encuadrarModelo(ifcModel);
-
-                        if (loadingBox) loadingBox.style.display = 'none';
-                        if (statusLabel) {
-                            statusLabel.textContent = '✅ Modelo cargado';
-                            statusLabel.style.color = '#38bdf8';
-                        }
-                        
-                        document.getElementById('ifc-info').innerHTML = `
-                            <p style="color:#38bdf8; font-weight:bold;">Modelo IFC Cargado</p>
-                            <p style="font-size:12px; color:#94a3b8; margin-top:4px;">Edificio 30 Aulas Hunza</p>
-                        `;
-                    },
-                    (progress) => {
-                        if (progress.lengthComputable) {
-                            const percent = Math.round((progress.loaded / progress.total) * 100);
-                            const loadingText = document.getElementById('loading-text');
-                            if (loadingText) loadingText.textContent = `Cargando IFC... ${percent}%`;
-                        }
-                    },
-                    (error) => {
-                        console.error("Error al cargar IFC:", error);
-                        if (loadingBox) loadingBox.style.display = 'none';
-                        if (errorBox) {
-                            errorBox.style.display = 'block';
-                            errorBox.innerHTML = `<b>⚠️ Error:</b> No se pudo cargar el archivo IFC.<br><small>${error.message || error}</small>`;
-                        }
+                    {
+                        method: 'GET',
+                        cache: 'no-cache'
                     }
                 );
-            } catch (err) {
-                console.error("Error de inicialización IFC:", err);
-                if (loadingBox) loadingBox.style.display = 'none';
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    `HTTP ${response.status}: ${response.statusText}`
+                );
+
             }
-        }
 
-        /* =========================================================
-           ENCUADRE AUTOMÁTICO DE CÁMARA
-           ========================================================= */
-        function encuadrarModelo(object3D) {
-            const box = new THREE.Box3().setFromObject(object3D);
-            const center = box.getCenter(new THREE.Vector3());
-            const size = box.getSize(new THREE.Vector3());
 
-            const maxDim = Math.max(size.x, size.y, size.z);
-            const fov = camera.fov * (Math.PI / 180);
-            let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2)) * 2;
+            const contentLength =
+                response.headers.get(
+                    'content-length'
+                );
 
-            camera.position.set(center.x + cameraZ, center.y + cameraZ, center.z + cameraZ);
-            camera.lookAt(center);
 
-            controls.target.copy(center);
+            debugLog.success(
+                `Archivo IFC descargado${contentLength ? ` (${contentLength} bytes)` : ''}`
+            );
+
+
+            /* -------------------------------------------------
+               5. Obtener ArrayBuffer
+               ------------------------------------------------- */
+
+            const arrayBuffer =
+                await response.arrayBuffer();
+
+
+            debugLog.success(
+                `Buffer IFC creado: ${arrayBuffer.byteLength.toLocaleString()} bytes`
+            );
+
+
+            if (
+                !arrayBuffer ||
+                arrayBuffer.byteLength === 0
+            ) {
+
+                throw new Error(
+                    'El archivo IFC está vacío.'
+                );
+
+            }
+
+
+            /* -------------------------------------------------
+               6. Comprobar encabezado IFC
+               ------------------------------------------------- */
+
+            try {
+
+                const decoder =
+                    new TextDecoder(
+                        'utf-8'
+                    );
+
+                const primerosBytes =
+                    decoder.decode(
+                        arrayBuffer.slice(
+                            0,
+                            Math.min(
+                                200,
+                                arrayBuffer.byteLength
+                            )
+                        )
+                    );
+
+
+                debugLog.info(
+                    `Inicio del archivo: ${primerosBytes.substring(0, 80).replace(/\s+/g, ' ')}`
+                );
+
+
+                if (
+                    !primerosBytes.includes(
+                        'ISO-10303'
+                    ) &&
+                    !primerosBytes.includes(
+                        'HEADER'
+                    )
+                ) {
+
+                    debugLog.log(
+                        'Aviso: el encabezado no parece IFC STEP tradicional.',
+                        'info'
+                    );
+
+                }
+
+            }
+
+            catch (headerError) {
+
+                debugLog.log(
+                    'No se pudo inspeccionar encabezado IFC.',
+                    'info'
+                );
+
+            }
+
+
+            /* -------------------------------------------------
+               7. Parsear IFC
+               ------------------------------------------------- */
+
+            debugLog.info(
+                'Enviando IFC al parser web-ifc...'
+            );
+
+
+            mostrarCarga(
+                'Interpretando geometría IFC...'
+            );
+
+
+            const nuevoModelo =
+                await ifcLoader.ifcManager.parse(
+                    arrayBuffer
+                );
+
+
+            if (!nuevoModelo) {
+
+                throw new Error(
+                    'El parser IFC no devolvió ningún modelo.'
+                );
+
+            }
+
+
+            model =
+                nuevoModelo;
+
+
+            debugLog.success(
+                'IFC interpretado correctamente'
+            );
+
+
+            /* -------------------------------------------------
+               8. Añadir modelo a escena
+               ------------------------------------------------- */
+
+            if (model.parent) {
+
+                model.parent.remove(
+                    model
+                );
+
+            }
+
+
+            scene.add(
+                model
+            );
+
+
+            model.castShadow = true;
+
+            model.receiveShadow = true;
+
+
+            debugLog.success(
+                'Modelo IFC agregado a la escena'
+            );
+
+
+            /* -------------------------------------------------
+               9. Obtener dimensiones
+               ------------------------------------------------- */
+
+            const box =
+                new THREE.Box3()
+                    .setFromObject(
+                        model
+                    );
+
+
+            if (box.isEmpty()) {
+
+                throw new Error(
+                    'El modelo IFC se cargó pero no contiene geometría visible.'
+                );
+
+            }
+
+
+            const center =
+                box.getCenter(
+                    new THREE.Vector3()
+                );
+
+
+            const size =
+                box.getSize(
+                    new THREE.Vector3()
+                );
+
+
+            const maxDim =
+                Math.max(
+                    size.x,
+                    size.y,
+                    size.z
+                );
+
+
+            debugLog.success(
+                `Dimensiones IFC: X=${size.x.toFixed(2)}, Y=${size.y.toFixed(2)}, Z=${size.z.toFixed(2)}`
+            );
+
+
+            debugLog.info(
+                `Centro: X=${center.x.toFixed(2)}, Y=${center.y.toFixed(2)}, Z=${center.z.toFixed(2)}`
+            );
+
+
+            /* -------------------------------------------------
+               10. Centrar modelo
+               ------------------------------------------------- */
+
+            /*
+             * web-ifc puede traer coordenadas grandes.
+             *
+             * El modelo se deja centrado alrededor del origen
+             * para que OrbitControls funcione de manera estable.
+             */
+
+            model.position.x -= center.x;
+
+            model.position.y -= center.y;
+
+            model.position.z -= center.z;
+
+
+            /*
+             * Recalcular bounding box después del centrado.
+             */
+
+            const boxCentrado =
+                new THREE.Box3()
+                    .setFromObject(
+                        model
+                    );
+
+
+            const centroCentrado =
+                boxCentrado.getCenter(
+                    new THREE.Vector3()
+                );
+
+
+            const sizeCentrado =
+                boxCentrado.getSize(
+                    new THREE.Vector3()
+                );
+
+
+            const maxDimCentrado =
+                Math.max(
+                    sizeCentrado.x,
+                    sizeCentrado.y,
+                    sizeCentrado.z
+                );
+
+
+            /* -------------------------------------------------
+               11. Ajustar grid
+               ------------------------------------------------- */
+
+            const grid =
+                scene.getObjectByName(
+                    'Grid_Helper'
+                );
+
+
+            if (grid) {
+
+                scene.remove(
+                    grid
+                );
+
+
+                const gridSize =
+                    Math.max(
+                        maxDimCentrado * 2,
+                        100
+                    );
+
+
+                const divisions =
+                    Math.max(
+                        20,
+                        Math.min(
+                            100,
+                            Math.round(
+                                gridSize / 5
+                            )
+                        )
+                    );
+
+
+                const newGrid =
+                    new THREE.GridHelper(
+                        gridSize,
+                        divisions,
+                        0x003366,
+                        0x334155
+                    );
+
+
+                newGrid.name =
+                    'Grid_Helper';
+
+
+                scene.add(
+                    newGrid
+                );
+
+            }
+
+
+            /* -------------------------------------------------
+               12. Ajustar cámara
+               ------------------------------------------------- */
+
+            const distancia =
+                Math.max(
+                    maxDimCentrado * 1.8,
+                    20
+                );
+
+
+            camera.position.set(
+                distancia,
+                distancia * 0.75,
+                distancia
+            );
+
+
+            controls.target.copy(
+                centroCentrado
+            );
+
+
             controls.update();
+
+
+            /*
+             * Near/Far dinámicos.
+             */
+
+            camera.near =
+                Math.max(
+                    maxDimCentrado / 100000,
+                    0.001
+                );
+
+
+            camera.far =
+                Math.max(
+                    maxDimCentrado * 100,
+                    10000
+                );
+
+
+            camera.updateProjectionMatrix();
+
+
+            /* -------------------------------------------------
+               13. Información
+               ------------------------------------------------- */
+
+            actualizarInfoPanelIFC(
+                sizeCentrado
+            );
+
+
+            /* -------------------------------------------------
+               14. Estado final
+               ------------------------------------------------- */
+
+            ocultarCarga();
+
+            mostrarErrorVisual('');
+
+
+            const errorBox =
+                document.getElementById(
+                    'ifc-error-box'
+                );
+
+            if (errorBox) {
+                errorBox.style.display = 'none';
+            }
+
+
+            actualizarStatus(
+                '✅ IFC cargado',
+                'success'
+            );
+
+
+            debugLog.success(
+                '========================================'
+            );
+
+            debugLog.success(
+                'MODELO IFC CARGADO CORRECTAMENTE'
+            );
+
+            debugLog.success(
+                '========================================'
+            );
+
+
+            /*
+             * De momento mostramos los datos generales
+             * del edificio en el panel lateral.
+             */
+
+            if (
+                typeof mostrarInformacionGeneralEdificio ===
+                'function'
+            ) {
+
+                mostrarInformacionGeneralEdificio();
+
+            }
+
         }
 
-        window.reencuadrarCamara = function() {
-            if (currentModel) encuadrarModelo(currentModel);
+        catch (error) {
+
+            console.error(
+                'Error completo cargando IFC:',
+                error
+            );
+
+
+            debugLog.error(
+                `Error IFC: ${error.message || error}`
+            );
+
+
+            ocultarCarga();
+
+
+            actualizarStatus(
+                '❌ Error cargando IFC',
+                'error'
+            );
+
+
+            mostrarErrorVisual(
+                `
+                ${error.message || error}
+                <br><br>
+                Revisa también el panel de diagnóstico
+                y la consola del navegador.
+                `
+            );
+
+
+            /*
+             * IMPORTANTE:
+             *
+             * No mostramos un cubo falso.
+             *
+             * Si el IFC falla queremos saberlo.
+             */
+
+
+            actualizarInfoPanelError(
+                error
+            );
+
+        }
+
+        finally {
+
+            isIFCLoading = false;
+
+        }
+
+    }
+
+
+    /* =========================================================
+       INFORMACIÓN IFC
+       ========================================================= */
+
+    function actualizarInfoPanelIFC(
+        size
+    ) {
+
+        const info =
+            document.getElementById(
+                'ifc-info'
+            );
+
+
+        if (!info) return;
+
+
+        info.innerHTML = `
+
+            <p>
+                <b>Modelo:</b>
+                IFC Edificio 30
+            </p>
+
+            <p>
+                <b>Archivo:</b><br>
+                001-PRO-F2STUDIO-M3D-ARQ-001.ifc
+            </p>
+
+            <hr>
+
+            <p>
+                <b>Dimensiones aproximadas:</b>
+            </p>
+
+            <p>
+                X:
+                ${size.x.toFixed(2)}
+            </p>
+
+            <p>
+                Y:
+                ${size.y.toFixed(2)}
+            </p>
+
+            <p>
+                Z:
+                ${size.z.toFixed(2)}
+            </p>
+
+            <hr>
+
+            <p style="
+                color:#27ae60;
+                font-weight:bold;
+            ">
+                ✅ Modelo IFC interpretado
+            </p>
+
+            <p style="
+                color:#64748b;
+                font-size:11px;
+            ">
+                El modelo mostrado corresponde
+                a la geometría contenida en el
+                archivo IFC.
+            </p>
+
+        `;
+
+    }
+
+
+    function actualizarInfoPanelError(
+        error
+    ) {
+
+        const info =
+            document.getElementById(
+                'ifc-info'
+            );
+
+
+        if (!info) return;
+
+
+        info.innerHTML = `
+
+            <p style="
+                color:#c0392b;
+                font-weight:bold;
+            ">
+                ⚠️ Error del modelo IFC
+            </p>
+
+            <p style="font-size:12px;">
+                ${error.message || error}
+            </p>
+
+            <hr>
+
+            <p style="
+                font-size:11px;
+                color:#64748b;
+            ">
+                El sistema no está mostrando
+                un modelo ficticio. Primero debemos
+                solucionar la lectura del IFC.
+            </p>
+
+        `;
+
+    }
+
+
+    /* =========================================================
+       INICIO DEL VISUALIZADOR
+       ========================================================= */
+
+    window.iniciarVisualizado3D =
+        async function() {
+
+            debugLog.info(
+                '🎬 Iniciando visualizador 3D...'
+            );
+
+
+            /*
+             * Esperar un poco para asegurar que el div
+             * ya esté visible.
+             */
+
+            await new Promise(
+                resolve =>
+                    setTimeout(
+                        resolve,
+                        100
+                    )
+            );
+
+
+            if (
+                !init3DViewer()
+            ) {
+
+                debugLog.error(
+                    'No se pudo inicializar el viewer 3D.'
+                );
+
+                return;
+
+            }
+
+
+            /*
+             * Esperar un poco más para que el navegador
+             * calcule correctamente las dimensiones.
+             */
+
+            await new Promise(
+                resolve =>
+                    setTimeout(
+                        resolve,
+                        300
+                    )
+            );
+
+
+            ajustarTamanoRenderer();
+
+
+            /*
+             * Si ya hay modelo, no volver a cargarlo.
+             */
+
+            if (model) {
+
+                debugLog.info(
+                    'El modelo IFC ya estaba cargado.'
+                );
+
+                return;
+
+            }
+
+
+            await cargarModeloDesdeGitHub();
+
         };
 
-        window.cargarEdificio30 = function() {
-            window.irAVista('vista-3d');
+
+    /*
+     * Exponer debug.
+     */
+
+    window.debugLog =
+        debugLog;
+
+
+    /*
+     * Comprobar que el módulo Three.js realmente
+     * se pudo ejecutar.
+     */
+
+    debugLog.success(
+        'Módulo Three.js cargado'
+    );
+
+
+    debugLog.info(
+        `Three.js revision: ${THREE.REVISION}`
+    );
+
+
+    debugLog.info(
+        'IFCLoader disponible'
+    );
+
+</script>
+
+
+<!-- =============================================================
+     SCRIPT GENERAL
+     Excel + mapa + navegación + planta 2D
+     ============================================================= -->
+
+<script>
+
+    let dbHunza = {};
+
+
+    let datosGeneralesEdificio = {
+
+        nombre:
+            "Edificio 30 - Aulas Hunza",
+
+        codigo:
+            "30",
+
+        institucion:
+            "UPTC - Sede Central Tunja",
+
+        uso:
+            "Aulas de Clase y Laboratorios",
+
+        pisos:
+            "5",
+
+        area:
+            "Por definir"
+
+    };
+
+
+    let aulaSeleccionada =
+        "H-101";
+
+
+    let vistaActual =
+        "vista-campus";
+
+
+    /* =========================================================
+       MAPA
+       ========================================================= */
+
+    let zoomScale = 1;
+
+    let panX = 0;
+
+    let panY = 0;
+
+    let isDragging = false;
+
+    let startX = 0;
+
+    let startY = 0;
+
+
+    /* =========================================================
+       HORARIOS
+       ========================================================= */
+
+    const TODAS_HORAS = [
+
+        "06:00",
+        "07:00",
+        "08:00",
+        "09:00",
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+
+    ];
+
+
+    const TODOS_DIAS = [
+
+        "Lunes",
+        "Martes",
+        "Miércoles",
+        "Jueves",
+        "Viernes"
+
+    ];
+
+
+    /* =========================================================
+       UTILIDADES EXCEL
+       ========================================================= */
+
+    function quitarTildes(
+        texto
+    ) {
+
+        return String(
+            texto || ""
+        )
+        .normalize("NFD")
+        .replace(
+            /[\u0300-\u036f]/g,
+            ""
+        )
+        .toLowerCase()
+        .trim();
+
+    }
+
+
+    function descombinarCeldas(
+        sheet
+    ) {
+
+        if (
+            !sheet ||
+            !sheet['!merges'] ||
+            !Array.isArray(
+                sheet['!merges']
+            )
+        ) {
+
+            return;
+
+        }
+
+
+        sheet['!merges'].forEach(
+            range => {
+
+                try {
+
+                    if (
+                        !range.s ||
+                        !range.e
+                    ) {
+                        return;
+                    }
+
+
+                    let cellRefInicio =
+                        XLSX.utils.encode_cell({
+                            r: range.s.r,
+                            c: range.s.c
+                        });
+
+
+                    let cellInicio =
+                        sheet[
+                            cellRefInicio
+                        ];
+
+
+                    if (
+                        !cellInicio ||
+                        !cellInicio.v
+                    ) {
+                        return;
+                    }
+
+
+                    for (
+                        let R =
+                            range.s.r;
+
+                        R <= range.e.r;
+
+                        ++R
+                    ) {
+
+                        for (
+                            let C =
+                                range.s.c;
+
+                            C <= range.e.c;
+
+                            ++C
+                        ) {
+
+                            let cellRef =
+                                XLSX.utils.encode_cell({
+                                    r: R,
+                                    c: C
+                                });
+
+
+                            if (
+                                !sheet[
+                                    cellRef
+                                ]
+                            ) {
+
+                                sheet[
+                                    cellRef
+                                ] = {
+
+                                    t:
+                                        cellInicio.t ||
+                                        "s",
+
+                                    v:
+                                        cellInicio.v
+
+                                };
+
+
+                                if (
+                                    cellInicio.w
+                                ) {
+
+                                    sheet[
+                                        cellRef
+                                    ].w =
+                                        cellInicio.w;
+
+                                }
+
+                            }
+
+                        }
+
+                    }
+
+                }
+
+                catch (e) {
+
+                    console.warn(
+                        "Error procesando merge:",
+                        e
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+
+    /* =========================================================
+       CARGA EXCEL
+       ========================================================= */
+
+    async function cargarExcelAutomatico() {
+
+        const badge =
+            document.getElementById(
+                'excel-status'
+            );
+
+
+        const archivos = [
+
+            'Plantilla_Levantamiento_Edificio_2.xlsx',
+
+            'https://raw.githubusercontent.com/Cyul5/gemelo-digital-uptc/main/Plantilla_Levantamiento_Edificio_2.xlsx'
+
+        ];
+
+
+        let arrayBuffer =
+            null;
+
+
+        for (
+            let fuente of archivos
+        ) {
+
+            try {
+
+                const res =
+                    await fetch(
+                        fuente
+                    );
+
+
+                if (
+                    res.ok
+                ) {
+
+                    arrayBuffer =
+                        await res.arrayBuffer();
+
+                    break;
+
+                }
+
+            }
+
+            catch (e) {}
+
+        }
+
+
+        if (
+            !arrayBuffer
+        ) {
+
+            badge.innerText =
+                "⚠️ Modo Demostración";
+
+            badge.style.background =
+                "#fff3cd";
+
+            badge.style.color =
+                "#856404";
+
+
+            inicializarDatosBase();
+
+
+            return;
+
+        }
+
+
+        try {
+
+            const workbook =
+                XLSX.read(
+                    arrayBuffer,
+                    {
+                        type: 'array',
+                        cellDates: true
+                    }
+                );
+
+
+            let sheetGeneralesName =
+                workbook.SheetNames.find(
+                    n =>
+                        quitarTildes(n)
+                            .includes("general")
+                        ||
+                        quitarTildes(n)
+                            .includes("datos")
+                );
+
+
+            if (
+                sheetGeneralesName
+            ) {
+
+                const sheetGen =
+                    workbook.Sheets[
+                        sheetGeneralesName
+                    ];
+
+
+                descombinarCeldas(
+                    sheetGen
+                );
+
+
+                procesarDatosGenerales(
+                    XLSX.utils.sheet_to_json(
+                        sheetGen,
+                        {
+                            header: 1,
+                            raw: false
+                        }
+                    )
+                );
+
+            }
+
+
+            let sheetHorariosName =
+                workbook.SheetNames.find(
+                    n =>
+                        quitarTildes(n)
+                            .includes("horario")
+                        ||
+                        quitarTildes(n)
+                            .includes("uso")
+                        ||
+                        quitarTildes(n)
+                            .includes("hunza")
+                )
+                ||
+                workbook.SheetNames[0];
+
+
+            const sheetHor =
+                workbook.Sheets[
+                    sheetHorariosName
+                ];
+
+
+            descombinarCeldas(
+                sheetHor
+            );
+
+
+            procesarMatrizExcel(
+                XLSX.utils.sheet_to_json(
+                    sheetHor,
+                    {
+                        header: 1,
+                        raw: false
+                    }
+                )
+            );
+
+
+            badge.innerText =
+                "🟢 Excel Conectado";
+
+            badge.style.background =
+                "#d4edda";
+
+            badge.style.color =
+                "#155724";
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Error cargando Excel:",
+                error
+            );
+
+
+            inicializarDatosBase();
+
+        }
+
+    }
+
+
+    /* =========================================================
+       DATOS GENERALES
+       ========================================================= */
+
+    function procesarDatosGenerales(
+        matrix
+    ) {
+
+        if (
+            !matrix ||
+            matrix.length === 0
+        ) {
+
+            return;
+
+        }
+
+
+        matrix.forEach(
+            row => {
+
+                if (
+                    !row ||
+                    row.length < 2
+                ) {
+
+                    return;
+
+                }
+
+
+                let campo =
+                    quitarTildes(
+                        row[0] ||
+                        row[1] ||
+                        ""
+                    );
+
+
+                let valor =
+                    String(
+                        row[1] ||
+                        row[2] ||
+                        ""
+                    ).trim();
+
+
+                if (
+                    !valor
+                ) {
+
+                    return;
+
+                }
+
+
+                if (
+                    campo.includes(
+                        "nombre del edificio"
+                    )
+                ) {
+
+                    datosGeneralesEdificio.nombre =
+                        valor;
+
+                }
+
+                else if (
+                    campo.includes("codigo")
+                    ||
+                    campo.includes(
+                        "identificador"
+                    )
+                ) {
+
+                    datosGeneralesEdificio.codigo =
+                        valor;
+
+                }
+
+                else if (
+                    campo.includes(
+                        "institucion"
+                    )
+                    ||
+                    campo.includes(
+                        "campus"
+                    )
+                ) {
+
+                    datosGeneralesEdificio.institucion =
+                        valor;
+
+                }
+
+                else if (
+                    campo.includes(
+                        "uso principal"
+                    )
+                ) {
+
+                    datosGeneralesEdificio.uso =
+                        valor;
+
+                }
+
+                else if (
+                    campo.includes(
+                        "numero de pisos"
+                    )
+                ) {
+
+                    datosGeneralesEdificio.pisos =
+                        valor;
+
+                }
+
+                else if (
+                    campo.includes(
+                        "area total"
+                    )
+                ) {
+
+                    datosGeneralesEdificio.area =
+                        valor;
+
+                }
+
+            }
+        );
+
+    }
+
+
+    /* =========================================================
+       INFORMACIÓN EDIFICIO
+       ========================================================= */
+
+    function mostrarInformacionGeneralEdificio() {
+
+        const titulo =
+            document.getElementById(
+                'info-titulo'
+            );
+
+
+        const contenido =
+            document.getElementById(
+                'info-contenido'
+            );
+
+
+        if (
+            !titulo ||
+            !contenido
+        ) {
+
+            return;
+
+        }
+
+
+        titulo.innerText =
+            "🏢 Datos Generales del Edificio";
+
+
+        contenido.innerHTML = `
+
+            <div
+                style="
+                line-height:1.8;
+                font-size:14px;
+                ">
+
+                <p>
+                    <b>Nombre del Edificio:</b>
+                    ${datosGeneralesEdificio.nombre}
+                </p>
+
+                <p>
+                    <b>Código / ID:</b>
+                    ${datosGeneralesEdificio.codigo}
+                </p>
+
+                <p>
+                    <b>Institución / Campus:</b>
+                    ${datosGeneralesEdificio.institucion}
+                </p>
+
+                <p>
+                    <b>Uso Principal:</b>
+                    ${datosGeneralesEdificio.uso}
+                </p>
+
+                <p>
+                    <b>Número de Pisos:</b>
+                    ${datosGeneralesEdificio.pisos}
+                </p>
+
+                <p>
+                    <b>Área Total Construida:</b>
+                    ${datosGeneralesEdificio.area}
+                </p>
+
+            </div>
+
+        `;
+
+    }
+
+
+    /* =========================================================
+       ESTRUCTURA VACÍA
+       ========================================================= */
+
+    function crearEstructuraVaciaEspacio(
+        idSVG,
+        codigoNombre
+    ) {
+
+        let obj = {
+
+            nombre:
+                `Aula ${codigoNombre}`,
+
+            aforo:
+                "35",
+
+            horarios:
+                {}
+
         };
-    </script>
+
+
+        TODOS_DIAS.forEach(
+            d => {
+
+                obj.horarios[d] =
+                    {};
+
+
+                TODAS_HORAS.forEach(
+                    h => {
+
+                        obj.horarios[d][h] = {
+
+                            est:
+                                "Libre",
+
+                            materia:
+                                "Disponible",
+
+                            docente:
+                                ""
+
+                        };
+
+                    }
+                );
+
+            }
+        );
+
+
+        return obj;
+
+    }
+
+
+    /* =========================================================
+       DATOS BASE
+       ========================================================= */
+
+    function inicializarDatosBase() {
+
+        dbHunza = {
+
+            "H-101":
+                crearEstructuraVaciaEspacio(
+                    "H-101",
+                    "A-101"
+                ),
+
+            "H-102":
+                crearEstructuraVaciaEspacio(
+                    "H-102",
+                    "A-102"
+                ),
+
+            "H-103":
+                crearEstructuraVaciaEspacio(
+                    "H-103",
+                    "A-103"
+                )
+
+        };
+
+    }
+
+
+    /* =========================================================
+       HORAS
+       ========================================================= */
+
+    function desgloseHorasRango(
+        horaTexto
+    ) {
+
+        let matches =
+            String(
+                horaTexto || ""
+            ).match(
+                /\d{1,2}/g
+            );
+
+
+        if (
+            !matches ||
+            matches.length === 0
+        ) {
+
+            return [
+                "07:00"
+            ];
+
+        }
+
+
+        let hInicio =
+            parseInt(
+                matches[0],
+                10
+            );
+
+
+        let hFin =
+            matches.length > 1
+                ?
+                parseInt(
+                    matches[1],
+                    10
+                )
+                :
+                hInicio + 1;
+
+
+        if (
+            hInicio < 6
+        ) {
+
+            hInicio += 12;
+
+        }
+
+
+        if (
+            hFin <= hInicio &&
+            hFin <= 11
+        ) {
+
+            hFin += 12;
+
+        }
+
+
+        let franjas = [];
+
+
+        for (
+            let h = hInicio;
+            h < hFin;
+            h++
+        ) {
+
+            let formatted =
+                (
+                    h < 10
+                    ?
+                    '0'
+                    :
+                    ''
+                )
+                +
+                h
+                +
+                ':00';
+
+
+            if (
+                TODAS_HORAS.includes(
+                    formatted
+                )
+            ) {
+
+                franjas.push(
+                    formatted
+                );
+
+            }
+
+        }
+
+
+        return franjas.length
+            ?
+            franjas
+            :
+            [
+                (
+                    hInicio < 10
+                    ?
+                    '0'
+                    :
+                    ''
+                )
+                +
+                hInicio
+                +
+                ':00'
+            ];
+
+    }
+
+
+    /* =========================================================
+       MATRIZ EXCEL
+       ========================================================= */
+
+    function procesarMatrizExcel(
+        matrix
+    ) {
+
+        inicializarDatosBase();
+
+
+        if (
+            !matrix ||
+            matrix.length === 0
+        ) {
+
+            return;
+
+        }
+
+
+        let headerIdx =
+            matrix.findIndex(
+                r => {
+
+                    let str =
+                        quitarTildes(
+                            r.join(" ")
+                        );
+
+
+                    return (
+                        str.includes(
+                            "lunes"
+                        )
+                        ||
+                        str.includes(
+                            "martes"
+                        )
+                        ||
+                        str.includes(
+                            "horas"
+                        )
+                    );
+
+                }
+            );
+
+
+        if (
+            headerIdx === -1
+        ) {
+
+            headerIdx = 0;
+
+        }
+
+
+        const headers =
+            matrix[
+                headerIdx
+            ].map(
+                h =>
+                    quitarTildes(h)
+            );
+
+
+        let colCode =
+            headers.findIndex(
+                h =>
+                    h.includes("cod")
+                    ||
+                    h.includes("espacio")
+                    ||
+                    h.includes("aula")
+            );
+
+
+        let colHora =
+            headers.findIndex(
+                h =>
+                    h.includes("hora")
+                    ||
+                    h.includes("franja")
+            );
+
+
+        let colMateria =
+            headers.findIndex(
+                h =>
+                    h.includes("materia")
+                    ||
+                    h.includes("actividad")
+            );
+
+
+        let colDocente =
+            headers.findIndex(
+                h =>
+                    h.includes("docente")
+                    ||
+                    h.includes("responsable")
+            );
+
+
+        let colAforo =
+            headers.findIndex(
+                h =>
+                    h.includes("aforo")
+                    ||
+                    h.includes("capacidad")
+            );
+
+
+        const colDiasMatriz = {
+
+            "Lunes":
+                headers.findIndex(
+                    h =>
+                        h.includes(
+                            "lunes"
+                        )
+                ),
+
+            "Martes":
+                headers.findIndex(
+                    h =>
+                        h.includes(
+                            "martes"
+                        )
+                ),
+
+            "Miércoles":
+                headers.findIndex(
+                    h =>
+                        h.includes(
+                            "miercoles"
+                        )
+                ),
+
+            "Jueves":
+                headers.findIndex(
+                    h =>
+                        h.includes(
+                            "jueves"
+                        )
+                ),
+
+            "Viernes":
+                headers.findIndex(
+                    h =>
+                        h.includes(
+                            "viernes"
+                        )
+                )
+
+        };
+
+
+        let ultimoCod =
+            "101";
+
+
+        for (
+            let r =
+                headerIdx + 1;
+
+            r < matrix.length;
+
+            r++
+        ) {
+
+            const row =
+                matrix[r];
+
+
+            if (
+                !row ||
+                row.length === 0
+            ) {
+
+                continue;
+
+            }
+
+
+            let codRaw =
+                String(
+                    row[
+                        colCode !== -1
+                            ?
+                            colCode
+                            :
+                            1
+                    ]
+                    ||
+                    ""
+                ).trim();
+
+
+            if (
+                codRaw
+            ) {
+
+                ultimoCod =
+                    codRaw;
+
+            }
+
+
+            let numPuro =
+                ultimoCod.replace(
+                    /\D/g,
+                    ""
+                );
+
+
+            let idSVG =
+                numPuro
+                    ?
+                    `H-${numPuro}`
+                    :
+                    `H-${ultimoCod}`;
+
+
+            if (
+                !dbHunza[idSVG]
+            ) {
+
+                dbHunza[idSVG] =
+                    crearEstructuraVaciaEspacio(
+                        idSVG,
+                        ultimoCod
+                    );
+
+            }
+
+
+            if (
+                colAforo !== -1 &&
+                row[colAforo]
+            ) {
+
+                dbHunza[idSVG].aforo =
+                    String(
+                        row[colAforo]
+                    ).trim();
+
+            }
+
+
+            let horaRaw =
+                String(
+                    row[
+                        colHora !== -1
+                            ?
+                            colHora
+                            :
+                            2
+                    ]
+                    ||
+                    ""
+                ).trim();
+
+
+            if (
+                !horaRaw
+            ) {
+
+                continue;
+
+            }
+
+
+            let franjasHorarias =
+                desgloseHorasRango(
+                    horaRaw
+                );
+
+
+            let matGen =
+                (
+                    colMateria !== -1 &&
+                    row[colMateria]
+                )
+                ?
+                String(
+                    row[colMateria]
+                ).trim()
+                :
+                "";
+
+
+            let docGen =
+                (
+                    colDocente !== -1 &&
+                    row[colDocente]
+                )
+                ?
+                String(
+                    row[colDocente]
+                ).trim()
+                :
+                "";
+
+
+            TODOS_DIAS.forEach(
+                dia => {
+
+                    let cIdx =
+                        colDiasMatriz[
+                            dia
+                        ];
+
+
+                    let valDia =
+                        (
+                            cIdx !== -1 &&
+                            row[cIdx]
+                        )
+                        ?
+                        String(
+                            row[cIdx]
+                        ).trim()
+                        :
+                        "";
+
+
+                    let materiaAsignada =
+                        "";
+
+                    let esOcupado =
+                        false;
+
+
+                    if (
+                        valDia &&
+                        valDia !== "-" &&
+                        quitarTildes(
+                            valDia
+                        ) !== "libre" &&
+                        quitarTildes(
+                            valDia
+                        ) !== "disponible"
+                    ) {
+
+                        esOcupado =
+                            true;
+
+
+                        materiaAsignada =
+                            (
+                                valDia.toLowerCase()
+                                ===
+                                "x"
+                                ||
+                                valDia.toLowerCase()
+                                ===
+                                "si"
+                            )
+                            ?
+                            (
+                                matGen ||
+                                "Clase Asignada"
+                            )
+                            :
+                            valDia;
+
+                    }
+
+                    else if (
+                        matGen &&
+                        !valDia &&
+                        Object.values(
+                            colDiasMatriz
+                        ).every(
+                            idx =>
+                                idx === -1 ||
+                                !row[idx]
+                        )
+                    ) {
+
+                        esOcupado =
+                            true;
+
+                        materiaAsignada =
+                            matGen;
+
+                    }
+
+
+                    if (
+                        esOcupado &&
+                        materiaAsignada
+                    ) {
+
+                        franjasHorarias.forEach(
+                            fh => {
+
+                                if (
+                                    dbHunza[
+                                        idSVG
+                                    ].horarios[
+                                        dia
+                                    ]
+                                ) {
+
+                                    dbHunza[
+                                        idSVG
+                                    ].horarios[
+                                        dia
+                                    ][fh] = {
+
+                                        est:
+                                            "Ocupado",
+
+                                        materia:
+                                            materiaAsignada,
+
+                                        docente:
+                                            docGen
+
+                                    };
+
+                                }
+
+                            }
+                        );
+
+                    }
+
+                }
+            );
+
+        }
+
+    }
+
+
+    /* =========================================================
+       BUSCAR AULA
+       ========================================================= */
+
+    function buscarDatosAula(
+        idElemento
+    ) {
+
+        if (
+            dbHunza[
+                idElemento
+            ]
+        ) {
+
+            return dbHunza[
+                idElemento
+            ];
+
+        }
+
+
+        let numPuro =
+            String(
+                idElemento
+            ).replace(
+                /\D/g,
+                ""
+            );
+
+
+        for (
+            let key in dbHunza
+        ) {
+
+            if (
+                String(
+                    key
+                ).replace(
+                    /\D/g,
+                    ""
+                )
+                ===
+                numPuro
+            ) {
+
+                return dbHunza[
+                    key
+                ];
+
+            }
+
+        }
+
+
+        return null;
+
+    }
+
+
+    /* =========================================================
+       HORARIO
+       ========================================================= */
+
+    function obtenerInfoHorario(
+        data,
+        diaSel,
+        horaSel
+    ) {
+
+        return (
+
+            data &&
+            data.horarios &&
+            data.horarios[diaSel] &&
+            data.horarios[diaSel][horaSel]
+
+        )
+
+        ?
+
+        data.horarios[
+            diaSel
+        ][
+            horaSel
+        ]
+
+        :
+
+        {
+
+            est:
+                "Libre",
+
+            materia:
+                "Disponible",
+
+            docente:
+                ""
+
+        };
+
+    }
+
+
+    /* =========================================================
+       ACTUALIZAR ESTADO
+       ========================================================= */
+
+    function actualizarEstadoTiempo() {
+
+        const horaSel =
+            document.getElementById(
+                'select-hora'
+            ).value;
+
+
+        const diaSel =
+            document.getElementById(
+                'select-dia'
+            ).value;
+
+
+        document
+            .querySelectorAll(
+                '.salon'
+            )
+            .forEach(
+                el => {
+
+                    let id =
+                        el.getAttribute(
+                            'id'
+                        );
+
+
+                    let data =
+                        buscarDatosAula(
+                            id
+                        );
+
+
+                    let lbl =
+                        document.getElementById(
+                            `lbl-${id}`
+                        );
+
+
+                    let infoH =
+                        obtenerInfoHorario(
+                            data,
+                            diaSel,
+                            horaSel
+                        );
+
+
+                    el.style.fill =
+                        infoH.est === "Libre"
+                            ?
+                            "#2ecc71"
+                            :
+                            "#e74c3c";
+
+
+                    if (
+                        lbl
+                    ) {
+
+                        lbl.innerText =
+                            infoH.est === "Libre"
+                                ?
+                                "LIBRE"
+                                :
+                                "CLASE";
+
+                    }
+
+                }
+            );
+
+
+        if (
+            vistaActual ===
+            'vista-2d'
+            &&
+            aulaSeleccionada
+        ) {
+
+            mostrarFichaExcel(
+                aulaSeleccionada
+            );
+
+        }
+
+    }
+
+
+    /* =========================================================
+       FICHA AULA
+       ========================================================= */
+
+    function mostrarFichaExcel(
+        id
+    ) {
+
+        aulaSeleccionada =
+            id;
+
+
+        const horaSel =
+            document.getElementById(
+                'select-hora'
+            ).value;
+
+
+        const diaSel =
+            document.getElementById(
+                'select-dia'
+            ).value;
+
+
+        const data =
+            buscarDatosAula(
+                id
+            )
+            ||
+            {
+
+                nombre:
+                    `Aula ${id}`,
+
+                aforo:
+                    "35",
+
+                horarios:
+                    {}
+
+            };
+
+
+        const infoH =
+            obtenerInfoHorario(
+                data,
+                diaSel,
+                horaSel
+            );
+
+
+        let tablaHTML = `
+
+            <table class="tabla-horarios">
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Horario
+                        </th>
+
+                        <th>
+                            Estado
+                        </th>
+
+                        <th>
+                            Asignatura
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+        `;
+
+
+        TODAS_HORAS.forEach(
+            h => {
+
+                const row =
+                    obtenerInfoHorario(
+                        data,
+                        diaSel,
+                        h
+                    );
+
+
+                tablaHTML += `
+
+                    <tr
+                        ${
+                            h === horaSel
+                                ?
+                                'class="fila-actual"'
+                                :
+                                ''
+                        }>
+
+                        <td>
+                            ${h}
+                        </td>
+
+                        <td
+                            class="${
+                                row.est === 'Libre'
+                                    ?
+                                    'st-libre'
+                                    :
+                                    'st-ocupado'
+                            }">
+
+                            ${row.est}
+
+                        </td>
+
+                        <td>
+                            ${row.materia}
+                        </td>
+
+                    </tr>
+
+                `;
+
+            }
+        );
+
+
+        tablaHTML += `
+
+                </tbody>
+
+            </table>
+
+        `;
+
+
+        document.getElementById(
+            'info-titulo'
+        ).innerText =
+            data.nombre;
+
+
+        document.getElementById(
+            'info-contenido'
+        ).innerHTML = `
+
+            <p>
+                <b>Capacidad Aforo:</b>
+                ${data.aforo}
+                Personas
+            </p>
+
+            <p>
+                <b>Día Consultado:</b>
+                ${diaSel}
+            </p>
+
+            <hr>
+
+            <b>
+                Estado en franja seleccionada:
+            </b>
+
+            <span
+                class="${
+                    infoH.est === 'Libre'
+                        ?
+                        'st-libre'
+                        :
+                        'st-ocupado'
+                }">
+
+                ${infoH.est}
+
+            </span>
+
+            <br>
+
+            <b>
+                Detalle:
+            </b>
+
+            ${infoH.materia}
+
+            ${
+                infoH.docente
+                    ?
+                    '(' +
+                    infoH.docente +
+                    ')'
+                    :
+                    ''
+            }
+
+
+            <h4
+                style="
+                margin-top:12px;
+                margin-bottom:5px;
+                ">
+
+                Programación ${diaSel}:
+
+            </h4>
+
+            ${tablaHTML}
+
+        `;
+
+    }
+
+
+    /* =========================================================
+       ZOOM MAPA
+       ========================================================= */
+
+    function resetZoom() {
+
+        zoomScale =
+            1;
+
+        panX =
+            0;
+
+        panY =
+            0;
+
+
+        aplicarTransformMapa();
+
+    }
+
+
+    function aplicarTransformMapa() {
+
+        const mc =
+            document.getElementById(
+                'map-content'
+            );
+
+
+        if (
+            mc
+        ) {
+
+            mc.style.transform =
+                `
+                translate(
+                    ${panX}px,
+                    ${panY}px
+                )
+                scale(
+                    ${zoomScale}
+                )
+                `;
+
+        }
+
+    }
+
+
+    /* =========================================================
+       NAVEGACIÓN
+       ========================================================= */
+
+    function irAVista(
+        idVista
+    ) {
+
+        vistaActual =
+            idVista;
+
+
+        document
+            .querySelectorAll(
+                '.vista'
+            )
+            .forEach(
+                v =>
+                    v.classList.remove(
+                        'activa'
+                    )
+            );
+
+
+        document
+            .getElementById(
+                idVista
+            )
+            .classList.add(
+                'activa'
+            );
+
+
+        document
+            .getElementById(
+                'btn-campus'
+            )
+            .classList.remove(
+                'btn-activo'
+            );
+
+
+        document
+            .getElementById(
+                'btn-3d'
+            )
+            .classList.remove(
+                'btn-activo'
+            );
+
+
+        document
+            .getElementById(
+                'btn-2d'
+            )
+            .classList.remove(
+                'btn-activo'
+            );
+
+
+        const rutaNav =
+            document.getElementById(
+                'ruta-nav'
+            );
+
+
+        if (
+            idVista ===
+            'vista-campus'
+        ) {
+
+            document
+                .getElementById(
+                    'btn-campus'
+                )
+                .classList.add(
+                    'btn-activo'
+                );
+
+
+            rutaNav.innerText =
+                "Ubicación: Sede Central Tunja (Mapa General)";
+
+
+            resetZoom();
+
+
+            mostrarInformacionGeneralEdificio();
+
+        }
+
+
+        else if (
+            idVista ===
+            'vista-3d'
+        ) {
+
+            document
+                .getElementById(
+                    'btn-3d'
+                )
+                .classList.add(
+                    'btn-activo'
+                );
+
+
+            rutaNav.innerText =
+                "Ubicación: Edificio 30 Hunza (Visualizador 3D)";
+
+
+            setTimeout(
+                () => {
+
+                    if (
+                        window.iniciarVisualizado3D
+                    ) {
+
+                        window.iniciarVisualizado3D();
+
+                    }
+
+                },
+                100
+            );
+
+        }
+
+
+        else if (
+            idVista ===
+            'vista-2d'
+        ) {
+
+            document
+                .getElementById(
+                    'btn-2d'
+                )
+                .classList.add(
+                    'btn-activo'
+                );
+
+
+            rutaNav.innerText =
+                "Ubicación: Edificio 30 Hunza (Planta 2D)";
+
+
+            actualizarEstadoTiempo();
+
+        }
+
+    }
+
+
+    /* =========================================================
+       EDIFICIO 30
+       ========================================================= */
+
+    function cargarEdificio30() {
+
+        irAVista(
+            'vista-3d'
+        );
+
+    }
+
+
+    /* =========================================================
+       INTERACCIÓN MAPA
+       ========================================================= */
+
+    const mapWrapper =
+        document.getElementById(
+            'map-wrapper'
+        );
+
+
+    if (
+        mapWrapper
+    ) {
+
+        mapWrapper.addEventListener(
+            'wheel',
+            e => {
+
+                e.preventDefault();
+
+
+                const delta =
+                    e.deltaY < 0
+                        ?
+                        0.2
+                        :
+                        -0.2;
+
+
+                zoomScale =
+                    Math.min(
+                        Math.max(
+                            1,
+                            zoomScale +
+                            delta
+                        ),
+                        4
+                    );
+
+
+                if (
+                    zoomScale === 1
+                ) {
+
+                    panX =
+                        0;
+
+                    panY =
+                        0;
+
+                }
+
+
+                aplicarTransformMapa();
+
+            }
+        );
+
+
+        mapWrapper.addEventListener(
+            'mousedown',
+            e => {
+
+                if (
+                    zoomScale > 1
+                ) {
+
+                    isDragging =
+                        true;
+
+
+                    startX =
+                        e.clientX -
+                        panX;
+
+
+                    startY =
+                        e.clientY -
+                        panY;
+
+
+                    mapWrapper.style.cursor =
+                        'grabbing';
+
+                }
+
+            }
+        );
+
+    }
+
+
+    window.addEventListener(
+        'mousemove',
+        e => {
+
+            if (
+                !isDragging
+            ) {
+
+                return;
+
+            }
+
+
+            panX =
+                e.clientX -
+                startX;
+
+
+            panY =
+                e.clientY -
+                startY;
+
+
+            aplicarTransformMapa();
+
+        }
+    );
+
+
+    window.addEventListener(
+        'mouseup',
+        () => {
+
+            isDragging =
+                false;
+
+
+            if (
+                mapWrapper
+            ) {
+
+                mapWrapper.style.cursor =
+                    'grab';
+
+            }
+
+        }
+    );
+
+
+    /* =========================================================
+       CLICS PLANTA 2D
+       ========================================================= */
+
+    document
+        .querySelectorAll(
+            '.salon'
+        )
+        .forEach(
+            s => {
+
+                s.addEventListener(
+                    'click',
+                    function() {
+
+                        mostrarFichaExcel(
+                            this.getAttribute(
+                                'id'
+                            )
+                        );
+
+                    }
+                );
+
+            }
+        );
+
+
+    /* =========================================================
+       DOM READY
+       ========================================================= */
+
+    window.addEventListener(
+        'DOMContentLoaded',
+        () => {
+
+            irAVista(
+                'vista-campus'
+            );
+
+
+            cargarExcelAutomatico();
+
+        }
+    );
+
+</script>
+
 </body>
 </html>
