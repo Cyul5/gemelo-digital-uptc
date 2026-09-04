@@ -3,11 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemelo Digital UPTC - Edificio 30 Aulas</title>
-    
-    <!-- CSS de Mapbox para el mapa del Campus -->
-    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
-
+    <title>Gemelo Digital UPTC - Visor IFC</title>
     <style>
         * {
             box-sizing: border-box;
@@ -33,16 +29,12 @@
             padding: 12px 24px;
             background-color: #1e293b;
             border-bottom: 1px solid #334155;
-            z-index: 100;
         }
 
         .title {
             font-size: 1.1rem;
             font-weight: 600;
             color: #38bdf8;
-            display: flex;
-            align-items: center;
-            gap: 8px;
         }
 
         .nav-buttons {
@@ -58,7 +50,6 @@
             border-radius: 6px;
             cursor: pointer;
             transition: all 0.2s ease;
-            font-size: 0.9rem;
         }
 
         .btn-secundario:hover {
@@ -90,30 +81,7 @@
             display: flex;
         }
 
-        /* Mapa del Campus */
-        #mapa-campus-container {
-            width: 100%;
-            height: 100%;
-        }
-
-        .popup-edificio {
-            color: #0f172a;
-            padding: 5px;
-            text-align: center;
-        }
-
-        .popup-edificio button {
-            margin-top: 8px;
-            padding: 6px 12px;
-            background-color: #0284c7;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        /* Visor 3D y Lateral */
+        /* Panel Lateral (Sidebar) */
         .sidebar {
             width: 300px;
             background-color: #1e293b;
@@ -132,6 +100,7 @@
             border: 1px solid #334155;
         }
 
+        /* Visor 3D */
         #ifc-canvas-container {
             flex: 1;
             width: 100%;
@@ -140,7 +109,7 @@
             background-color: #1a1a2e;
         }
 
-        /* Popups de Carga */
+        /* Overlays de estado */
         .overlay-status {
             position: absolute;
             top: 20px;
@@ -173,12 +142,14 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* Vista Marcador de Posición */
         .vista-placeholder {
             display: flex;
             justify-content: center;
             align-items: center;
             width: 100%;
             height: 100%;
+            font-size: 1.1rem;
             color: #94a3b8;
         }
     </style>
@@ -198,99 +169,69 @@
     <!-- Contenido Principal -->
     <div class="main-container">
 
-        <!-- PESTAÑA 1: MAPA DEL CAMPUS UPTC -->
+        <!-- VISTA CAMPUS -->
         <div id="vista-campus" class="vista activa">
-            <div id="mapa-campus-container"></div>
+            <div class="vista-placeholder">
+                <div style="text-align: center;">
+                    <h2>Vista General del Campus UPTC</h2>
+                    <p style="margin-top: 10px;">Selecciona el <b>Edificio 30 Aulas Hunza</b> para explorar el modelo 3D IFC.</p>
+                    <button class="btn-secundario btn-activo" style="margin-top: 15px;" onclick="cargarEdificio30()">Abrir Edificio 30 Aulas (3D)</button>
+                </div>
+            </div>
         </div>
 
-        <!-- PESTAÑA 2: VISOR 3D IFC -->
+        <!-- VISTA 3D IFC -->
         <div id="vista-3d" class="vista">
+            <!-- Sidebar Panel -->
             <div class="sidebar">
-                <h3>Control del Modelo</h3>
+                <h3>Información del Modelo</h3>
                 <div class="panel-card" id="ifc-info">
                     <p><b>Estado:</b> <span id="ifc-status">Pendiente</span></p>
-                    <p style="font-size: 12px; color: #94a3b8; margin-top: 5px;">Edificio 30 Aulas Hunza</p>
+                    <p style="font-size: 12px; color: #94a3b8; margin-top: 5px;">Edificio 30 Aulas Hunza (UPTC)</p>
                 </div>
                 <button class="btn-secundario btn-activo" onclick="window.reencuadrarCamara()">Encuadrar Modelo</button>
             </div>
 
+            <!-- Contenedor del Lienzo Three.js -->
             <div id="ifc-canvas-container">
+                <!-- Overlay de Carga -->
                 <div id="ifc-loading-box" class="overlay-status">
                     <div class="spinner"></div>
                     <span id="loading-text">Cargando modelo IFC...</span>
                 </div>
+
+                <!-- Overlay de Error -->
                 <div id="ifc-error-box" class="overlay-status" style="border-color: #ef4444; color: #fca5a5;"></div>
             </div>
         </div>
 
-        <!-- PESTAÑA 3: PLANOS 2D -->
+        <!-- VISTA 2D -->
         <div id="vista-2d" class="vista">
             <div class="vista-placeholder">
-                <div style="text-align: center;">
-                    <h2>Planos 2D del Edificio 30 Aulas</h2>
-                    <p style="margin-top: 10px;">Sección para visualización de planos arquitectónicos en formato 2D.</p>
-                </div>
+                <p>Planos 2D / Esquemas en desarrollo.</p>
             </div>
         </div>
 
     </div>
 
-    <!-- Cargar Mapbox JS -->
-    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-
-    <!-- Lógica de la Aplicación -->
+    <!-- Módulo JS: Three.js + Web-IFC -->
     <script type="module">
         import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
         import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
         import { IFCLoader } from 'https://cdn.jsdelivr.net/npm/web-ifc-three@0.0.126/IFCLoader.js';
 
         /* =========================================================
-           CONFIGURACIÓN GLOBAL
+           CONFIGURACIÓN Y VARIABLES GLOBALES
            ========================================================= */
         const URL_IFC = 'https://raw.githubusercontent.com/Cyul5/gemelo-digital-uptc/main/001-PRO-F2STUDIO-M3D-ARQ-001.ifc';
         const URL_WASM = 'https://cdn.jsdelivr.net/npm/web-ifc@0.0.36/';
-        
-        // Token de Mapbox
-        mapboxgl.accessToken = 'pk.eyJ1IjoiY3l1bDUiLCJhIjoiY2x4eThxeXk3MDBsbTJqc2B3ZTN3ZzM4ZiJ9.V_GzG24sA-26wZc3s4m93Q'; 
 
-        let mapaCampus;
         let scene, camera, renderer, controls, ifcLoader, currentModel;
         let is3DInitialized = false;
         let modelLoaded = false;
 
         /* =========================================================
-           INICIALIZACIÓN DEL MAPA DEL CAMPUS (MAPBOX)
-           ========================================================= */
-        function initCampusMap() {
-            if (mapaCampus) return;
-
-            mapaCampus = new mapboxgl.Map({
-                container: 'mapa-campus-container',
-                style: 'mapbox://styles/mapbox/dark-v11',
-                center: [-73.3541, 5.5515], // Coordenadas UPTC Tunja
-                zoom: 16,
-                pitch: 45
-            });
-
-            mapaCampus.addControl(new mapboxgl.NavigationControl());
-
-            // Marcador en el Edificio 30 Aulas
-            const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-                <div class="popup-edificio">
-                    <h3>Edificio 30 Aulas Hunza</h3>
-                    <p>UPTC Tunja</p>
-                    <button onclick="cargarEdificio30()">Abrir Modelo 3D</button>
-                </div>
-            `);
-
-            new mapboxgl.Marker({ color: '#0284c7' })
-                .setLngLat([-73.3541, 5.5515])
-                .setPopup(popup)
-                .addTo(mapaCampus);
-        }
-
-        /* =========================================================
-           SISTEMA DE CAMBIO DE PESTAÑAS
+           NAVEGACIÓN ENTRE PESTAÑAS
            ========================================================= */
         window.irAVista = function(vistaId) {
             document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
@@ -299,12 +240,11 @@
             const vistaTarget = document.getElementById(vistaId);
             if (vistaTarget) vistaTarget.classList.add('activa');
 
-            if (vistaId === 'vista-campus') {
-                document.getElementById('btn-campus')?.classList.add('btn-activo');
-                setTimeout(() => mapaCampus?.resize(), 100);
-            }
+            if (vistaId === 'vista-campus') document.getElementById('btn-campus')?.classList.add('btn-activo');
+            if (vistaId === 'vista-3d') document.getElementById('btn-3d')?.classList.add('btn-activo');
+            if (vistaId === 'vista-2d') document.getElementById('btn-2d')?.classList.add('btn-activo');
+
             if (vistaId === 'vista-3d') {
-                document.getElementById('btn-3d')?.classList.add('btn-activo');
                 setTimeout(() => {
                     if (!is3DInitialized) {
                         init3DViewer();
@@ -316,13 +256,10 @@
                     }
                 }, 100);
             }
-            if (vistaId === 'vista-2d') {
-                document.getElementById('btn-2d')?.classList.add('btn-activo');
-            }
         };
 
         /* =========================================================
-           INICIALIZACIÓN DEL VISOR 3D (THREE.JS)
+           INICIALIZACIÓN DE THREE.JS
            ========================================================= */
         function init3DViewer() {
             const container = document.getElementById('ifc-canvas-container');
@@ -372,10 +309,10 @@
         function ajustarTamanoRenderer() {
             const container = document.getElementById('ifc-canvas-container');
             if (!container || !renderer || !camera) return;
-
+            
             const width = container.clientWidth;
             const height = container.clientHeight;
-
+            
             if (width > 0 && height > 0) {
                 camera.aspect = width / height;
                 camera.updateProjectionMatrix();
@@ -384,7 +321,7 @@
         }
 
         /* =========================================================
-           CARGA DEL MODELO IFC
+           CARGA Y PROCESAMIENTO DEL ARCHIVO IFC
            ========================================================= */
         async function cargarModeloIFC() {
             if (modelLoaded) return;
@@ -414,7 +351,7 @@
                             statusLabel.textContent = '✅ Modelo cargado';
                             statusLabel.style.color = '#38bdf8';
                         }
-
+                        
                         document.getElementById('ifc-info').innerHTML = `
                             <p style="color:#38bdf8; font-weight:bold;">Modelo IFC Cargado</p>
                             <p style="font-size:12px; color:#94a3b8; margin-top:4px;">Edificio 30 Aulas Hunza</p>
@@ -443,7 +380,7 @@
         }
 
         /* =========================================================
-           ENCUADRE DE CÁMARA
+           ENCUADRE AUTOMÁTICO DE CÁMARA
            ========================================================= */
         function encuadrarModelo(object3D) {
             const box = new THREE.Box3().setFromObject(object3D);
@@ -468,9 +405,6 @@
         window.cargarEdificio30 = function() {
             window.irAVista('vista-3d');
         };
-
-        // Arrancar en la pestaña Campus
-        initCampusMap();
     </script>
 </body>
 </html>
