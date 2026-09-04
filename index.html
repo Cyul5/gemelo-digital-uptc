@@ -180,12 +180,12 @@
 
             <!-- VISTA 2: VISUALIZADOR IFC 3D -->
             <div id="vista-3d" class="vista">
-                <h3>Visualizador BIM 3D (Formato IFC desde GitHub)</h3>
+                <h3>Visualizador BIM 3D (Modelo: 001-PRO-F2STUDIO-M3D-ARQ-001.ifc)</h3>
                 
                 <div class="ifc-toolbar">
-                    <input type="text" id="ifc-url-input" class="ifc-input-url" placeholder="URL Raw de GitHub del archivo IFC..." value="https://raw.githubusercontent.com/usuario/repositorio/main/modelo.ifc">
-                    <button class="btn" style="padding: 6px 12px; font-size: 12px;" onclick="cargarIFCDesdeURLInput()">🔄 Cargar</button>
-                    <span id="ifc-status" style="font-size:12px; font-weight:bold; color:#003366; margin-left: auto;">Esperando carga...</span>
+                    <input type="text" id="ifc-url-input" class="ifc-input-url" placeholder="Ruta local o URL de GitHub del IFC..." value="https://raw.githubusercontent.com/usuario/repositorio/main/001-PRO-F2STUDIO-M3D-ARQ-001.ifc">
+                    <button class="btn" style="padding: 6px 12px; font-size: 12px;" onclick="cargarIFCDesdeURLInput()">🔄 Cargar / Recargar</button>
+                    <span id="ifc-status" style="font-size:12px; font-weight:bold; color:#003366; margin-left: auto;">Iniciando carga...</span>
                 </div>
 
                 <div class="ifc-layout">
@@ -193,7 +193,7 @@
                     <div class="ifc-layers-panel">
                         <h4>Pisos / Capas</h4>
                         <div id="ifc-layers-list">
-                            <p style="color:#94a3b8; font-style:italic; font-size:12px;">Cargando estructura espacial...</p>
+                            <p style="color:#94a3b8; font-style:italic; font-size:12px;">Cargando niveles del modelo...</p>
                         </div>
                     </div>
                 </div>
@@ -235,15 +235,18 @@
         </div>
     </div>
 
-    <!-- Script Principal con Módulo JS para Three.js & Visualizador IFC desde GitHub -->
+    <!-- Script Principal con Módulo JS para Three.js & Visualizador IFC -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { IFCLoader } from 'web-ifc-three';
         import { IFCBUILDINGSTOREY } from 'web-ifc';
 
-        // 📌 CONFIGURACIÓN: Reemplaza esta URL con el enlace "Raw" de tu archivo .ifc en GitHub
-        const URL_IFC_GITHUB = 'https://raw.githubusercontent.com/usuario/repositorio/main/modelo.ifc';
+        // 📌 ARCHIVO EXACTO DEFINIDO
+        const NOMBRE_ARCHIVO_IFC = '001-PRO-F2STUDIO-M3D-ARQ-001.ifc';
+        
+        // Si usas GitHub, pon la URL raw completa aquí:
+        const URL_IFC_DEFAULT = `https://raw.githubusercontent.com/usuario/repositorio/main/${NOMBRE_ARCHIVO_IFC}`;
 
         // Variables Globales 3D
         let scene, camera, renderer, controls, ifcLoader;
@@ -308,10 +311,10 @@
             is3DInitialized = true;
         }
 
-        async function cargarArchivoIFCDesdeGitHub(url) {
+        async function cargarArchivoIFC(targetUrl) {
             init3DViewer();
             const statusLabel = document.getElementById('ifc-status');
-            statusLabel.innerText = "⏳ Descargando IFC desde GitHub...";
+            statusLabel.innerText = `⏳ Cargando ${NOMBRE_ARCHIVO_IFC}...`;
 
             if (currentModel) {
                 scene.remove(currentModel);
@@ -321,11 +324,26 @@
             storeySubsets = {};
 
             try {
-                const model = await ifcLoader.loadAsync(url);
+                // Intentar cargar la URL/Ruta especificada
+                let response = await fetch(targetUrl);
+                
+                // Si la URL de GitHub remota falla (ej. plantilla sin configurar), reintenta buscarlo en la raíz local
+                if (!response.ok && targetUrl !== NOMBRE_ARCHIVO_IFC) {
+                    console.warn("No se encontró el archivo en la URL remota. Probando carga local...");
+                    targetUrl = NOMBRE_ARCHIVO_IFC;
+                    response = await fetch(targetUrl);
+                }
+
+                if (!response.ok) throw new Error(`HTTP Error status: ${response.status}`);
+
+                const blob = await response.blob();
+                const blobUrl = URL.createObjectURL(blob);
+
+                const model = await ifcLoader.loadAsync(blobUrl);
                 currentModel = model;
                 scene.add(model);
 
-                // Re-encuadrar cámara al modelo
+                // Encuadrar cámara
                 const box = new THREE.Box3().setFromObject(model);
                 const center = box.getCenter(new THREE.Vector3());
                 const size = box.getSize(new THREE.Vector3());
@@ -335,13 +353,13 @@
                 controls.target.copy(center);
                 controls.update();
 
-                // Extraer Pisos/Capas
+                // Generar Capas por Pisos
                 await construirPanelPisos(model.modelID);
-                statusLabel.innerText = "✅ Modelo IFC Cargado desde GitHub";
+                statusLabel.innerText = `✅ Carga exitosa: ${NOMBRE_ARCHIVO_IFC}`;
                 isLoadedOnce = true;
             } catch (err) {
-                console.error("Error al cargar IFC desde GitHub:", err);
-                statusLabel.innerText = "❌ Error al obtener o procesar el IFC desde la URL";
+                console.error("Error al cargar modelo IFC:", err);
+                statusLabel.innerText = `❌ Error al cargar ${NOMBRE_ARCHIVO_IFC}`;
             }
         }
 
@@ -352,7 +370,7 @@
             try {
                 const storeysIDs = await ifcLoader.ifcManager.getAllItemsOfType(modelID, IFCBUILDINGSTOREY, false);
                 if (!storeysIDs || storeysIDs.length === 0) {
-                    listContainer.innerHTML = '<p style="color:#64748b;">No se detectaron pisos definidos en el IFC.</p>';
+                    listContainer.innerHTML = '<p style="color:#64748b;">No se detectaron niveles independientes en el archivo IFC.</p>';
                     return;
                 }
 
@@ -360,7 +378,6 @@
                     const props = await ifcLoader.ifcManager.getItemProperties(modelID, expressID);
                     const storeyName = props.Name?.value || `Piso (ID: ${expressID})`;
 
-                    // Obtener elementos pertenecientes al piso
                     const spatialTree = await ifcLoader.ifcManager.getSpatialStructure(modelID);
                     const storeyNode = buscarNodoPiso(spatialTree, expressID);
                     const childIDs = obtenerIDsHijos(storeyNode);
@@ -376,7 +393,6 @@
                         storeySubsets[expressID] = subset;
                     }
 
-                    // Insertar control en UI
                     const item = document.createElement('div');
                     item.className = 'layer-item';
                     item.innerHTML = `
@@ -396,8 +412,8 @@
                 if (currentModel) currentModel.visible = false;
 
             } catch (error) {
-                console.warn("No se pudieron clasificar las capas de piso:", error);
-                listContainer.innerHTML = '<p style="color:#64748b;">Visibilidad del modelo completa.</p>';
+                console.warn("No se pudo clasificar por capas:", error);
+                listContainer.innerHTML = '<p style="color:#64748b;">Modelo renderizado completo.</p>';
             }
         }
 
@@ -423,19 +439,18 @@
             return ids;
         }
 
-        // Inicializar vista 3D y cargar desde GitHub
         window.inicializarVisualizador3D = function() {
             init3DViewer();
             if (!isLoadedOnce) {
                 const urlInput = document.getElementById('ifc-url-input');
-                const targetUrl = urlInput.value.trim() || URL_IFC_GITHUB;
-                cargarArchivoIFCDesdeGitHub(targetUrl);
+                const targetUrl = urlInput.value.trim() || URL_IFC_DEFAULT;
+                cargarArchivoIFC(targetUrl);
             }
         };
 
         window.cargarIFCDesdeURLInput = function() {
             const url = document.getElementById('ifc-url-input').value.trim();
-            if (url) cargarArchivoIFCDesdeGitHub(url);
+            if (url) cargarArchivoIFC(url);
         };
     </script>
 
@@ -767,7 +782,7 @@
                 document.getElementById('btn-3d').classList.add('btn-activo');
                 rutaNav.innerText = "Ubicación: Edificio 30 Hunza (Visualizador IFC 3D)";
                 document.getElementById('info-titulo').innerText = "🏢 Visualizador BIM IFC";
-                document.getElementById('info-contenido').innerHTML = `<p style="color:#64748b;">Visualizando el modelo IFC sincronizado. Puedes alternar la visibilidad de los pisos desde el panel derecho.</p>`;
+                document.getElementById('info-contenido').innerHTML = `<p style="color:#64748b;">Visualizando el modelo <b>001-PRO-F2STUDIO-M3D-ARQ-001.ifc</b>. Puedes encender y apagar las capas de pisos en la columna derecha.</p>`;
                 if (window.inicializarVisualizador3D) window.inicializarVisualizador3D();
             } else if (idVista === 'vista-2d') {
                 document.getElementById('btn-2d').classList.add('btn-activo');
