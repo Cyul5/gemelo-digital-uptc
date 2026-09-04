@@ -4,9 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UPTC - Gemelo Digital Sede Central Tunja</title>
-    
-    <!-- Librería SheetJS -->
+
+    <!-- Librería SheetJS para Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <!-- Import Map para Three.js y Visualizador IFC -->
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+        "web-ifc": "https://unpkg.com/web-ifc@0.0.51/web-ifc-api.js",
+        "web-ifc-three": "https://unpkg.com/web-ifc-three@0.0.126/web-ifc-three.js"
+      }
+    }
+    </script>
 
     <style>
         * { box-sizing: border-box; }
@@ -43,56 +55,48 @@
         select.time-select { padding: 6px 10px; font-size: 14px; font-weight: bold; border-radius: 4px; border: 1px solid #ccc; }
 
         .main-container { display: flex; gap: 20px; min-height: 540px; }
-        .visor-box { flex: 2; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .visor-box { flex: 2; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: flex; flex-direction: column; }
         .info-box { flex: 1; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-top: 5px solid #003366; max-height: 600px; overflow-y: auto; }
 
         .vista { display: none; }
         .vista.activa { display: block; }
 
-        /* Mapa General encuadrado sin Scrollbar y con soporte Zoom/Pan */
+        /* Mapa General */
         .map-wrapper { 
-            position: relative; 
-            width: 100%; 
-            height: 500px; 
-            border: 2px solid #ddd; 
-            border-radius: 8px; 
-            overflow: hidden; 
-            background: #101827; 
-            user-select: none; 
-            cursor: grab; 
+            position: relative; width: 100%; height: 500px; 
+            border: 2px solid #ddd; border-radius: 8px; overflow: hidden; 
+            background: #101827; user-select: none; cursor: grab; 
         }
         .map-content { 
-            position: relative; 
-            width: 100%; 
-            height: 100%; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            transform-origin: center center; 
-            transition: transform 0.05s ease-out; 
+            position: relative; width: 100%; height: 100%; 
+            display: flex; align-items: center; justify-content: center; 
+            transform-origin: center center; transition: transform 0.05s ease-out; 
         }
-        .campus-img { 
-            max-width: 100%; 
-            max-height: 100%; 
-            object-fit: contain; 
-            display: block; 
-        }
-        .svg-overlay { 
-            position: absolute; 
-            top: 0; left: 0; 
-            width: 100%; height: 100%; 
-        }
+        .campus-img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+        .svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
         .hotspot-edificio { fill: rgba(0, 51, 102, 0.4); stroke: #ffcc00; stroke-width: 3; cursor: pointer; }
         .hotspot-edificio:hover { fill: rgba(255, 204, 0, 0.6); stroke: #003366; }
+
+        /* Contenedor del Visualizador IFC 3D */
+        .ifc-toolbar {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #eef2f7; padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; gap: 10px;
+        }
+        .ifc-layout { display: flex; gap: 10px; height: 440px; position: relative; }
+        #ifc-canvas-container { flex: 1; height: 100%; background: #1a1a2e; border-radius: 8px; overflow: hidden; position: relative; }
+        .ifc-layers-panel {
+            width: 200px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;
+            padding: 10px; overflow-y: auto; font-size: 13px;
+        }
+        .ifc-layers-panel h4 { margin: 0 0 10px 0; font-size: 14px; color: #003366; border-bottom: 2px solid #003366; padding-bottom: 4px; }
+        .layer-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer; }
+        .layer-item input { cursor: pointer; }
+
+        .nav-hint { font-size: 11px; color: #64748b; margin-top: 5px; }
 
         .salon { stroke: #003366; stroke-width: 3; cursor: pointer; transition: fill 0.3s; }
         .salon:hover { stroke-width: 5; filter: brightness(0.9); }
         .texto-svg { font-size: 14px; font-weight: bold; fill: #003366; pointer-events: none; }
-
-        #escena-3d-container { width: 100%; height: 360px; perspective: 800px; display: flex; justify-content: center; align-items: center; background: #eef2f7; border-radius: 8px; border: 1px solid #ddd; }
-        #edificio-3d { width: 220px; height: 260px; position: relative; transform-style: preserve-3d; transform: rotateX(-20deg) rotateY(-35deg); }
-        .piso-3d { position: absolute; width: 100%; height: 42px; background: rgba(0, 51, 102, 0.85); border: 2px solid #ffcc00; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; cursor: pointer; transition: background 0.2s; }
-        .piso-3d:hover { background: #ffcc00; color: #003366; }
 
         .tabla-horarios { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
         .tabla-horarios th, .tabla-horarios td { border: 1px solid #ddd; padding: 6px; text-align: left; }
@@ -114,7 +118,7 @@
         </div>
         <div id="btns-nav" class="nav-container">
             <button id="btn-campus" class="btn btn-secundario btn-activo" onclick="irAVista('vista-campus')">🗺️ Mapa General</button>
-            <button id="btn-3d" class="btn btn-secundario" onclick="irAVista('vista-3d')">🏢 Edificio 30 (3D)</button>
+            <button id="btn-3d" class="btn btn-secundario" onclick="irAVista('vista-3d')">🏢 Visualizador IFC 3D</button>
             <button id="btn-2d" class="btn btn-secundario" onclick="irAVista('vista-2d')">📐 Planta 2D</button>
         </div>
     </header>
@@ -171,19 +175,28 @@
                 </div>
             </div>
 
-            <!-- VISTA 2: MODELO 3D -->
+            <!-- VISTA 2: VISUALIZADOR IFC 3D -->
             <div id="vista-3d" class="vista">
-                <h3>Edificio 30: E. Aulas Hunza (Modelo Volumétrico)</h3>
-                <p style="font-size:13px; color:#64748b;">Haz clic en un piso para explorar su distribución 2D:</p>
-                <div id="escena-3d-container">
-                    <div id="edificio-3d">
-                        <div class="piso-3d" style="bottom:180px;" onclick="abrirPlanoPiso('Piso 5')">Piso 5</div>
-                        <div class="piso-3d" style="bottom:135px;" onclick="abrirPlanoPiso('Piso 4')">Piso 4</div>
-                        <div class="piso-3d" style="bottom:90px;" onclick="abrirPlanoPiso('Piso 3')">Piso 3</div>
-                        <div class="piso-3d" style="bottom:45px;" onclick="abrirPlanoPiso('Piso 2')">Piso 2</div>
-                        <div class="piso-3d" style="bottom:0px;" onclick="abrirPlanoPiso('Piso 1')">Piso 1</div>
+                <h3>Visualizador BIM 3D (Formato IFC)</h3>
+                
+                <div class="ifc-toolbar">
+                    <div>
+                        <label for="ifc-file-input" style="font-weight:bold; font-size:13px; margin-right:8px;">📂 Cargar Archivo IFC:</label>
+                        <input type="file" id="ifc-file-input" accept=".ifc" style="font-size:12px;">
+                    </div>
+                    <span id="ifc-status" style="font-size:12px; font-weight:bold; color:#003366;">Selecciona un archivo .ifc</span>
+                </div>
+
+                <div class="ifc-layout">
+                    <div id="ifc-canvas-container"></div>
+                    <div class="ifc-layers-panel">
+                        <h4>Pisos / Capas</h4>
+                        <div id="ifc-layers-list">
+                            <p style="color:#94a3b8; font-style:italic; font-size:12px;">Carga un modelo IFC para activar la gestión de pisos.</p>
+                        </div>
                     </div>
                 </div>
+                <div class="nav-hint">🖱️ <b>Navegación:</b> Clic Izq: Rotar | Clic Der / Shift+Clic: Desplazar (Pan) | Rueda: Zoom</div>
             </div>
 
             <!-- VISTA 3: PLANO 2D -->
@@ -221,6 +234,205 @@
         </div>
     </div>
 
+    <!-- Script Principal con Módulo JS para Three.js & Visualizador IFC -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { IFCLoader } from 'web-ifc-three';
+        import { IFCBUILDINGSTOREY } from 'web-ifc';
+
+        // Variables Globales 3D
+        let scene, camera, renderer, controls, ifcLoader;
+        let currentModel = null;
+        let storeySubsets = {};
+        let is3DInitialized = false;
+
+        function init3DViewer() {
+            if (is3DInitialized) return;
+            const container = document.getElementById('ifc-canvas-container');
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(30, 20, 30);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Iluminación
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight1.position.set(50, 80, 50);
+            scene.add(dirLight1);
+
+            const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
+            dirLight2.position.set(-50, -40, -50);
+            scene.add(dirLight2);
+
+            const gridHelper = new THREE.GridHelper(100, 50, 0x003366, 0x334155);
+            scene.add(gridHelper);
+
+            // Inicializar IFCLoader
+            ifcLoader = new IFCLoader();
+            ifcLoader.ifcManager.setWasmPath('https://unpkg.com/web-ifc@0.0.51/');
+
+            window.addEventListener('resize', () => {
+                if (!container) return;
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+
+            function animate() {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            is3DInitialized = true;
+        }
+
+        async function cargarArchivoIFC(file) {
+            init3DViewer();
+            const statusLabel = document.getElementById('ifc-status');
+            statusLabel.innerText = "⏳ Cargando modelo IFC...";
+
+            if (currentModel) {
+                scene.remove(currentModel);
+                currentModel = null;
+            }
+            Object.values(storeySubsets).forEach(mesh => scene.remove(mesh));
+            storeySubsets = {};
+
+            const fileUrl = URL.createObjectURL(file);
+
+            try {
+                const model = await ifcLoader.loadAsync(fileUrl);
+                currentModel = model;
+                scene.add(model);
+
+                // Encuadrar cámara al modelo
+                const box = new THREE.Box3().setFromObject(model);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+
+                camera.position.set(center.x + maxDim * 1.2, center.y + maxDim * 0.8, center.z + maxDim * 1.2);
+                controls.target.copy(center);
+                controls.update();
+
+                // Extraer Pisos/Capas
+                await construirPanelPisos(model.modelID);
+                statusLabel.innerText = `✅ Modelo: ${file.name}`;
+            } catch (err) {
+                console.error("Error al cargar IFC:", err);
+                statusLabel.innerText = "❌ Error al parsear el archivo IFC";
+            }
+        }
+
+        async function construirPanelPisos(modelID) {
+            const listContainer = document.getElementById('ifc-layers-list');
+            listContainer.innerHTML = '';
+
+            try {
+                const storeysIDs = await ifcLoader.ifcManager.getAllItemsOfType(modelID, IFCBUILDINGSTOREY, false);
+                if (!storeysIDs || storeysIDs.length === 0) {
+                    listContainer.innerHTML = '<p style="color:#64748b;">No se detectaron capas de pisos en el IFC.</p>';
+                    return;
+                }
+
+                for (let expressID of storeysIDs) {
+                    const props = await ifcLoader.ifcManager.getItemProperties(modelID, expressID);
+                    const storeyName = props.Name?.value || `Piso (ID: ${expressID})`;
+
+                    // Obtener elementos dentro del piso
+                    const spatialTree = await ifcLoader.ifcManager.getSpatialStructure(modelID);
+                    const storeyNode = buscarNodoPiso(spatialTree, expressID);
+                    const childIDs = obtenerIDsHijos(storeyNode);
+
+                    if (childIDs.length > 0) {
+                        const subset = ifcLoader.ifcManager.createSubset({
+                            modelID: modelID,
+                            ids: childIDs,
+                            scene: scene,
+                            removeExisting: false,
+                            customID: `storey_${expressID}`
+                        });
+                        storeySubsets[expressID] = subset;
+                    }
+
+                    // Crear elemento UI
+                    const item = document.createElement('div');
+                    item.className = 'layer-item';
+                    item.innerHTML = `
+                        <input type="checkbox" id="chk-storey-${expressID}" checked>
+                        <label for="chk-storey-${expressID}">${storeyName}</label>
+                    `;
+                    listContainer.appendChild(item);
+
+                    document.getElementById(`chk-storey-${expressID}`).addEventListener('change', (e) => {
+                        const visible = e.target.checked;
+                        if (storeySubsets[expressID]) {
+                            storeySubsets[expressID].visible = visible;
+                        }
+                    });
+                }
+
+                // Ocultar modelo completo para dar control total a las capas por piso
+                if (currentModel) currentModel.visible = false;
+
+            } catch (error) {
+                console.warn("No se pudieron aislar los pisos:", error);
+                listContainer.innerHTML = '<p style="color:#64748b;">Visibilidad general activa.</p>';
+            }
+        }
+
+        function buscarNodoPiso(node, expressID) {
+            if (node.expressID === expressID) return node;
+            if (node.children) {
+                for (let child of node.children) {
+                    const found = buscarNodoPiso(child, expressID);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
+        function obtenerIDsHijos(node, ids = []) {
+            if (!node) return ids;
+            ids.push(node.expressID);
+            if (node.children) {
+                for (let child of node.children) {
+                    obtenerIDsHijos(child, ids);
+                }
+            }
+            return ids;
+        }
+
+        // Listener de archivo IFC
+        document.getElementById('ifc-file-input').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) cargarArchivoIFC(file);
+        });
+
+        // Evento de inicialización al cambiar a pestaña 3D
+        window.inicializarVisualizador3D = function() {
+            init3DViewer();
+        };
+    </script>
+
+    <!-- Logic Script General (Excel, Mapa, Navegación) -->
     <script>
         let dbHunza = {};
         let datosGeneralesEdificio = {
@@ -234,7 +446,7 @@
         let aulaSeleccionada = "H-101";
         let vistaActual = "vista-campus";
 
-        // Control de Zoom y Pan en Mapa
+        // Control Zoom y Pan Mapa General
         let zoomScale = 1, panX = 0, panY = 0, isDragging = false, startX = 0, startY = 0;
 
         const TODAS_HORAS = ["06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"];
@@ -353,7 +565,7 @@
                     <p><b>Área Total Construida:</b> ${datosGeneralesEdificio.area}</p>
                     <hr style="margin:15px 0; border:0; border-top:1px solid #eee;">
                     <p style="font-size:12px; color:#64748b; font-style:italic;">
-                        ℹ️ Selecciona <b>"Edificio 30 (3D)"</b> o <b>"Planta 2D"</b> para interactuar con los salones y consultar sus horarios de uso específicos.
+                        ℹ️ Selecciona <b>"Visualizador IFC 3D"</b> o <b>"Planta 2D"</b> para interactuar con las herramientas BIM o consultar horarios.
                     </p>
                 </div>
             `;
@@ -546,9 +758,10 @@
                 mostrarInformacionGeneralEdificio();
             } else if (idVista === 'vista-3d') {
                 document.getElementById('btn-3d').classList.add('btn-activo');
-                rutaNav.innerText = "Ubicación: Edificio 30 Hunza (Modelo 3D)";
-                document.getElementById('info-titulo').innerText = "🏢 Edificio 30 - Vista Volumétrica";
-                document.getElementById('info-contenido').innerHTML = `<p style="color:#64748b;">Haz clic en cualquiera de los pisos del modelo 3D para desplegar la planta 2D interactiva.</p>`;
+                rutaNav.innerText = "Ubicación: Edificio 30 Hunza (Visualizador IFC 3D)";
+                document.getElementById('info-titulo').innerText = "🏢 Visualizador BIM IFC";
+                document.getElementById('info-contenido').innerHTML = `<p style="color:#64748b;">Carga un archivo <b>.ifc</b> desde el botón superior para explorar el modelo en 3D y filtrar sus niveles por capas.</p>`;
+                if (window.inicializarVisualizador3D) window.inicializarVisualizador3D();
             } else if (idVista === 'vista-2d') {
                 document.getElementById('btn-2d').classList.add('btn-activo');
                 rutaNav.innerText = "Ubicación: Edificio 30 Hunza (Planta 2D)";
@@ -557,9 +770,8 @@
         }
 
         function cargarEdificio30() { irAVista('vista-3d'); }
-        function abrirPlanoPiso(piso) { irAVista('vista-2d'); }
 
-        // Eventos Zoom + Pan
+        // Eventos Zoom + Pan Mapa
         const mapWrapper = document.getElementById('map-wrapper');
         mapWrapper.addEventListener('wheel', (e) => {
             e.preventDefault();
