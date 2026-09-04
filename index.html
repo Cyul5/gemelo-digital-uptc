@@ -77,13 +77,10 @@
         .hotspot-edificio { fill: rgba(0, 51, 102, 0.4); stroke: #ffcc00; stroke-width: 3; cursor: pointer; }
         .hotspot-edificio:hover { fill: rgba(255, 204, 0, 0.6); stroke: #003366; }
 
-        /* Contenedor del Visualizador IFC 3D */
+        /* Visualizador IFC 3D */
         .ifc-toolbar {
             display: flex; justify-content: space-between; align-items: center;
-            background: #eef2f7; padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; gap: 8px; flex-wrap: wrap;
-        }
-        .ifc-input-url {
-            flex: 1; min-width: 200px; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px;
+            background: #eef2f7; padding: 8px 12px; border-radius: 6px; margin-bottom: 10px;
         }
         .ifc-layout { display: flex; gap: 10px; height: 440px; position: relative; }
         #ifc-canvas-container { flex: 1; height: 100%; background: #1a1a2e; border-radius: 8px; overflow: hidden; position: relative; }
@@ -179,16 +176,11 @@
 
             <!-- VISTA 2: VISUALIZADOR IFC 3D -->
             <div id="vista-3d" class="vista">
-                <h3>Visualizador BIM 3D (Modelo: 001-PRO-F2STUDIO-M3D-ARQ-001.ifc)</h3>
+                <h3>Visualizador BIM 3D (Edificio 30 - Aulas Hunza)</h3>
                 
                 <div class="ifc-toolbar">
-                    <input type="text" id="ifc-url-input" class="ifc-input-url" placeholder="Escribe la URL de GitHub..." value="./001-PRO-F2STUDIO-M3D-ARQ-001.ifc">
-                    <button class="btn" style="padding: 6px 10px; font-size: 12px;" onclick="cargarIFCDesdeURLInput()">🔄 Cargar URL</button>
-                    
-                    <input type="file" id="ifc-file-input" accept=".ifc" style="display:none;" onchange="cargarIFCDesdeArchivoLocal(event)">
-                    <button class="btn" style="padding: 6px 10px; font-size: 12px; background-color:#27ae60; color:white;" onclick="document.getElementById('ifc-file-input').click()">📁 Cargar desde PC</button>
-
-                    <span id="ifc-status" style="font-size:12px; font-weight:bold; color:#003366; margin-left: auto;">Esperando archivo...</span>
+                    <span style="font-size:13px; color:#003366; font-weight:bold;">Fuente: GitHub (Cyul5/gemelo-digital-uptc)</span>
+                    <span id="ifc-status" style="font-size:12px; font-weight:bold; color:#003366;">⏳ Conectando modelo 3D...</span>
                 </div>
 
                 <div class="ifc-layout">
@@ -196,7 +188,7 @@
                     <div class="ifc-layers-panel">
                         <h4>Pisos / Capas</h4>
                         <div id="ifc-layers-list">
-                            <p style="color:#94a3b8; font-style:italic; font-size:12px;">Cargue un archivo para ver niveles...</p>
+                            <p style="color:#94a3b8; font-style:italic; font-size:12px;">Cargando capas del modelo...</p>
                         </div>
                     </div>
                 </div>
@@ -238,18 +230,21 @@
         </div>
     </div>
 
-    <!-- Script Principal con Módulo JS para Three.js & Visualizador IFC -->
+    <!-- Script Principal JS con Módulo Three.js & IFC Loader -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { IFCLoader } from 'web-ifc-three';
         import { IFCBUILDINGSTOREY } from 'web-ifc';
 
-        const NOMBRE_ARCHIVO_IFC = '001-PRO-F2STUDIO-M3D-ARQ-001.ifc';
+        // URL directa Raw del repositorio público en GitHub
+        const URL_DIRECTA_IFC = 'https://raw.githubusercontent.com/Cyul5/gemelo-digital-uptc/main/001-PRO-F2STUDIO-M3D-ARQ-001.ifc';
+        
         let scene, camera, renderer, controls, ifcLoader;
         let currentModel = null;
         let storeySubsets = {};
         let is3DInitialized = false;
+        let yaCargado = false;
 
         function init3DViewer() {
             if (is3DInitialized) return;
@@ -271,7 +266,7 @@
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
 
-            // Iluminación
+            // Luz ambiental y direccional
             scene.add(new THREE.AmbientLight(0xffffff, 0.8));
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
             dirLight.position.set(50, 80, 50);
@@ -284,7 +279,7 @@
             ifcLoader.ifcManager.setWasmPath('https://unpkg.com/web-ifc@0.0.51/');
 
             window.addEventListener('resize', () => {
-                if (!container) return;
+                if (!container || container.clientWidth === 0) return;
                 camera.aspect = container.clientWidth / container.clientHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(container.clientWidth, container.clientHeight);
@@ -300,24 +295,29 @@
             is3DInitialized = true;
         }
 
-        async function procesarCargaIFC(sourceUrl, nombreMostrar) {
+        async function cargarModeloAutomatico() {
+            if (yaCargado) return;
             init3DViewer();
-            const statusLabel = document.getElementById('ifc-status');
-            statusLabel.innerText = `⏳ Procesando ${nombreMostrar}...`;
 
-            if (currentModel) {
-                scene.remove(currentModel);
-                currentModel = null;
-            }
-            Object.values(storeySubsets).forEach(mesh => scene.remove(mesh));
-            storeySubsets = {};
+            const statusLabel = document.getElementById('ifc-status');
+            statusLabel.innerText = '⏳ Descargando modelo desde GitHub...';
 
             try {
-                const model = await ifcLoader.loadAsync(sourceUrl);
+                // Intentar cargar primero por ruta relativa, si falla usar la URL Raw directa
+                let modeloURL = './001-PRO-F2STUDIO-M3D-ARQ-001.ifc';
+                let model;
+
+                try {
+                    model = await ifcLoader.loadAsync(modeloURL);
+                } catch (eRel) {
+                    console.log("Intentando carga con URL absoluta Raw de GitHub...");
+                    model = await ifcLoader.loadAsync(URL_DIRECTA_IFC);
+                }
+
                 currentModel = model;
                 scene.add(model);
 
-                // Encuadrar cámara
+                // Ajustar la cámara al tamaño del modelo 3D
                 const box = new THREE.Box3().setFromObject(model);
                 const center = box.getCenter(new THREE.Vector3());
                 const size = box.getSize(new THREE.Vector3());
@@ -328,10 +328,11 @@
                 controls.update();
 
                 await construirPanelPisos(model.modelID);
-                statusLabel.innerText = `✅ Carga exitosa: ${nombreMostrar}`;
+                statusLabel.innerText = '✅ Modelo 3D cargado correctamente';
+                yaCargado = true;
             } catch (err) {
-                console.error("Error al cargar modelo IFC:", err);
-                statusLabel.innerText = `❌ Error de lectura. Selecciona el archivo con 'Cargar desde PC'`;
+                console.error("Error cargando el archivo IFC:", err);
+                statusLabel.innerText = '❌ Error al leer el archivo desde GitHub.';
             }
         }
 
@@ -342,13 +343,13 @@
             try {
                 const storeysIDs = await ifcLoader.ifcManager.getAllItemsOfType(modelID, IFCBUILDINGSTOREY, false);
                 if (!storeysIDs || storeysIDs.length === 0) {
-                    listContainer.innerHTML = '<p style="color:#64748b;">Modelo cargado sin capas separadas.</p>';
+                    listContainer.innerHTML = '<p style="color:#64748b;">Modelo renderizado en capa única.</p>';
                     return;
                 }
 
                 for (let expressID of storeysIDs) {
                     const props = await ifcLoader.ifcManager.getItemProperties(modelID, expressID);
-                    const storeyName = props.Name?.value || `Piso (ID: ${expressID})`;
+                    const storeyName = props.Name?.value || `Nivel (ID: ${expressID})`;
 
                     const spatialTree = await ifcLoader.ifcManager.getSpatialStructure(modelID);
                     const storeyNode = buscarNodoPiso(spatialTree, expressID);
@@ -382,8 +383,8 @@
 
                 if (currentModel) currentModel.visible = false;
             } catch (error) {
-                console.warn("Información de capas no disponible:", error);
-                listContainer.innerHTML = '<p style="color:#64748b;">Modelo completo renderizado.</p>';
+                console.warn("Niveles del edificio no detallados:", error);
+                listContainer.innerHTML = '<p style="color:#64748b;">Modelo desplegado completamente.</p>';
             }
         }
 
@@ -410,23 +411,11 @@
         }
 
         window.inicializarVisualizador3D = function() {
-            init3DViewer();
-        };
-
-        window.cargarIFCDesdeURLInput = function() {
-            const url = document.getElementById('ifc-url-input').value.trim();
-            if (url) procesarCargaIFC(url, NOMBRE_ARCHIVO_IFC);
-        };
-
-        window.cargarIFCDesdeArchivoLocal = function(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const blobUrl = URL.createObjectURL(file);
-            procesarCargaIFC(blobUrl, file.name);
+            cargarModeloAutomatico();
         };
     </script>
 
-    <!-- Logic Script General (Excel, Mapa, Navegación) -->
+    <!-- Script General (Excel, Mapa, Navegación) -->
     <script>
         let dbHunza = {};
         let datosGeneralesEdificio = {
@@ -471,26 +460,27 @@
         async function cargarExcelAutomatico() {
             const badge = document.getElementById('excel-status');
             const debugLog = document.getElementById('debug-info');
-            const archivos = ['Plantilla_Levantamiento_Edificio_2.xlsx', 'Plantilla_Levantamiento_Edificio.xlsx', 'plantilla.xlsx'];
+            const archivos = [
+                'Plantilla_Levantamiento_Edificio_2.xlsx',
+                'https://raw.githubusercontent.com/Cyul5/gemelo-digital-uptc/main/Plantilla_Levantamiento_Edificio_2.xlsx'
+            ];
             let arrayBuffer = null;
-            let nombreCargado = "";
 
-            for (let nombre of archivos) {
+            for (let fuente of archivos) {
                 try {
-                    const res = await fetch(nombre);
+                    const res = await fetch(fuente);
                     if (res.ok) {
                         arrayBuffer = await res.arrayBuffer();
-                        nombreCargado = nombre;
                         break;
                     }
                 } catch (e) {}
             }
 
             if (!arrayBuffer) {
-                badge.innerText = "⚠️ Usando Datos por Defecto";
+                badge.innerText = "⚠️ Modo Demostración";
                 badge.style.background = "#fff3cd";
                 badge.style.color = "#856404";
-                debugLog.innerHTML = "<b>Aviso:</b> No se detectó archivo `.xlsx`.";
+                debugLog.innerHTML = "<b>Aviso:</b> Usando valores por defecto.";
                 inicializarDatosBase();
                 irAVista(vistaActual);
                 return;
@@ -511,14 +501,14 @@
                 descombinarCeldas(sheetHor);
                 procesarMatrizExcel(XLSX.utils.sheet_to_json(sheetHor, { header: 1, raw: false, defval: "" }));
 
-                badge.innerText = "🟢 Excel Sincronizado";
+                badge.innerText = "🟢 Excel Conectado";
                 badge.style.background = "#d4edda";
                 badge.style.color = "#155724";
 
-                debugLog.innerHTML = `<b>Archivo:</b> ${nombreCargado}<br><b>Hoja Datos:</b> ${sheetGeneralesName || 'N/A'}<br><b>Hoja Horarios:</b> ${sheetHorariosName}`;
+                debugLog.innerHTML = `<b>Origen:</b> GitHub Repository<br><b>Hoja Horarios:</b> ${sheetHorariosName}`;
                 irAVista(vistaActual);
             } catch (error) {
-                console.error("Error al procesar Excel:", error);
+                console.error("Error cargando Excel:", error);
                 inicializarDatosBase();
                 irAVista(vistaActual);
             }
@@ -744,8 +734,12 @@
                 document.getElementById('btn-3d').classList.add('btn-activo');
                 rutaNav.innerText = "Ubicación: Edificio 30 Hunza (Visualizador IFC 3D)";
                 document.getElementById('info-titulo').innerText = "🏢 Visualizador BIM IFC";
-                document.getElementById('info-contenido').innerHTML = `<p style="color:#64748b;">Usa el botón verde <b>📁 Cargar desde PC</b> para subir tu archivo local <b>001-PRO-F2STUDIO-M3D-ARQ-001.ifc</b>.</p>`;
-                if (window.inicializarVisualizador3D) window.inicializarVisualizador3D();
+                document.getElementById('info-contenido').innerHTML = `<p style="color:#64748b;">Descargando y renderizando el modelo IFC directamente desde GitHub...</p>`;
+                
+                // Activar carga automática
+                if (window.inicializarVisualizador3D) {
+                    window.inicializarVisualizador3D();
+                }
             } else if (idVista === 'vista-2d') {
                 document.getElementById('btn-2d').classList.add('btn-activo');
                 rutaNav.innerText = "Ubicación: Edificio 30 Hunza (Planta 2D)";
