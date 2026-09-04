@@ -8,10 +8,6 @@
     <!-- Librería SheetJS para Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-    <!-- ✅ Three.js - Versión UMD (sin módulos) -->
-    <script src="https://cdn.jsdelivr.net/npm/three@r128/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/controls/OrbitControls.js"></script>
-
     <style>
         * { box-sizing: border-box; }
         body {
@@ -77,11 +73,11 @@
         .ifc-layout { display: flex; gap: 10px; height: 440px; position: relative; }
         #ifc-canvas-container { 
             flex: 1; height: 100%; background: #1a1a2e; border-radius: 8px; 
-            overflow: hidden; position: relative; 
+            overflow: hidden; position: relative; cursor: pointer;
         }
         .ifc-layers-panel {
-            width: 200px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;
-            padding: 10px; overflow-y: auto; font-size: 13px;
+            width: 220px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;
+            padding: 10px; overflow-y: auto; font-size: 12px;
         }
         .ifc-layers-panel h4 { margin: 0 0 10px 0; font-size: 14px; color: #003366; border-bottom: 2px solid #003366; padding-bottom: 4px; }
 
@@ -94,24 +90,30 @@
         .tabla-horarios { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
         .tabla-horarios th, .tabla-horarios td { border: 1px solid #ddd; padding: 6px; text-align: left; }
         .tabla-horarios th { background-color: #003366; color: white; }
-        .fila-actual { background-color: #fff3cd; font-weight: bold; }
-        .st-libre { color: #27ae60; font-weight: bold; }
-        .st-ocupado { color: #c0392b; font-weight: bold; }
         .status-badge { font-size: 12px; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
         
         .debug-box { margin-top: 10px; padding: 8px; background: #f8f9fa; border: 1px solid #ccc; border-radius: 4px; font-size: 11px; color: #555; max-height: 150px; overflow-y: auto; }
-        
-        .loading-spinner { 
-            display: inline-block; width: 14px; height: 14px; border: 2px solid #ccc; 
-            border-top: 2px solid #003366; border-radius: 50%; animation: spin 0.8s linear infinite; 
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
         .log-entry { padding: 3px 0; border-bottom: 1px solid #e2e8f0; font-size: 10px; }
         .log-error { color: #c0392b; font-weight: bold; }
         .log-success { color: #27ae60; font-weight: bold; }
         .log-info { color: #003366; }
+
+        .ifc-prop-table { width: 100%; border-collapse: collapse; font-size: 11px; word-break: break-word; }
+        .ifc-prop-table td { padding: 4px; border-bottom: 1px solid #e2e8f0; }
+        .ifc-prop-table td:first-child { font-weight: bold; color: #003366; width: 40%; }
     </style>
+
+    <!-- Mapas de Importación ES Modules para Three.js e IFCLoader -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+            "three/examples/jsm/controls/OrbitControls": "https://unpkg.com/three@0.128.0/examples/jsm/controls/OrbitControls.js",
+            "web-ifc-three": "https://unpkg.com/web-ifc-three@0.0.126/IFCLoader.js"
+        }
+    }
+    </script>
 </head>
 <body>
 
@@ -122,7 +124,7 @@
         </div>
         <div id="btns-nav" class="nav-container">
             <button id="btn-campus" class="btn btn-secundario btn-activo" onclick="irAVista('vista-campus')">🗺️ Mapa General</button>
-            <button id="btn-3d" class="btn btn-secundario" onclick="irAVista('vista-3d')">🏢 Visualizador 3D</button>
+            <button id="btn-3d" class="btn btn-secundario" onclick="irAVista('vista-3d')">🏢 Visualizador 3D IFC</button>
             <button id="btn-2d" class="btn btn-secundario" onclick="irAVista('vista-2d')">📐 Planta 2D</button>
         </div>
     </header>
@@ -172,34 +174,37 @@
                     <div id="map-content" class="map-content">
                         <img src="plano_uptc.jpg" class="campus-img" alt="Plano UPTC Sede Central" onerror="this.style.display='none'">
                         <svg class="svg-overlay" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet">
-                            <polygon points="505,535 555,535 555,565 505,565" class="hotspot-edificio" onclick="cargarEdificio30()"/>
+                            <polygon points="505,535 555,535 555,565 505,565" class="hotspot-edificio" onclick="irAVista('vista-3d')"/>
                             <text x="530" y="552" fill="white" font-weight="bold" font-size="11" text-anchor="middle" pointer-events="none">30. HUNZA</text>
                         </svg>
                     </div>
                 </div>
             </div>
 
-            <!-- VISTA 2: VISUALIZADOR 3D -->
+            <!-- VISTA 2: VISUALIZADOR 3D IFC -->
             <div id="vista-3d" class="vista">
-                <h3>Visualizador 3D - Edificio 30 Aulas Hunza</h3>
+                <h3>Visualizador 3D - Carga y Análisis de Modelo IFC</h3>
                 
                 <div class="ifc-toolbar">
-                    <span style="font-size:13px; color:#003366; font-weight:bold;">📦 Three.js + Canvas</span>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <input type="file" id="ifc-file-input" accept=".ifc" style="display:none;">
+                        <button class="btn" onclick="document.getElementById('ifc-file-input').click()">📂 Cargar Otro Archivo Local</button>
+                    </div>
                     <span id="ifc-status" style="font-size:12px; font-weight:bold; color:#003366;">
-                        ⏳ Cargando escena 3D...
+                        ⏳ Descargando modelo IFC desde GitHub...
                     </span>
                 </div>
 
                 <div class="ifc-layout">
                     <div id="ifc-canvas-container"></div>
                     <div class="ifc-layers-panel">
-                        <h4>🔧 Estado</h4>
+                        <h4>🔍 Atributos IFC</h4>
                         <div id="ifc-info">
-                            <p style="color:#94a3b8; font-style:italic; font-size:12px;">Inicializando Three.js...</p>
+                            <p style="color:#94a3b8; font-style:italic; font-size:11px;">Selecciona un elemento en el modelo 3D para consultar sus datos BIM.</p>
                         </div>
                     </div>
                 </div>
-                <div class="nav-hint">🖱️ <b>Navegación:</b> Clic Izq: Rotar | Clic Der / Shift+Clic: Desplazar | Rueda: Zoom</div>
+                <div class="nav-hint">🖱️ <b>Navegación:</b> Clic Izq + Arrastrar: Rotar | Clic Der: Desplazar | Clic en Elemento: Inspeccionar Propiedades BIM</div>
             </div>
 
             <!-- VISTA 3: PLANO 2D -->
@@ -210,15 +215,15 @@
                     <text x="250" y="145" class="texto-svg" fill="#64748b" text-anchor="middle">CORREDOR PRINCIPAL</text>
 
                     <!-- Salones -->
-                    <rect id="H-101" class="salon" x="30" y="20" width="130" height="100" fill="#2ecc71" />
+                    <rect id="H-101" class="salon" x="30" y="20" width="130" height="100" fill="#2ecc71" onclick="mostrarFichaExcel('H-101')"/>
                     <text x="95" y="65" class="texto-svg" text-anchor="middle">Aula A-101</text>
                     <text id="lbl-H-101" x="95" y="85" font-size="11" text-anchor="middle">LIBRE</text>
 
-                    <rect id="H-102" class="salon" x="185" y="20" width="130" height="100" fill="#2ecc71" />
+                    <rect id="H-102" class="salon" x="185" y="20" width="130" height="100" fill="#2ecc71" onclick="mostrarFichaExcel('H-102')"/>
                     <text x="250" y="65" class="texto-svg" text-anchor="middle">Aula A-102</text>
                     <text id="lbl-H-102" x="250" y="85" font-size="11" text-anchor="middle">LIBRE</text>
 
-                    <rect id="H-103" class="salon" x="340" y="20" width="130" height="100" fill="#2ecc71" />
+                    <rect id="H-103" class="salon" x="340" y="20" width="130" height="100" fill="#2ecc71" onclick="mostrarFichaExcel('H-103')"/>
                     <text x="405" y="65" class="texto-svg" text-anchor="middle">Lab A-103</text>
                     <text id="lbl-H-103" x="405" y="85" font-size="11" text-anchor="middle">LIBRE</text>
                 </svg>
@@ -229,7 +234,7 @@
         <div class="info-box">
             <h3 id="info-titulo">Información del Espacio</h3>
             <div id="info-contenido">
-                <p style="color:#64748b;">Selecciona un área para consultar la información.</p>
+                <p style="color:#64748b;">Selecciona un área o elemento para consultar sus datos.</p>
             </div>
             <div id="debug-info" class="debug-box">
                 <div class="log-entry log-info"><b>Sistema iniciando...</b></div>
@@ -237,18 +242,26 @@
         </div>
     </div>
 
-    <!-- ✅ SCRIPT PRINCIPAL - SIN MÓDULOS ES -->
-    <script>
-        // Variables globales Three.js
-        let scene, camera, renderer, controls;
-        let model = null;
-        let is3DInitialized = false;
-        let animationId = null;
+    <!-- SCRIPT DEL LECTOR Y VISUALIZADOR IFC DESDE GITHUB (ES MODULES) -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+        import { IFCLoader } from 'web-ifc-three';
 
-        // Sistema de logging
+        // ⚠️ REEMPLAZA ESTA URL CON TU ENLACE RAW DE GITHUB
+        const URL_IFC_GITHUB = 'https://raw.githubusercontent.com/TU_USUARIO/TU_REPOSITORIO/main/edificio30.ifc';
+
+        let scene, camera, renderer, controls;
+        let ifcLoader = null;
+        let currentIfcModel = null;
+        let is3DInitialized = false;
+        let raycaster, mouse;
+        const ifcModels = [];
+
         const DebugLog = {
             log: (msg, type = 'info') => {
                 const logBox = document.getElementById('debug-info');
+                if(!logBox) return;
                 const entry = document.createElement('div');
                 entry.className = `log-entry log-${type}`;
                 entry.textContent = msg;
@@ -261,397 +274,210 @@
             info: (msg) => DebugLog.log('ℹ️ ' + msg, 'info')
         };
 
-        // ✅ Función para inicializar Three.js
         function init3DViewer() {
-            DebugLog.info('Buscando contenedor...');
             const container = document.getElementById('ifc-canvas-container');
-            
-            if (!container) {
-                DebugLog.error('Contenedor no encontrado');
-                return false;
-            }
+            if (!container) return false;
 
             const width = container.clientWidth;
             const height = container.clientHeight;
-
-            if (width === 0 || height === 0) {
-                DebugLog.error('Contenedor tiene tamaño cero');
-                return false;
-            }
-
-            DebugLog.info(`Contenedor: ${width}x${height}px`);
+            if (width === 0 || height === 0) return false;
 
             try {
-                // ✅ Crear escena
-                DebugLog.info('Creando escena Three.js...');
+                // Escena
                 scene = new THREE.Scene();
                 scene.background = new THREE.Color(0x1a1a2e);
-                scene.fog = new THREE.Fog(0x1a1a2e, 500, 1000);
 
-                // ✅ Crear cámara
-                DebugLog.info('Creando cámara...');
-                camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 10000);
-                camera.position.set(80, 60, 80);
+                // Cámara
+                camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+                camera.position.set(50, 40, 50);
 
-                // ✅ Crear renderer
-                DebugLog.info('Creando WebGL renderer...');
-                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+                // Renderer
+                renderer = new THREE.WebGLRenderer({ antialias: true });
                 renderer.setSize(width, height);
                 renderer.setPixelRatio(window.devicePixelRatio);
                 renderer.shadowMap.enabled = true;
-                renderer.shadowMap.type = THREE.PCFShadowShadowMap;
+                container.innerHTML = '';
                 container.appendChild(renderer.domElement);
-                DebugLog.success('Renderer creado');
 
-                // ✅ Crear controles de órbita
-                DebugLog.info('Configurando controles de órbita...');
-                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                // Controles de Cámara
+                controls = new OrbitControls(camera, renderer.domElement);
                 controls.enableDamping = true;
                 controls.dampingFactor = 0.05;
-                controls.autoRotate = false;
-                controls.enableZoom = true;
-                controls.enablePan = true;
-                DebugLog.success('Controles configurados');
 
-                // ✅ Iluminación ambiental
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                // Luces
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
                 scene.add(ambientLight);
 
-                // ✅ Luz direccional
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-                directionalLight.position.set(100, 100, 100);
-                directionalLight.castShadow = true;
-                directionalLight.shadow.mapSize.width = 2048;
-                directionalLight.shadow.mapSize.height = 2048;
-                scene.add(directionalLight);
+                const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+                dirLight1.position.set(50, 100, 50);
+                scene.add(dirLight1);
 
-                // ✅ Grid helper
-                const gridHelper = new THREE.GridHelper(200, 20, 0x003366, 0x334155);
-                scene.add(gridHelper);
+                const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
+                dirLight2.position.set(-50, -50, -50);
+                scene.add(dirLight2);
 
-                // ✅ Axial helper (opcional)
-                const axesHelper = new THREE.AxesHelper(50);
-                scene.add(axesHelper);
+                const grid = new THREE.GridHelper(100, 30, 0x003366, 0x334155);
+                scene.add(grid);
 
-                DebugLog.success('Escena inicializada correctamente');
+                // Raycaster para selección de objetos IFC
+                raycaster = new THREE.Raycaster();
+                mouse = new THREE.Vector2();
 
-                // ✅ Listener para resize
+                // Inicializar IFCLoader y motor WASM
+                ifcLoader = new IFCLoader();
+                ifcLoader.ifcManager.setWasmPath('https://unpkg.com/web-ifc@0.0.36/');
+
+                // Event listener para clics en el modelo
+                container.addEventListener('pointerdown', seleccionarElementoIFC);
+
                 window.addEventListener('resize', () => {
-                    const newWidth = container.clientWidth;
-                    const newHeight = container.clientHeight;
-                    if (newWidth > 0 && newHeight > 0) {
-                        camera.aspect = newWidth / newHeight;
+                    const w = container.clientWidth;
+                    const h = container.clientHeight;
+                    if (w > 0 && h > 0) {
+                        camera.aspect = w / h;
                         camera.updateProjectionMatrix();
-                        renderer.setSize(newWidth, newHeight);
+                        renderer.setSize(w, h);
                     }
                 });
 
                 is3DInitialized = true;
+                startAnimation();
+                DebugLog.success('Visualizador 3D inicializado con IFCLoader');
                 return true;
-
-            } catch (error) {
-                DebugLog.error(`Error en inicialización: ${error.message}`);
-                console.error(error);
+            } catch (err) {
+                DebugLog.error('Error inicializando WebGL/IFC: ' + err.message);
                 return false;
             }
         }
 
-        // ✅ Función para crear el modelo del edificio
-        function crearModeloEdificio() {
-            DebugLog.info('Creando modelo del edificio...');
-
-            const group = new THREE.Group();
-
-            // Base del edificio
-            const baseGeom = new THREE.BoxGeometry(60, 3, 50);
-            const baseMat = new THREE.MeshPhongMaterial({ color: 0x8B7355 });
-            const base = new THREE.Mesh(baseGeom, baseMat);
-            base.position.y = 0;
-            base.castShadow = true;
-            base.receiveShadow = true;
-            group.add(base);
-
-            // Paredes principales (5 pisos)
-            for (let floor = 0; floor < 5; floor++) {
-                const wallGeom = new THREE.BoxGeometry(60, 12, 50);
-                const wallMat = new THREE.MeshPhongMaterial({ 
-                    color: new THREE.Color().setHSL(0.6, 0.3, 0.7 - floor * 0.05),
-                    emissive: 0x003366,
-                    shininess: 50
-                });
-                const wall = new THREE.Mesh(wallGeom, wallMat);
-                wall.position.y = 6 + floor * 12;
-                wall.castShadow = true;
-                wall.receiveShadow = true;
-                group.add(wall);
-
-                // Ventanas (columnas de rectángulos)
-                for (let col = 0; col < 4; col++) {
-                    const windowGeom = new THREE.BoxGeometry(12, 3, 1);
-                    const windowMat = new THREE.MeshPhongMaterial({ color: 0x87CEEB });
-                    const window = new THREE.Mesh(windowGeom, windowMat);
-                    window.position.set(-18 + col * 12, 6 + floor * 12, 25);
-                    group.add(window);
-                }
-            }
-
-            // Columnas de soporte
-            const colGeom = new THREE.CylinderGeometry(2.5, 2.5, 65);
-            const colMat = new THREE.MeshPhongMaterial({ color: 0x555555 });
-            
-            for (let x = -25; x <= 25; x += 25) {
-                for (let z = -20; z <= 20; z += 20) {
-                    const col = new THREE.Mesh(colGeom, colMat);
-                    col.position.set(x, 32, z);
-                    col.castShadow = true;
-                    col.receiveShadow = true;
-                    group.add(col);
-                }
-            }
-
-            scene.add(group);
-            DebugLog.success('Modelo del edificio agregado');
-            return group;
-        }
-
-        // ✅ Función para hacer animate loop
         function startAnimation() {
-            DebugLog.info('Iniciando loop de animación...');
-
             function animate() {
-                animationId = requestAnimationFrame(animate);
-                controls.update();
-                renderer.render(scene, camera);
+                requestAnimationFrame(animate);
+                if (controls) controls.update();
+                if (renderer && scene && camera) renderer.render(scene, camera);
             }
             animate();
-            DebugLog.success('Loop de animación activo');
         }
 
-        // ✅ Función principal que se llama cuando entra a vista-3d
-        function iniciarVisualizador3D() {
-            DebugLog.info('========== INICIANDO VISUALIZADOR 3D ==========');
-            
-            // Esperar a que el contenedor esté visible
-            const container = document.getElementById('ifc-canvas-container');
-            if (!container || container.offsetHeight === 0) {
-                DebugLog.error('Contenedor no está visible, reintentando...');
-                setTimeout(iniciarVisualizador3D, 300);
-                return;
-            }
-
-            if (is3DInitialized) {
-                DebugLog.info('Ya está inicializado, solo reactivando...');
-                if (animationId) cancelAnimationFrame(animationId);
-                startAnimation();
-                return;
-            }
-
-            // Inicializar Three.js
-            if (!init3DViewer()) {
-                document.getElementById('ifc-status').innerHTML = '❌ Error al inicializar';
-                return;
-            }
-
-            // Crear modelo
-            model = crearModeloEdificio();
-
-            // Ajustar cámara al modelo
-            const box = new THREE.Box3().setFromObject(model);
-            const center = box.getCenter(new THREE.Vector3());
-            const size = box.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z);
-
-            camera.position.set(
-                center.x + maxDim * 1.5,
-                center.y + maxDim * 1,
-                center.z + maxDim * 1.5
-            );
-            controls.target.copy(center);
-            controls.update();
-
-            DebugLog.success('Cámara posicionada');
-
-            // Actualizar status
-            document.getElementById('ifc-status').innerHTML = '✅ Visualizador 3D Listo';
-            document.getElementById('ifc-info').innerHTML = `
-                <p><b>📦 Edificio 30 - Aulas Hunza</b></p>
-                <p style="color:#64748b; font-size:11px; margin: 5px 0;">5 pisos</p>
-                <p style="color:#64748b; font-size:11px; margin: 5px 0;">Sistema de iluminación activo</p>
-                <hr style="border:none; border-top:1px solid #cbd5e1;">
-                <p style="color:#666; font-size:10px;">Usa el ratón para navegar</p>
-            `;
-
-            // Iniciar animación
-            startAnimation();
-
-            DebugLog.success('========== VISUALIZADOR LISTO ==========');
-        }
-
-        // ✅ Exponer función globalmente
-        window.iniciarVisualizador3D = iniciarVisualizador3D;
-    </script>
-
-    <!-- SCRIPT DE NAVEGACIÓN Y DATOS (sin módulos) -->
-    <script>
-        let dbHunza = {};
-        let datosGeneralesEdificio = {
-            nombre: "Edificio 30 - Aulas Hunza",
-            codigo: "30",
-            institucion: "UPTC - Sede Central Tunja",
-            uso: "Aulas de Clase y Laboratorios",
-            pisos: "5",
-            area: "Por definir"
-        };
-        let aulaSeleccionada = "H-101";
-        let vistaActual = "vista-campus";
-
-        let zoomScale = 1, panX = 0, panY = 0, isDragging = false, startX = 0, startY = 0;
-
-        const TODAS_HORAS = ["06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"];
-        const TODOS_DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
-
-        function quitarTildes(texto) {
-            return String(texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-        }
-
-        async function cargarExcelAutomatico() {
-            const badge = document.getElementById('excel-status');
-            const archivos = [
-                'Plantilla_Levantamiento_Edificio_2.xlsx',
-                'https://raw.githubusercontent.com/Cyul5/gemelo-digital-uptc/main/Plantilla_Levantamiento_Edificio_2.xlsx'
-            ];
-            let arrayBuffer = null;
-
-            for (let fuente of archivos) {
-                try {
-                    const res = await fetch(fuente);
-                    if (res.ok) {
-                        arrayBuffer = await res.arrayBuffer();
-                        break;
-                    }
-                } catch (e) {}
-            }
-
-            if (!arrayBuffer) {
-                badge.innerText = "⚠️ Modo Demostración";
-                badge.style.background = "#fff3cd";
-                badge.style.color = "#856404";
-                inicializarDatosBase();
-                return;
-            }
+        // Cargar archivo IFC desde URL de GitHub o desde File/Blob
+        async function cargarIFC(source) {
+            document.getElementById('ifc-status').innerHTML = '⏳ Cargando modelo IFC desde GitHub...';
+            DebugLog.info('Solicitando IFC desde repositorio remoto...');
 
             try {
-                const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
-                inicializarDatosBase();
-                badge.innerText = "🟢 Excel Conectado";
-                badge.style.background = "#d4edda";
-                badge.style.color = "#155724";
+                let model;
+                if (typeof source === 'string') {
+                    model = await ifcLoader.loadAsync(source);
+                } else {
+                    const url = URL.createObjectURL(source);
+                    model = await ifcLoader.loadAsync(url);
+                    URL.revokeObjectURL(url);
+                }
+
+                if (currentIfcModel) scene.remove(currentIfcModel);
+                currentIfcModel = model;
+                ifcModels.length = 0;
+                ifcModels.push(model);
+                scene.add(model);
+
+                // Re-encuadrar cámara al modelo IFC cargado
+                const box = new THREE.Box3().setFromObject(model);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+
+                camera.position.set(center.x + maxDim * 1.2, center.y + maxDim * 1.2, center.z + maxDim * 1.2);
+                controls.target.copy(center);
+                controls.update();
+
+                document.getElementById('ifc-status').innerHTML = '✅ IFC Cargado Exitosamente';
+                DebugLog.success('Modelo IFC descargado e integrado desde GitHub');
+                
+                // Mostrar datos iniciales en el panel
+                document.getElementById('ifc-info').innerHTML = `
+                    <p><b>📐 Modelo IFC Cargado</b></p>
+                    <p><b>Dimensiones:</b> ${size.x.toFixed(1)}m x ${size.y.toFixed(1)}m x ${size.z.toFixed(1)}m</p>
+                    <p style="color:#27ae60;">Haz clic sobre cualquier elemento del edificio para inspeccionar sus datos BIM.</p>
+                `;
             } catch (error) {
-                console.error("Error Excel:", error);
-                inicializarDatosBase();
+                document.getElementById('ifc-status').innerHTML = '❌ Error al cargar archivo IFC';
+                DebugLog.error('Error al descargar o procesar IFC: ' + error.message);
             }
         }
 
-        function mostrarInformacionGeneralEdificio() {
-            document.getElementById('info-titulo').innerText = "🏢 Datos Generales del Edificio";
-            document.getElementById('info-contenido').innerHTML = `
-                <div style="line-height:1.8; font-size:14px;">
-                    <p><b>Nombre del Edificio:</b> ${datosGeneralesEdificio.nombre}</p>
-                    <p><b>Código / ID:</b> ${datosGeneralesEdificio.codigo}</p>
-                    <p><b>Institución / Campus:</b> ${datosGeneralesEdificio.institucion}</p>
-                    <p><b>Uso Principal:</b> ${datosGeneralesEdificio.uso}</p>
-                    <p><b>Número de Pisos:</b> ${datosGeneralesEdificio.pisos}</p>
-                    <p><b>Área Total Construida:</b> ${datosGeneralesEdificio.area}</p>
+        // Raycasting y extracción de metadatos del IFC al hacer clic
+        async function seleccionarElementoIFC(event) {
+            if (ifcModels.length === 0) return;
+
+            const bounds = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
+            mouse.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(ifcModels);
+
+            if (intersects.length > 0) {
+                const intersect = intersects[0];
+                const index = intersect.faceIndex;
+                const geometry = intersect.object.geometry;
+                const idModel = intersect.object.modelID;
+
+                // Obtener ExpressID del objeto seleccionado
+                const expressID = ifcLoader.ifcManager.getExpressId(geometry, index);
+                if (expressID !== undefined) {
+                    // Extraer propiedades reales del elemento BIM
+                    const props = await ifcLoader.ifcManager.getItemProperties(idModel, expressID);
+                    const type = await ifcLoader.ifcManager.getIfcType(idModel, expressID);
+                    
+                    mostrarPropiedadesBIM(expressID, type, props);
+                }
+            }
+        }
+
+        function mostrarPropiedadesBIM(expressID, type, props) {
+            const panel = document.getElementById('ifc-info');
+            const infoGeneral = document.getElementById('info-contenido');
+            
+            let htmlProps = `
+                <table class="ifc-prop-table">
+                    <tr><td>ID Express</td><td>${expressID}</td></tr>
+                    <tr><td>Tipo IFC</td><td><b>${type}</b></td></tr>
+                    <tr><td>Nombre</td><td>${props.Name ? props.Name.value : 'N/A'}</td></tr>
+                    <tr><td>GlobalId</td><td><small>${props.GlobalId ? props.GlobalId.value : 'N/A'}</small></td></tr>
+                </table>
+            `;
+
+            panel.innerHTML = `<h4>🔍 Propiedades Elemento</h4>` + htmlProps;
+            document.getElementById('info-titulo').innerText = `Elemento IFC: ${type}`;
+            infoGeneral.innerHTML = `
+                <div style="background:#f1f5f9; padding:10px; border-radius:6px;">
+                    <p><b>Tipo de Estructura:</b> ${type}</p>
+                    <p><b>Identificador BIM:</b> ${props.GlobalId ? props.GlobalId.value : expressID}</p>
+                    <p><b>Etiqueta / Nombre:</b> ${props.Name ? props.Name.value : 'Sin etiqueta'}</p>
                 </div>
             `;
+            DebugLog.info(`Elemento IFC seleccionado: ${type} (ID: ${expressID})`);
         }
 
-        function crearEstructuraVaciaEspacio(idSVG, codigoNombre) {
-            let obj = { nombre: `Aula ${codigoNombre}`, aforo: "35", horarios: {} };
-            TODOS_DIAS.forEach(d => {
-                obj.horarios[d] = {};
-                TODAS_HORAS.forEach(h => { 
-                    obj.horarios[d][h] = { est: "Libre", materia: "Disponible", docente: "" }; 
-                });
-            });
-            return obj;
-        }
-
-        function inicializarDatosBase() {
-            dbHunza = {
-                "H-101": crearEstructuraVaciaEspacio("H-101", "A-101"),
-                "H-102": crearEstructuraVaciaEspacio("H-102", "A-102"),
-                "H-103": crearEstructuraVaciaEspacio("H-103", "A-103")
-            };
-        }
-
-        function buscarDatosAula(idElemento) {
-            if (dbHunza[idElemento]) return dbHunza[idElemento];
-            let numPuro = String(idElemento).replace(/\D/g, "");
-            for (let key in dbHunza) {
-                if (String(key).replace(/\D/g, "") === numPuro) return dbHunza[key];
+        // Exponer la inicialización globalmente para el cambio de pestañas
+        window.iniciarVisualizador3D = function() {
+            if (!is3DInitialized) {
+                if (init3DViewer()) {
+                    cargarIFC(URL_IFC_GITHUB);
+                }
             }
-            return null;
-        }
+        };
 
-        function obtenerInfoHorario(data, diaSel, horaSel) {
-            return (data && data.horarios && data.horarios[diaSel] && data.horarios[diaSel][horaSel]) 
-                ? data.horarios[diaSel][horaSel] 
-                : { est: "Libre", materia: "Disponible", docente: "" };
-        }
+        // Soporte para cargar un archivo local como alternativa
+        document.getElementById('ifc-file-input').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) cargarIFC(file);
+        });
+    </script>
 
-        function actualizarEstadoTiempo() {
-            const horaSel = document.getElementById('select-hora').value;
-            const diaSel = document.getElementById('select-dia').value;
-
-            document.querySelectorAll('.salon').forEach(el => {
-                let id = el.getAttribute('id');
-                let data = buscarDatosAula(id);
-                let lbl = document.getElementById(`lbl-${id}`);
-                let infoH = obtenerInfoHorario(data, diaSel, horaSel);
-
-                el.style.fill = infoH.est === "Libre" ? "#2ecc71" : "#e74c3c";
-                if (lbl) lbl.innerText = infoH.est === "Libre" ? "LIBRE" : "CLASE";
-            });
-
-            if (vistaActual === 'vista-2d' && aulaSeleccionada) mostrarFichaExcel(aulaSeleccionada);
-        }
-
-        function mostrarFichaExcel(id) {
-            aulaSeleccionada = id;
-            const horaSel = document.getElementById('select-hora').value;
-            const diaSel = document.getElementById('select-dia').value;
-            const data = buscarDatosAula(id) || { nombre: `Aula ${id}`, aforo: "35", horarios: {} };
-            const infoH = obtenerInfoHorario(data, diaSel, horaSel);
-
-            let tablaHTML = `<table class="tabla-horarios"><thead><tr><th>Horario</th><th>Estado</th><th>Asignatura</th></tr></thead><tbody>`;
-            TODAS_HORAS.forEach(h => {
-                const row = obtenerInfoHorario(data, diaSel, h);
-                tablaHTML += `<tr ${h === horaSel ? 'class="fila-actual"' : ''}><td>${h}</td><td class="${row.est === 'Libre' ? 'st-libre':'st-ocupado'}">${row.est}</td><td>${row.materia}</td></tr>`;
-            });
-            tablaHTML += `</tbody></table>`;
-
-            document.getElementById('info-titulo').innerText = data.nombre;
-            document.getElementById('info-contenido').innerHTML = `
-                <p><b>Capacidad Aforo:</b> ${data.aforo} Personas</p>
-                <p><b>Día Consultado:</b> ${diaSel}</p>
-                <hr>
-                <b>Estado en franja seleccionada:</b> <span class="${infoH.est === 'Libre' ? 'st-libre':'st-ocupado'}">${infoH.est}</span><br>
-                <b>Detalle:</b> ${infoH.materia} ${infoH.docente ? '('+infoH.docente+')' : ''}
-                <h4 style="margin-top:12px; margin-bottom:5px;">Programación ${diaSel}:</h4>
-                ${tablaHTML}
-            `;
-        }
-
-        function resetZoom() {
-            zoomScale = 1; panX = 0; panY = 0;
-            aplicarTransformMapa();
-        }
-
-        function aplicarTransformMapa() {
-            const mc = document.getElementById('map-content');
-            if (mc) mc.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomScale})`;
-        }
+    <!-- SCRIPT DE NAVEGACIÓN GENERAL -->
+    <script>
+        let vistaActual = "vista-campus";
 
         function irAVista(idVista) {
             vistaActual = idVista;
@@ -667,69 +493,32 @@
             if (idVista === 'vista-campus') {
                 document.getElementById('btn-campus').classList.add('btn-activo');
                 rutaNav.innerText = "Ubicación: Sede Central Tunja (Mapa General)";
-                resetZoom();
-                mostrarInformacionGeneralEdificio();
             } else if (idVista === 'vista-3d') {
                 document.getElementById('btn-3d').classList.add('btn-activo');
-                rutaNav.innerText = "Ubicación: Edificio 30 Hunza (Visualizador 3D)";
-                
+                rutaNav.innerText = "Ubicación: Edificio 30 Hunza (Visualizador 3D IFC)";
                 setTimeout(() => {
-                    if (window.iniciarVisualizador3D) {
-                        window.iniciarVisualizador3D();
-                    }
-                }, 50);
+                    if (window.iniciarVisualizador3D) window.iniciarVisualizador3D();
+                }, 100);
             } else if (idVista === 'vista-2d') {
                 document.getElementById('btn-2d').classList.add('btn-activo');
                 rutaNav.innerText = "Ubicación: Edificio 30 Hunza (Planta 2D)";
-                actualizarEstadoTiempo();
             }
         }
 
-        function cargarEdificio30() { 
-            irAVista('vista-3d'); 
+        function mostrarFichaExcel(id) {
+            document.getElementById('info-titulo').innerText = `Aula ${id}`;
+            document.getElementById('info-contenido').innerHTML = `
+                <p><b>Espacio:</b> ${id}</p>
+                <p><b>Estado:</b> Disponible</p>
+                <p><b>Uso:</b> Académico</p>
+            `;
         }
 
-        const mapWrapper = document.getElementById('map-wrapper');
-        if (mapWrapper) {
-            mapWrapper.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                const delta = e.deltaY < 0 ? 0.2 : -0.2;
-                zoomScale = Math.min(Math.max(1, zoomScale + delta), 4);
-                if (zoomScale === 1) { panX = 0; panY = 0; }
-                aplicarTransformMapa();
-            });
+        function actualizarEstadoTiempo() {}
 
-            mapWrapper.addEventListener('mousedown', (e) => {
-                if (zoomScale > 1) {
-                    isDragging = true;
-                    startX = e.clientX - panX;
-                    startY = e.clientY - panY;
-                    mapWrapper.style.cursor = 'grabbing';
-                }
-            });
-        }
-
-        window.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            panX = e.clientX - startX;
-            panY = e.clientY - startY;
-            aplicarTransformMapa();
-        });
-
-        window.addEventListener('mouseup', () => {
-            isDragging = false;
-            if (mapWrapper) mapWrapper.style.cursor = 'grab';
-        });
-
-        document.querySelectorAll('.salon').forEach(s => {
-            s.addEventListener('click', function() { mostrarFichaExcel(this.getAttribute('id')); });
-        });
-
-        window.addEventListener('DOMContentLoaded', () => {
-            DebugLog.success('DOM Cargado');
-            irAVista('vista-campus');
-            cargarExcelAutomatico();
-        });
+        window.irAVista = irAVista;
+        window.mostrarFichaExcel = mostrarFichaExcel;
+        window.actualizarEstadoTiempo = actualizarEstadoTiempo;
     </script>
 </body>
 </html>
