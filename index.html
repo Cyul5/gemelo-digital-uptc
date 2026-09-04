@@ -184,7 +184,7 @@
         <div class="info-box">
             <h3 id="info-titulo">Información del Espacio</h3>
             <div id="info-contenido">
-                <p style="color:#64748b;">Selecciona un salón para consultar la programación asignada.</p>
+                <p style="color:#64748b;">Selecciona un área para consultar la información.</p>
             </div>
             <div id="debug-info" class="debug-box">
                 <b>Estado de Carga:</b> Inicializando...
@@ -194,7 +194,16 @@
 
     <script>
         let dbHunza = {};
+        let datosGeneralesEdificio = {
+            nombre: "Edificio 30 - Aulas Hunza",
+            codigo: "30",
+            institucion: "UPTC - Sede Central Tunja",
+            uso: "Aulas de Clase y Laboratorios",
+            pisos: "5",
+            area: "Por definir"
+        };
         let aulaSeleccionada = "H-101";
+        let vistaActual = "vista-campus";
 
         const TODAS_HORAS = ["06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"];
         const TODOS_DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
@@ -203,7 +212,6 @@
             return String(texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
         }
 
-        // Expande virtualmente las celdas combinadas de Excel para no perder códigos de aula ni materias
         function descombinarCeldas(sheet) {
             if (!sheet || !sheet['!merges']) return;
             sheet['!merges'].forEach(range => {
@@ -245,30 +253,39 @@
                 badge.innerText = "⚠️ Usando Datos por Defecto";
                 badge.style.background = "#fff3cd";
                 badge.style.color = "#856404";
-                debugLog.innerHTML = "<b>Aviso:</b> No se detectó archivo `.xlsx` en el servidor HTTP.";
+                debugLog.innerHTML = "<b>Aviso:</b> No se detectó archivo `.xlsx`.";
                 inicializarDatosBase();
-                actualizarEstadoTiempo();
+                irAVista(vistaActual);
                 return;
             }
 
             try {
                 const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
-                let sheetName = workbook.SheetNames.find(n => quitarTildes(n).includes("horario") || quitarTildes(n).includes("uso") || quitarTildes(n).includes("hunza")) || workbook.SheetNames[0];
-                const sheet = workbook.Sheets[sheetName];
                 
-                descombinarCeldas(sheet);
+                // 1. Cargar Hoja 'Datos Generales'
+                let sheetGeneralesName = workbook.SheetNames.find(n => quitarTildes(n).includes("general") || quitarTildes(n).includes("datos"));
+                if (sheetGeneralesName) {
+                    const sheetGen = workbook.Sheets[sheetGeneralesName];
+                    descombinarCeldas(sheetGen);
+                    const rawGen = XLSX.utils.sheet_to_json(sheetGen, { header: 1, raw: false, defval: "" });
+                    procesarDatosGenerales(rawGen);
+                }
 
-                const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: "" });
-                procesarMatrizExcel(rawData);
+                // 2. Cargar Hoja 'Horarios de Uso'
+                let sheetHorariosName = workbook.SheetNames.find(n => quitarTildes(n).includes("horario") || quitarTildes(n).includes("uso") || quitarTildes(n).includes("hunza")) || workbook.SheetNames[0];
+                const sheetHor = workbook.Sheets[sheetHorariosName];
+                descombinarCeldas(sheetHor);
+                const rawHor = XLSX.utils.sheet_to_json(sheetHor, { header: 1, raw: false, defval: "" });
+                procesarMatrizExcel(rawHor);
 
                 badge.innerText = "🟢 Excel Sincronizado";
                 badge.style.background = "#d4edda";
                 badge.style.color = "#155724";
 
                 let cantSalones = Object.keys(dbHunza).length;
-                debugLog.innerHTML = `<b>Archivo:</b> ${nombreCargado}<br><b>Hoja:</b> ${sheetName}<br><b>Salones procesados:</b> ${cantSalones}`;
+                debugLog.innerHTML = `<b>Archivo:</b> ${nombreCargado}<br><b>Hoja Datos:</b> ${sheetGeneralesName || 'N/A'}<br><b>Hoja Horarios:</b> ${sheetHorariosName}<br><b>Salones procesados:</b> ${cantSalones}`;
 
-                actualizarEstadoTiempo();
+                irAVista(vistaActual);
             } catch (error) {
                 console.error("Error al procesar Excel:", error);
                 badge.innerText = "🔴 Error al Procesar Excel";
@@ -276,8 +293,43 @@
                 badge.style.color = "#721c24";
                 debugLog.innerHTML = `<b>Error:</b> ${error.message}`;
                 inicializarDatosBase();
-                actualizarEstadoTiempo();
+                irAVista(vistaActual);
             }
+        }
+
+        function procesarDatosGenerales(matrix) {
+            if (!matrix || matrix.length === 0) return;
+            matrix.forEach(row => {
+                if (!row || row.length < 2) return;
+                let campo = quitarTildes(row[0] || row[1] || "");
+                let valor = String(row[1] || row[2] || "").trim();
+                if (!valor) return;
+
+                if (campo.includes("nombre del edificio")) datosGeneralesEdificio.nombre = valor;
+                else if (campo.includes("codigo") || campo.includes("identificador")) datosGeneralesEdificio.codigo = valor;
+                else if (campo.includes("institucion") || campo.includes("campus")) datosGeneralesEdificio.institucion = valor;
+                else if (campo.includes("uso principal")) datosGeneralesEdificio.uso = valor;
+                else if (campo.includes("numero de pisos")) datosGeneralesEdificio.pisos = valor;
+                else if (campo.includes("area total")) datosGeneralesEdificio.area = valor;
+            });
+        }
+
+        function mostrarInformacionGeneralEdificio() {
+            document.getElementById('info-titulo').innerText = "🏢 Datos Generales del Edificio";
+            document.getElementById('info-contenido').innerHTML = `
+                <div style="line-height:1.8; font-size:14px;">
+                    <p><b>Nombre del Edificio:</b> ${datosGeneralesEdificio.nombre}</p>
+                    <p><b>Código / ID:</b> ${datosGeneralesEdificio.codigo}</p>
+                    <p><b>Institución / Campus:</b> ${datosGeneralesEdificio.institucion}</p>
+                    <p><b>Uso Principal:</b> ${datosGeneralesEdificio.uso}</p>
+                    <p><b>Número de Pisos:</b> ${datosGeneralesEdificio.pisos}</p>
+                    <p><b>Área Total Construida:</b> ${datosGeneralesEdificio.area}</p>
+                    <hr style="margin:15px 0; border:0; border-top:1px solid #eee;">
+                    <p style="font-size:12px; color:#64748b; font-style:italic;">
+                        ℹ️ Selecciona <b>"Edificio 30 (3D)"</b> o <b>"Planta 2D"</b> para interactuar con los salones y consultar sus horarios de uso específicos.
+                    </p>
+                </div>
+            `;
         }
 
         function crearEstructuraVaciaEspacio(idSVG, codigoNombre) {
@@ -333,7 +385,6 @@
             inicializarDatosBase();
             if (!matrix || matrix.length === 0) return;
 
-            // Búsqueda del encabezado real (evitando agrupadores de nivel superior)
             let headerIdx = -1;
             for (let r = 0; r < Math.min(15, matrix.length); r++) {
                 let rowStr = quitarTildes(matrix[r].join(" "));
@@ -390,7 +441,6 @@
                 let matGen = (colMateria !== -1 && row[colMateria]) ? String(row[colMateria]).trim() : "";
                 let docGen = (colDocente !== -1 && row[colDocente]) ? String(row[colDocente]).trim() : "";
 
-                // Verificar ocupación día por día
                 TODOS_DIAS.forEach(dia => {
                     let cIdx = colDiasMatriz[dia];
                     let valDia = (cIdx !== -1 && row[cIdx]) ? String(row[cIdx]).trim() : "";
@@ -402,7 +452,6 @@
                         esOcupado = true;
                         materiaAsignada = (valDia.toLowerCase() === "x" || valDia.toLowerCase() === "si") ? (matGen || "Clase Asignada") : valDia;
                     } else if (matGen && !valDia && Object.values(colDiasMatriz).every(idx => idx === -1 || !row[idx])) {
-                        // Caso especial: Actividad registrada de manera general para la franja
                         esOcupado = true;
                         materiaAsignada = matGen;
                     }
@@ -454,7 +503,9 @@
                 }
             });
 
-            if (aulaSeleccionada) mostrarFichaExcel(aulaSeleccionada);
+            if (vistaActual === 'vista-2d' && aulaSeleccionada) {
+                mostrarFichaExcel(aulaSeleccionada);
+            }
         }
 
         function mostrarFichaExcel(id) {
@@ -508,6 +559,7 @@
         }
 
         function irAVista(idVista) {
+            vistaActual = idVista;
             document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
             document.getElementById(idVista).classList.add('activa');
 
@@ -520,9 +572,14 @@
             if (idVista === 'vista-campus') {
                 document.getElementById('btn-campus').classList.add('btn-activo');
                 rutaNav.innerText = "Ubicación: Sede Central Tunja (Mapa General)";
+                mostrarInformacionGeneralEdificio();
             } else if (idVista === 'vista-3d') {
                 document.getElementById('btn-3d').classList.add('btn-activo');
                 rutaNav.innerText = "Ubicación: Edificio 30 Hunza (Modelo 3D)";
+                document.getElementById('info-titulo').innerText = "🏢 Edificio 30 - Vista Volumétrica";
+                document.getElementById('info-contenido').innerHTML = `
+                    <p style="color:#64748b;">Haz clic en cualquiera de los pisos del modelo 3D para desplegar la planta 2D interactiva y ver la disponibilidad de sus aulas.</p>
+                `;
             } else if (idVista === 'vista-2d') {
                 document.getElementById('btn-2d').classList.add('btn-activo');
                 rutaNav.innerText = "Ubicación: Edificio 30 Hunza (Planta 2D)";
