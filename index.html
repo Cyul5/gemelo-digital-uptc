@@ -8,13 +8,12 @@
     <!-- Librería SheetJS para Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-    <!-- Import Map para Three.js e IFCLoader -->
+    <!-- Import Map para Three.js y GLTFLoader (Sin WebAssembly/IFC) -->
     <script type="importmap">
     {
       "imports": {
         "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-        "web-ifc": "https://cdn.jsdelivr.net/npm/web-ifc@0.0.53/web-ifc-api.js"
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
       }
     }
     </script>
@@ -76,7 +75,7 @@
         .hotspot-edificio { fill: rgba(0, 51, 102, 0.4); stroke: #ffcc00; stroke-width: 3; cursor: pointer; }
         .hotspot-edificio:hover { fill: rgba(255, 204, 0, 0.6); stroke: #003366; }
 
-        /* Visualizador IFC 3D */
+        /* Visualizador BIM 3D (GLB) */
         .ifc-toolbar {
             display: flex; justify-content: space-between; align-items: center;
             background: #eef2f7; padding: 8px 12px; border-radius: 6px; margin-bottom: 10px;
@@ -121,7 +120,7 @@
         </div>
         <div id="btns-nav" class="nav-container">
             <button id="btn-campus" class="btn btn-secundario btn-activo" onclick="irAVista('vista-campus')">🗺️ Mapa General</button>
-            <button id="btn-3d" class="btn btn-secundario" onclick="irAVista('vista-3d')">🏢 Visualizador IFC 3D</button>
+            <button id="btn-3d" class="btn btn-secundario" onclick="irAVista('vista-3d')">🏢 Visualizador 3D Real</button>
             <button id="btn-2d" class="btn btn-secundario" onclick="irAVista('vista-2d')">📐 Planta 2D</button>
         </div>
     </header>
@@ -178,23 +177,23 @@
                 </div>
             </div>
 
-            <!-- VISTA 2: VISUALIZADOR IFC 3D -->
+            <!-- VISTA 2: VISUALIZADOR 3D (GLB) -->
             <div id="vista-3d" class="vista">
                 <h3>Visualizador BIM 3D Real (Edificio 30 - Aulas Hunza)</h3>
                 
                 <div class="ifc-toolbar">
-                    <span style="font-size:13px; color:#003366; font-weight:bold;">📦 Modelo IFC Real desde GitHub</span>
+                    <span style="font-size:13px; color:#003366; font-weight:bold;">📦 Modelo GLB Real desde GitHub</span>
                     <span id="ifc-status" style="font-size:12px; font-weight:bold; color:#003366;">
-                        <span class="loading-spinner"></span> Esperando inicialización...
+                        <span class="loading-spinner"></span> Esperando activación...
                     </span>
                 </div>
 
                 <div class="ifc-layout">
                     <div id="ifc-canvas-container"></div>
                     <div class="ifc-layers-panel">
-                        <h4>Estado del IFC</h4>
+                        <h4>Estado del Modelo</h4>
                         <div id="ifc-layers-list">
-                            <p style="color:#94a3b8; font-style:italic; font-size:12px;">Esperando activación de pestaña...</p>
+                            <p style="color:#94a3b8; font-style:italic; font-size:12px;">Cargando visor 3D...</p>
                         </div>
                     </div>
                 </div>
@@ -236,18 +235,19 @@
         </div>
     </div>
 
-    <!-- ✅ Script Módulo ES6 para Three.js e IFCLoader seguro -->
+    <!-- ✅ Script Módulo ES6 para Three.js con GLTFLoader Nativo -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        import { IFCLoader } from 'three/addons/loaders/IFCLoader.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
         let scene, camera, renderer, controls;
-        let ifcLoader = null;
+        let gltfLoader = null;
         let is3DInitialized = false;
         let yaCargado = false;
 
-        const URL_IFC = 'https://raw.githubusercontent.com/Cyul5/gemelo-digital-uptc/main/001-PRO-F2STUDIO-M3D-ARQ-001.ifc';
+        // Ruta relativa o raw de GitHub del archivo GLB
+        const URL_GLB = '001-PRO-F2STUDIO-M3D-ARQ-001.glb';
 
         function init3DViewer() {
             if (is3DInitialized) return true;
@@ -268,19 +268,19 @@
             camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 2000);
             camera.position.set(50, 50, 50);
 
-            // Renderizador
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            // Renderizador WebGL
+            renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(width, height);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.shadowMap.enabled = true;
             container.appendChild(renderer.domElement);
 
-            // Controles
+            // Controles de Órbita
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
 
             // Iluminación
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
             scene.add(ambientLight);
 
             const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
@@ -291,11 +291,11 @@
             dirLight2.position.set(-100, -50, -100);
             scene.add(dirLight2);
 
-            // Grid
+            // Rejilla base (Grid)
             const gridHelper = new THREE.GridHelper(200, 40, 0x003366, 0x334155);
             scene.add(gridHelper);
 
-            // Resize Event
+            // Evento de ajuste de tamaño
             window.addEventListener('resize', () => {
                 if (container && container.clientWidth > 0) {
                     camera.aspect = container.clientWidth / container.clientHeight;
@@ -312,15 +312,14 @@
             }
             animate();
 
-            // Configurar IFCLoader con motor WASM confiable de JSDelivr
-            ifcLoader = new IFCLoader();
-            ifcLoader.ifcManager.setWasmPath('https://cdn.jsdelivr.net/npm/web-ifc@0.0.53/');
+            // Instanciar cargador GLTF nativo
+            gltfLoader = new GLTFLoader();
 
             is3DInitialized = true;
             return true;
         }
 
-        async function cargarModeloIFCReal() {
+        function cargarModeloGLBReal() {
             if (yaCargado) return;
 
             const statusEl = document.getElementById('ifc-status');
@@ -328,92 +327,70 @@
 
             if (!init3DViewer()) return;
 
-            statusEl.innerHTML = '<span class="loading-spinner"></span> Conectando con GitHub...';
-            layersEl.innerHTML = '<p style="color:#003366; font-size:12px;">Descargando IFC...</p>';
+            statusEl.innerHTML = '<span class="loading-spinner"></span> Descargando GLB...';
+            layersEl.innerHTML = '<p style="color:#003366; font-size:12px;">Cargando geometría 3D...</p>';
 
-            try {
-                // 1. Descarga directa por Fetch en ArrayBuffer para evitar bloqueos
-                const response = await fetch(URL_IFC);
-                if (!response.ok) throw new Error(`HTTP ${response.status}: No se pudo descargar el archivo`);
+            gltfLoader.load(
+                URL_GLB,
+                (gltf) => {
+                    const model = gltf.scene;
+                    scene.add(model);
 
-                const reader = response.body.getReader();
-                const contentLength = +response.headers.get('Content-Length') || 0;
-                let receivedLength = 0;
-                let chunks = [];
+                    // Centrar cámara automáticamente en el modelo
+                    const box = new THREE.Box3().setFromObject(model);
+                    const center = box.getCenter(new THREE.Vector3());
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
 
-                while(true) {
-                    const {done, value} = await reader.read();
-                    if (done) break;
-                    chunks.push(value);
-                    receivedLength += value.length;
-                    
-                    if (contentLength) {
-                        const pct = Math.round((receivedLength / contentLength) * 100);
+                    camera.position.set(
+                        center.x + maxDim * 1.2,
+                        center.y + maxDim * 0.8,
+                        center.z + maxDim * 1.2
+                    );
+                    controls.target.copy(center);
+                    controls.update();
+
+                    statusEl.innerHTML = '✅ Modelo GLB Real Cargado';
+                    layersEl.innerHTML = `
+                        <p style="color:#2ecc71; font-weight:bold; font-size:12px;">Geometría 3D Lista</p>
+                        <p style="color:#64748b; font-size:11px;"><b>Ancho:</b> ${size.x.toFixed(1)}m</p>
+                        <p style="color:#64748b; font-size:11px;"><b>Largo:</b> ${size.z.toFixed(1)}m</p>
+                        <p style="color:#64748b; font-size:11px;"><b>Alto:</b> ${size.y.toFixed(1)}m</p>
+                    `;
+                    yaCargado = true;
+                },
+                (xhr) => {
+                    if (xhr.lengthComputable && xhr.total > 0) {
+                        const pct = Math.round((xhr.loaded / xhr.total) * 100);
                         statusEl.innerHTML = `<span class="loading-spinner"></span> Descargando: ${pct}%`;
                     } else {
-                        statusEl.innerHTML = `<span class="loading-spinner"></span> Descargando: ${(receivedLength/1024/1024).toFixed(1)} MB`;
+                        const mb = (xhr.loaded / (1024 * 1024)).toFixed(1);
+                        statusEl.innerHTML = `<span class="loading-spinner"></span> Descargando: ${mb} MB`;
                     }
+                },
+                (error) => {
+                    console.error('❌ Error al cargar GLB:', error);
+                    statusEl.innerHTML = '❌ Error al cargar el archivo GLB';
+                    layersEl.innerHTML = `<p style="color:#c0392b; font-size:11px;">Comprueba que el archivo <b>${URL_GLB}</b> exista en el repositorio.</p>`;
                 }
-
-                let chunksAll = new Uint8Array(receivedLength);
-                let position = 0;
-                for(let chunk of chunks) {
-                    chunksAll.set(chunk, position);
-                    position += chunk.length;
-                }
-
-                statusEl.innerHTML = '<span class="loading-spinner"></span> Procesando geometría 3D...';
-                layersEl.innerHTML = '<p style="color:#003366; font-size:12px;">Compilando WebAssembly...</p>';
-
-                // 2. Parsear el Buffer con web-ifc
-                const ifcModel = await ifcLoader.parse(chunksAll.buffer);
-                scene.add(ifcModel);
-
-                // 3. Ajustar cámara al centro exacto del modelo parseado
-                const box = new THREE.Box3().setFromObject(ifcModel);
-                const center = box.getCenter(new THREE.Vector3());
-                const size = box.getSize(new THREE.Vector3());
-                const maxDim = Math.max(size.x, size.y, size.z);
-
-                camera.position.set(
-                    center.x + maxDim * 1.2,
-                    center.y + maxDim * 0.8,
-                    center.z + maxDim * 1.2
-                );
-                controls.target.copy(center);
-                controls.update();
-
-                statusEl.innerHTML = '✅ Modelo IFC Real Cargado';
-                layersEl.innerHTML = `
-                    <p style="color:#2ecc71; font-weight:bold; font-size:12px;">Geometría IFC Parseada</p>
-                    <p style="color:#64748b; font-size:11px;"><b>Ancho:</b> ${size.x.toFixed(1)}m</p>
-                    <p style="color:#64748b; font-size:11px;"><b>Largo:</b> ${size.z.toFixed(1)}m</p>
-                    <p style="color:#64748b; font-size:11px;"><b>Alto:</b> ${size.y.toFixed(1)}m</p>
-                `;
-                yaCargado = true;
-
-            } catch (error) {
-                console.error('❌ Error al procesar el IFC:', error);
-                statusEl.innerHTML = '❌ Error de Carga / WASM';
-                layersEl.innerHTML = `<p style="color:#c0392b; font-size:11px; word-break:break-all;"><b>Detalle:</b> ${error.message}</p>`;
-            }
+            );
         }
 
-        // Observer para activar la vista 3D apenas el contenedor sea visible en DOM
+        // Observer para activar el visor en cuanto el contenedor tenga visibilidad en pantalla
         const container = document.getElementById('ifc-canvas-container');
         if (container) {
             const observer = new ResizeObserver(() => {
                 if (container.clientWidth > 0 && container.clientHeight > 0) {
                     if (!is3DInitialized) init3DViewer();
                     if (document.getElementById('vista-3d').classList.contains('activa')) {
-                        cargarModeloIFCReal();
+                        cargarModeloGLBReal();
                     }
                 }
             });
             observer.observe(container);
         }
 
-        window.cargarModeloIFC = cargarModeloIFCReal;
+        window.cargarModeloIFC = cargarModeloGLBReal;
     </script>
 
     <!-- Script General (Excel, Mapa, Navegación) -->
@@ -736,7 +713,7 @@
                 mostrarInformacionGeneralEdificio();
             } else if (idVista === 'vista-3d') {
                 document.getElementById('btn-3d').classList.add('btn-activo');
-                rutaNav.innerText = "Ubicación: Edificio 30 Hunza (Visualizador IFC 3D)";
+                rutaNav.innerText = "Ubicación: Edificio 30 Hunza (Visualizador 3D Real)";
                 if (window.cargarModeloIFC) {
                     window.cargarModeloIFC();
                 }
