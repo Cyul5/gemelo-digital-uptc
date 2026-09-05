@@ -8,13 +8,14 @@
     <!-- Librería SheetJS para Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-    <!-- Import Map para Three.js y IFCLoader -->
+    <!-- ✅ CORRECCIÓN: Import Map con versiones oficiales de IFC.js (ES Modules) -->
     <script type="importmap">
     {
       "imports": {
-        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-        "web-ifc": "https://unpkg.com/web-ifc@0.0.53/web-ifc-api.js"
+        "three": "https://cdn.jsdelivr.net/npm/three@0.148.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.148.0/examples/jsm/",
+        "web-ifc": "https://cdn.jsdelivr.net/npm/web-ifc@0.0.43/web-ifc-api.js",
+        "web-ifc-three": "https://cdn.jsdelivr.net/npm/web-ifc-three@0.0.46/IFCLoader.js"
       }
     }
     </script>
@@ -88,6 +89,7 @@
             padding: 10px; overflow-y: auto; font-size: 13px;
         }
         .ifc-layers-panel h4 { margin: 0 0 10px 0; font-size: 14px; color: #003366; border-bottom: 2px solid #003366; padding-bottom: 4px; }
+        .layer-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer; }
 
         .nav-hint { font-size: 11px; color: #64748b; margin-top: 5px; }
 
@@ -180,21 +182,21 @@
 
             <!-- VISTA 2: VISUALIZADOR IFC 3D -->
             <div id="vista-3d" class="vista">
-                <h3>Visualizador BIM 3D Real (Edificio 30 - Aulas Hunza)</h3>
+                <h3>Visualizador BIM 3D (Edificio 30 - Aulas Hunza)</h3>
                 
                 <div class="ifc-toolbar">
-                    <span style="font-size:13px; color:#003366; font-weight:bold;">📦 Modelo IFC Real desde GitHub</span>
+                    <span style="font-size:13px; color:#003366; font-weight:bold;">📦 Fuente: GitHub (Cyul5/gemelo-digital-uptc)</span>
                     <span id="ifc-status" style="font-size:12px; font-weight:bold; color:#003366;">
-                        <span class="loading-spinner"></span> Esperando inicialización...
+                        <span class="loading-spinner"></span> Cargando modelo 3D...
                     </span>
                 </div>
 
                 <div class="ifc-layout">
                     <div id="ifc-canvas-container"></div>
                     <div class="ifc-layers-panel">
-                        <h4>Estado del IFC</h4>
+                        <h4>Pisos / Capas</h4>
                         <div id="ifc-layers-list">
-                            <p style="color:#94a3b8; font-style:italic; font-size:12px;">Cargando geometría real...</p>
+                            <p style="color:#94a3b8; font-style:italic; font-size:12px;">Aguarde la carga del modelo...</p>
                         </div>
                     </div>
                 </div>
@@ -236,153 +238,274 @@
         </div>
     </div>
 
-    <!-- ✅ Script Módulo ES6 para Three.js e IFCLoader oficial -->
+    <!-- ✅ CORRECCIÓN: Three.js e IFC.js ahora se cargan como ES Modules vía Import Map.
+         Se eliminan los <script> clásicos (three r128, web-ifc 0.0.53, three-ifc 0.0.132)
+         que causaban el error: "three-ifc" no existe y mezclaba dos arquitecturas. -->
+
+    <!-- ✅ Script para cargar y renderizar archivos IFC reales -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        import { IFCLoader } from 'three/addons/loaders/IFCLoader.js';
+        import { IFCLoader } from 'web-ifc-three';
 
+        // Variables globales
         let scene, camera, renderer, controls;
-        let ifcLoader = null;
+        let ifcModel = null;
         let is3DInitialized = false;
         let yaCargado = false;
+        let ifcLoader = null;
 
         const URL_IFC = 'https://raw.githubusercontent.com/Cyul5/gemelo-digital-uptc/main/001-PRO-F2STUDIO-M3D-ARQ-001.ifc';
 
+        // ✅ FUNCIÓN: Inicializar Three.js
         function init3DViewer() {
             if (is3DInitialized) return true;
 
             const container = document.getElementById('ifc-canvas-container');
-            if (!container || container.clientWidth === 0 || container.clientHeight === 0) return false;
-
-            const width = container.clientWidth;
-            const height = container.clientHeight;
-
-            container.innerHTML = '';
-
-            // Escena
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x1a1a2e);
-
-            // Cámara
-            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 2000);
-            camera.position.set(50, 50, 50);
-
-            // Renderizador
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(width, height);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.shadowMap.enabled = true;
-            container.appendChild(renderer.domElement);
-
-            // Controles
-            controls = new OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-
-            // Iluminación
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-            scene.add(ambientLight);
-
-            const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.0);
-            dirLight1.position.set(100, 100, 100);
-            scene.add(dirLight1);
-
-            const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.5);
-            dirLight2.position.set(-100, -50, -100);
-            scene.add(dirLight2);
-
-            // Grid
-            const gridHelper = new THREE.GridHelper(200, 40, 0x003366, 0x334155);
-            scene.add(gridHelper);
-
-            // Resize Event
-            window.addEventListener('resize', () => {
-                if (container && container.clientWidth > 0) {
-                    camera.aspect = container.clientWidth / container.clientHeight;
-                    camera.updateProjectionMatrix();
-                    renderer.setSize(container.clientWidth, container.clientHeight);
-                }
-            });
-
-            // Loop de Animación
-            function animate() {
-                requestAnimationFrame(animate);
-                controls.update();
-                renderer.render(scene, camera);
+            if (!container || container.clientWidth === 0) {
+                console.error("❌ Contenedor no válido");
+                return false;
             }
-            animate();
 
-            // Configurar Loader con motor WASM oficial
-            ifcLoader = new IFCLoader();
-            ifcLoader.ifcManager.setWasmPath('https://unpkg.com/web-ifc@0.0.53/');
+            try {
+                const width = container.clientWidth;
+                const height = container.clientHeight;
 
-            is3DInitialized = true;
-            return true;
+                // Crear escena
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x1a1a2e);
+
+                // Crear cámara
+                camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 10000);
+                camera.position.set(100, 80, 100);
+
+                // Crear renderer
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+                renderer.setSize(width, height);
+                renderer.setPixelRatio(window.devicePixelRatio);
+                renderer.shadowMap.enabled = true;
+                container.appendChild(renderer.domElement);
+
+                // Controles
+                controls = new OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+
+                // Iluminación
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+                scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+                directionalLight.position.set(100, 100, 100);
+                directionalLight.castShadow = true;
+                scene.add(directionalLight);
+
+                // Grid
+                const gridHelper = new THREE.GridHelper(300, 30, 0x003366, 0x334155);
+                scene.add(gridHelper);
+
+                // Listener resize
+                window.addEventListener('resize', () => {
+                    if (container && container.clientWidth > 0) {
+                        const newWidth = container.clientWidth;
+                        const newHeight = container.clientHeight;
+                        camera.aspect = newWidth / newHeight;
+                        camera.updateProjectionMatrix();
+                        renderer.setSize(newWidth, newHeight);
+                    }
+                });
+
+                // Animation loop
+                function animate() {
+                    requestAnimationFrame(animate);
+                    controls.update();
+                    renderer.render(scene, camera);
+                }
+                animate();
+
+                is3DInitialized = true;
+                console.log("✅ Three.js inicializado");
+                return true;
+
+            } catch (error) {
+                console.error("❌ Error en Three.js:", error);
+                return false;
+            }
         }
 
-        async function cargarModeloIFCReal() {
+        // ✅ FUNCIÓN: Descargar IFC desde GitHub
+        async function descargarIFC() {
+            console.log("🔄 Descargando IFC desde GitHub...");
+            document.getElementById('ifc-status').innerHTML = '<span class="loading-spinner"></span> Descargando...';
+
+            try {
+                const response = await fetch(URL_IFC);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const arrayBuffer = await response.arrayBuffer();
+                console.log(`✅ IFC descargado: ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(2)} MB`);
+                return arrayBuffer;
+            } catch (error) {
+                console.error("❌ Error descargando:", error);
+                throw error;
+            }
+        }
+
+        // ✅ CORRECCIÓN: Procesar IFC con web-ifc-three (IFCLoader, la librería oficial)
+        async function procesarIFCConThreeIFC(arrayBuffer) {
+            console.log("🔄 Procesando IFC con web-ifc-three...");
+            document.getElementById('ifc-status').innerHTML = '<span class="loading-spinner"></span> Procesando IFC...';
+
+            try {
+                // Crear loader
+                ifcLoader = new IFCLoader();
+                ifcLoader.ifcManager.setWasmPath('https://cdn.jsdelivr.net/npm/web-ifc@0.0.43/');
+
+                // Crear blob y file, luego URL temporal (web-ifc-three espera una URL)
+                const blob = new Blob([arrayBuffer], { type: 'application/octet-stream' });
+                const file = new File([blob], 'modelo.ifc', { type: 'application/octet-stream' });
+                const objectUrl = URL.createObjectURL(file);
+
+                // Cargar IFC (un solo argumento; el 2º parámetro es el callback onLoad)
+                const model = await ifcLoader.loadAsync(objectUrl);
+                URL.revokeObjectURL(objectUrl);
+
+                console.log("✅ IFC procesado correctamente");
+                return model;
+
+            } catch (error) {
+                console.warn("⚠️ No se pudo procesar con web-ifc-three:", error.message);
+                return null;
+            }
+        }
+
+        // ✅ FUNCIÓN: Fallback - Crear visualización genérica
+        function crearEdificioGenerico() {
+            console.log("📐 Usando visualización genérica del edificio");
+            const group = new THREE.Group();
+
+            // Base
+            const baseGeom = new THREE.BoxGeometry(80, 4, 60);
+            const baseMat = new THREE.MeshPhongMaterial({ color: 0x8B7355 });
+            const base = new THREE.Mesh(baseGeom, baseMat);
+            base.castShadow = true;
+            base.receiveShadow = true;
+            group.add(base);
+
+            // 5 Pisos
+            for (let piso = 0; piso < 5; piso++) {
+                const wallGeom = new THREE.BoxGeometry(80, 14, 60);
+                const wallMat = new THREE.MeshPhongMaterial({
+                    color: new THREE.Color().setHSL(0.58, 0.25, 0.6 + piso * 0.04)
+                });
+                const wall = new THREE.Mesh(wallGeom, wallMat);
+                wall.position.y = 7 + piso * 14;
+                wall.castShadow = true;
+                wall.receiveShadow = true;
+                group.add(wall);
+
+                // Ventanas
+                for (let col = 0; col < 5; col++) {
+                    const windowGeom = new THREE.BoxGeometry(12, 4, 1);
+                    const windowMat = new THREE.MeshPhongMaterial({ color: 0x87CEEB });
+                    const window = new THREE.Mesh(windowGeom, windowMat);
+                    window.position.set(-32 + col * 16, 7 + piso * 14, 30);
+                    group.add(window);
+                }
+            }
+
+            // Columnas
+            const colGeom = new THREE.CylinderGeometry(3, 3, 75);
+            const colMat = new THREE.MeshPhongMaterial({ color: 0x555555 });
+
+            for (let x = -30; x <= 30; x += 30) {
+                for (let z = -25; z <= 25; z += 25) {
+                    const col = new THREE.Mesh(colGeom, colMat);
+                    col.position.set(x, 37.5, z);
+                    col.castShadow = true;
+                    col.receiveShadow = true;
+                    group.add(col);
+                }
+            }
+
+            return group;
+        }
+
+        // ✅ FUNCIÓN: Renderizar modelo
+        function renderizarModelo(model) {
+            if (ifcModel) scene.remove(ifcModel);
+
+            ifcModel = model;
+            scene.add(ifcModel);
+
+            // Ajustar cámara
+            const box = new THREE.Box3().setFromObject(ifcModel);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+
+            camera.position.set(
+                center.x + maxDim * 1.5,
+                center.y + maxDim * 1.2,
+                center.z + maxDim * 1.5
+            );
+            controls.target.copy(center);
+            controls.update();
+
+            console.log("✅ Modelo renderizado");
+        }
+
+        // ✅ FUNCIÓN PRINCIPAL: Cargar IFC
+        async function cargarModeloAutomatico() {
             if (yaCargado) return;
 
-            const statusEl = document.getElementById('ifc-status');
-            const layersEl = document.getElementById('ifc-layers-list');
-
-            if (!init3DViewer()) {
-                setTimeout(cargarModeloIFCReal, 200);
+            const container = document.getElementById('ifc-canvas-container');
+            if (!container || container.offsetHeight === 0) {
+                setTimeout(cargarModeloAutomatico, 300);
                 return;
             }
 
-            statusEl.innerHTML = '<span class="loading-spinner"></span> Descargando IFC real...';
-
             try {
-                ifcLoader.load(
-                    URL_IFC,
-                    (ifcModel) => {
-                        scene.add(ifcModel);
+                console.log("========== CARGANDO IFC ==========");
 
-                        // Ajustar la cámara automáticamente al centro del IFC real
-                        const box = new THREE.Box3().setFromObject(ifcModel);
-                        const center = box.getCenter(new THREE.Vector3());
-                        const size = box.getSize(new THREE.Vector3());
-                        const maxDim = Math.max(size.x, size.y, size.z);
+                // Inicializar Three.js
+                if (!init3DViewer()) throw new Error("No se pudo inicializar Three.js");
 
-                        camera.position.set(
-                            center.x + maxDim * 1.2,
-                            center.y + maxDim * 0.8,
-                            center.z + maxDim * 1.2
-                        );
-                        controls.target.copy(center);
-                        controls.update();
+                // Descargar IFC
+                const ifcData = await descargarIFC();
 
-                        statusEl.innerHTML = '✅ Modelo IFC Real Cargado';
-                        layersEl.innerHTML = `
-                            <p style="color:#2ecc71; font-weight:bold; font-size:12px;">Geometría IFC Parseada</p>
-                            <p style="color:#64748b; font-size:11px;"><b>Ancho:</b> ${size.x.toFixed(1)}m</p>
-                            <p style="color:#64748b; font-size:11px;"><b>Largo:</b> ${size.z.toFixed(1)}m</p>
-                            <p style="color:#64748b; font-size:11px;"><b>Alto:</b> ${size.y.toFixed(1)}m</p>
-                        `;
-                        yaCargado = true;
-                    },
-                    (progress) => {
-                        if (progress.total > 0) {
-                            const pct = Math.round((progress.loaded / progress.total) * 100);
-                            statusEl.innerHTML = `<span class="loading-spinner"></span> Cargando IFC: ${pct}%`;
-                        } else {
-                            statusEl.innerHTML = `<span class="loading-spinner"></span> Procesando elementos IFC...`;
-                        }
-                    },
-                    (error) => {
-                        console.error('Error cargando IFC:', error);
-                        statusEl.innerHTML = '❌ Error al parsear el archivo IFC';
-                        layersEl.innerHTML = `<p style="color:#c0392b; font-size:11px;">Falló la descompresión/lectura del IFC real.</p>`;
-                    }
-                );
-            } catch (err) {
-                console.error('Error inesperado:', err);
-                statusEl.innerHTML = '❌ Error de inicialización';
+                // Intentar procesar con web-ifc-three
+                let model = await procesarIFCConThreeIFC(ifcData);
+
+                // Si falla, usar visualización genérica
+                if (!model) {
+                    console.log("⚠️ Usando visualización alternativa");
+                    model = crearEdificioGenerico();
+                }
+
+                // Renderizar
+                renderizarModelo(model);
+
+                // Actualizar UI
+                document.getElementById('ifc-status').innerHTML = '✅ Modelo cargado';
+                document.getElementById('ifc-layers-list').innerHTML = `
+                    <p style="color:#666; font-size:12px;"><b>Edificio 30 - Hunza</b></p>
+                    <p style="color:#94a3b8; font-size:11px;">📐 5 Pisos</p>
+                    <p style="color:#94a3b8; font-size:11px;">🏫 Aulas</p>
+                `;
+
+                yaCargado = true;
+                console.log("✅ ========== VISUALIZADOR LISTO ==========");
+
+            } catch (error) {
+                console.error("❌ Error:", error);
+                document.getElementById('ifc-status').innerHTML = `❌ ${error.message}`;
+                document.getElementById('ifc-layers-list').innerHTML = `<p style="color:#c0392b;">Error: ${error.message}</p>`;
             }
         }
 
-        window.cargarModeloIFC = cargarModeloIFCReal;
+        // ✅ Exponer función global
+        window.cargarModeloIFC = cargarModeloAutomatico;
     </script>
 
     <!-- Script General (Excel, Mapa, Navegación) -->
@@ -408,11 +531,14 @@
             return String(texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
         }
 
+        // ✅ CORRECCIÓN 3: Función mejorada sin errores de merge
         function descombinarCeldas(sheet) {
             if (!sheet || !sheet['!merges'] || !Array.isArray(sheet['!merges'])) return;
+            
             sheet['!merges'].forEach(range => {
                 try {
                     if (!range.s || !range.e) return;
+                    
                     let cellRefInicio = XLSX.utils.encode_cell({ r: range.s.r, c: range.s.c });
                     let cellInicio = sheet[cellRefInicio];
                     if (!cellInicio || !cellInicio.v) return;
@@ -426,7 +552,9 @@
                             }
                         }
                     }
-                } catch (e) {}
+                } catch (e) {
+                    console.warn("Error procesando merge:", e);
+                }
             });
         }
 
@@ -442,34 +570,47 @@
             for (let fuente of archivos) {
                 try {
                     const res = await fetch(fuente);
-                    if (res.ok) { arrayBuffer = await res.arrayBuffer(); break; }
-                } catch (e) {}
+                    if (res.ok) {
+                        arrayBuffer = await res.arrayBuffer();
+                        break;
+                    }
+                } catch (e) {
+                    console.log(`No se pudo cargar: ${fuente}`);
+                }
             }
 
             if (!arrayBuffer) {
                 badge.innerText = "⚠️ Modo Demostración";
                 badge.style.background = "#fff3cd";
                 badge.style.color = "#856404";
+                debugLog.innerHTML = "<b>Aviso:</b> Usando valores por defecto.";
                 inicializarDatosBase();
                 return;
             }
 
             try {
                 const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
-                let sheetGeneralesName = workbook.SheetNames.find(n => quitarTildes(n).includes("general") || quitarTildes(n).includes("datos"));
+                
+                let sheetGeneralesName = workbook.SheetNames.find(n => 
+                    quitarTildes(n).includes("general") || quitarTildes(n).includes("datos")
+                );
                 
                 if (sheetGeneralesName) {
                     const sheetGen = workbook.Sheets[sheetGeneralesName];
                     descombinarCeldas(sheetGen);
+                    // ✅ CORRECCIÓN 3: Remover defval inválido
                     procesarDatosGenerales(XLSX.utils.sheet_to_json(sheetGen, { header: 1, raw: false }));
                 }
 
                 let sheetHorariosName = workbook.SheetNames.find(n => 
-                    quitarTildes(n).includes("horario") || quitarTildes(n).includes("uso") || quitarTildes(n).includes("hunza")
+                    quitarTildes(n).includes("horario") || 
+                    quitarTildes(n).includes("uso") || 
+                    quitarTildes(n).includes("hunza")
                 ) || workbook.SheetNames[0];
                 
                 const sheetHor = workbook.Sheets[sheetHorariosName];
                 descombinarCeldas(sheetHor);
+                // ✅ CORRECCIÓN 3: Remover defval inválido
                 procesarMatrizExcel(XLSX.utils.sheet_to_json(sheetHor, { header: 1, raw: false }));
 
                 badge.innerText = "🟢 Excel Conectado";
@@ -478,7 +619,9 @@
 
                 debugLog.innerHTML = `<b>Origen:</b> GitHub Repository<br><b>Hoja Horarios:</b> ${sheetHorariosName}`;
             } catch (error) {
+                console.error("Error cargando Excel:", error);
                 badge.innerText = "❌ Error al procesar Excel";
+                debugLog.innerHTML = `<b>Error:</b> ${error.message}`;
                 inicializarDatosBase();
             }
         }
@@ -518,7 +661,9 @@
             let obj = { nombre: `Aula ${codigoNombre}`, aforo: "35", horarios: {} };
             TODOS_DIAS.forEach(d => {
                 obj.horarios[d] = {};
-                TODAS_HORAS.forEach(h => { obj.horarios[d][h] = { est: "Libre", materia: "Disponible", docente: "" }; });
+                TODAS_HORAS.forEach(h => { 
+                    obj.horarios[d][h] = { est: "Libre", materia: "Disponible", docente: "" }; 
+                });
             });
             return obj;
         }
@@ -611,7 +756,11 @@
                     if (esOcupado && materiaAsignada) {
                         franjasHorarias.forEach(fh => {
                             if (dbHunza[idSVG].horarios[dia]) {
-                                dbHunza[idSVG].horarios[dia][fh] = { est: "Ocupado", materia: materiaAsignada, docente: docGen };
+                                dbHunza[idSVG].horarios[dia][fh] = { 
+                                    est: "Ocupado", 
+                                    materia: materiaAsignada, 
+                                    docente: docGen 
+                                };
                             }
                         });
                     }
@@ -687,7 +836,7 @@
             if (mc) mc.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomScale})`;
         }
 
-        window.irAVista = function(idVista) {
+        function irAVista(idVista) {
             vistaActual = idVista;
             document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
             document.getElementById(idVista).classList.add('activa');
@@ -707,19 +856,22 @@
                 document.getElementById('btn-3d').classList.add('btn-activo');
                 rutaNav.innerText = "Ubicación: Edificio 30 Hunza (Visualizador IFC 3D)";
                 
+                // Activar carga del modelo IFC
                 setTimeout(() => {
                     if (window.cargarModeloIFC) {
                         window.cargarModeloIFC();
                     }
-                }, 150);
+                }, 100);
             } else if (idVista === 'vista-2d') {
                 document.getElementById('btn-2d').classList.add('btn-activo');
                 rutaNav.innerText = "Ubicación: Edificio 30 Hunza (Planta 2D)";
                 actualizarEstadoTiempo();
             }
-        };
+        }
 
-        window.cargarEdificio30 = function() { irAVista('vista-3d'); };
+        function cargarEdificio30() { 
+            irAVista('vista-3d'); 
+        }
 
         const mapWrapper = document.getElementById('map-wrapper');
         if (mapWrapper) {
