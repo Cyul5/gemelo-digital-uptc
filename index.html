@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UPTC - Gemelo Digital Sede Central Tunja</title>
 
-    <!-- Librería SheetJS para Excel -->
+    <!-- Librería SheetJS para lectura de Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-    <!-- Import Map para Three.js y GLTFLoader (Sin WebAssembly/IFC) -->
+    <!-- Import Map para Three.js y GLTFLoader Nativo -->
     <script type="importmap">
     {
       "imports": {
@@ -83,7 +83,7 @@
         .ifc-layout { display: flex; gap: 10px; height: 440px; position: relative; }
         #ifc-canvas-container { flex: 1; height: 100%; background: #1a1a2e; border-radius: 8px; overflow: hidden; position: relative; }
         .ifc-layers-panel {
-            width: 200px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;
+            width: 220px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;
             padding: 10px; overflow-y: auto; font-size: 13px;
         }
         .ifc-layers-panel h4 { margin: 0 0 10px 0; font-size: 14px; color: #003366; border-bottom: 2px solid #003366; padding-bottom: 4px; }
@@ -177,7 +177,7 @@
                 </div>
             </div>
 
-            <!-- VISTA 2: VISUALIZADOR 3D (GLB) -->
+            <!-- VISTA 2: VISUALIZADOR 3D (GLB) CON CAPAS -->
             <div id="vista-3d" class="vista">
                 <h3>Visualizador BIM 3D Real (Edificio 30 - Aulas Hunza)</h3>
                 
@@ -191,7 +191,7 @@
                 <div class="ifc-layout">
                     <div id="ifc-canvas-container"></div>
                     <div class="ifc-layers-panel">
-                        <h4>Estado del Modelo</h4>
+                        <h4>Capas / Elementos</h4>
                         <div id="ifc-layers-list">
                             <p style="color:#94a3b8; font-style:italic; font-size:12px;">Cargando visor 3D...</p>
                         </div>
@@ -235,7 +235,7 @@
         </div>
     </div>
 
-    <!-- ✅ Script Módulo ES6 para Three.js con GLTFLoader Nativo -->
+    <!-- Script Módulo ES6 para Three.js, GLTFLoader Nativo y Lectura de Capas -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -246,7 +246,6 @@
         let is3DInitialized = false;
         let yaCargado = false;
 
-        // Ruta relativa o raw de GitHub del archivo GLB
         const URL_GLB = '001-PRO-F2STUDIO-M3D-ARQ-001.glb';
 
         function init3DViewer() {
@@ -260,26 +259,21 @@
 
             container.innerHTML = '';
 
-            // Escena
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x1a1a2e);
 
-            // Cámara
             camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 2000);
             camera.position.set(50, 50, 50);
 
-            // Renderizador WebGL
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(width, height);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.shadowMap.enabled = true;
             container.appendChild(renderer.domElement);
 
-            // Controles de Órbita
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
 
-            // Iluminación
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
             scene.add(ambientLight);
 
@@ -291,11 +285,9 @@
             dirLight2.position.set(-100, -50, -100);
             scene.add(dirLight2);
 
-            // Rejilla base (Grid)
             const gridHelper = new THREE.GridHelper(200, 40, 0x003366, 0x334155);
             scene.add(gridHelper);
 
-            // Evento de ajuste de tamaño
             window.addEventListener('resize', () => {
                 if (container && container.clientWidth > 0) {
                     camera.aspect = container.clientWidth / container.clientHeight;
@@ -304,7 +296,6 @@
                 }
             });
 
-            // Loop de Animación
             function animate() {
                 requestAnimationFrame(animate);
                 controls.update();
@@ -312,7 +303,6 @@
             }
             animate();
 
-            // Instanciar cargador GLTF nativo
             gltfLoader = new GLTFLoader();
 
             is3DInitialized = true;
@@ -328,7 +318,7 @@
             if (!init3DViewer()) return;
 
             statusEl.innerHTML = '<span class="loading-spinner"></span> Descargando GLB...';
-            layersEl.innerHTML = '<p style="color:#003366; font-size:12px;">Cargando geometría 3D...</p>';
+            layersEl.innerHTML = '<p style="color:#003366; font-size:12px;">Leyendo capas...</p>';
 
             gltfLoader.load(
                 URL_GLB,
@@ -336,7 +326,7 @@
                     const model = gltf.scene;
                     scene.add(model);
 
-                    // Centrar cámara automáticamente en el modelo
+                    // 1. Centrar cámara en el modelo
                     const box = new THREE.Box3().setFromObject(model);
                     const center = box.getCenter(new THREE.Vector3());
                     const size = box.getSize(new THREE.Vector3());
@@ -351,12 +341,49 @@
                     controls.update();
 
                     statusEl.innerHTML = '✅ Modelo GLB Real Cargado';
-                    layersEl.innerHTML = `
-                        <p style="color:#2ecc71; font-weight:bold; font-size:12px;">Geometría 3D Lista</p>
-                        <p style="color:#64748b; font-size:11px;"><b>Ancho:</b> ${size.x.toFixed(1)}m</p>
-                        <p style="color:#64748b; font-size:11px;"><b>Largo:</b> ${size.z.toFixed(1)}m</p>
-                        <p style="color:#64748b; font-size:11px;"><b>Alto:</b> ${size.y.toFixed(1)}m</p>
-                    `;
+
+                    // 2. Extraer y mapear capas/elementos del modelo GLB
+                    const objetosPorCapa = new Map();
+
+                    model.traverse((child) => {
+                        if (child.isMesh) {
+                            let nombreCapa = child.name || child.parent?.name || 'Elementos Varios';
+                            nombreCapa = nombreCapa.replace(/^Ifc/, '').replace(/_\d+$/, '');
+
+                            if (!objetosPorCapa.has(nombreCapa)) {
+                                objetosPorCapa.set(nombreCapa, []);
+                            }
+                            objetosPorCapa.get(nombreCapa).push(child);
+                        }
+                    });
+
+                    // 3. Generar la lista interactiva de capas en el panel
+                    layersEl.innerHTML = '<h4>Capas / Elementos</h4>';
+
+                    if (objetosPorCapa.size === 0) {
+                        layersEl.innerHTML += '<p style="font-size:11px; color:#64748b;">No se detectaron capas separadas.</p>';
+                    } else {
+                        objetosPorCapa.forEach((meshes, nombreCapa) => {
+                            const layerRow = document.createElement('div');
+                            layerRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:12px;';
+
+                            const checkboxId = `layer-${nombreCapa.replace(/\s+/g, '-')}`;
+                            layerRow.innerHTML = `
+                                <input type="checkbox" id="${checkboxId}" checked style="cursor:pointer;">
+                                <label for="${checkboxId}" style="cursor:pointer; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${nombreCapa}">
+                                    👁️ ${nombreCapa} (${meshes.length})
+                                </label>
+                            `;
+
+                            layersEl.appendChild(layerRow);
+
+                            const checkbox = layerRow.querySelector('input');
+                            checkbox.addEventListener('change', (e) => {
+                                meshes.forEach(mesh => { mesh.visible = e.target.checked; });
+                            });
+                        });
+                    }
+
                     yaCargado = true;
                 },
                 (xhr) => {
@@ -376,7 +403,6 @@
             );
         }
 
-        // Observer para activar el visor en cuanto el contenedor tenga visibilidad en pantalla
         const container = document.getElementById('ifc-canvas-container');
         if (container) {
             const observer = new ResizeObserver(() => {
