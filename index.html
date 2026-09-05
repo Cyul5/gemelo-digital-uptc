@@ -8,18 +8,6 @@
     <!-- Librería SheetJS para Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-    <!-- ✅ CORRECCIÓN 1: Import Map corregido con URLs válidas -->
-    <script type="importmap">
-    {
-      "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
-        "web-ifc": "https://cdn.jsdelivr.net/npm/web-ifc@0.0.51/web-ifc-api.js",
-        "web-ifc-three": "https://cdn.jsdelivr.net/npm/web-ifc-three@0.0.126/web-ifc-three.bundled.js"
-      }
-    }
-    </script>
-
     <style>
         * { box-sizing: border-box; }
         body {
@@ -89,7 +77,6 @@
             padding: 10px; overflow-y: auto; font-size: 13px;
         }
         .ifc-layers-panel h4 { margin: 0 0 10px 0; font-size: 14px; color: #003366; border-bottom: 2px solid #003366; padding-bottom: 4px; }
-        .layer-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer; }
 
         .nav-hint { font-size: 11px; color: #64748b; margin-top: 5px; }
 
@@ -238,15 +225,12 @@
         </div>
     </div>
 
-    <!-- ✅ Three.js desde CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/three@r128/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/controls/OrbitControls.js"></script>
-    
-    <!-- ✅ IFC.js - Librería oficial para leer archivos IFC -->
-    <script async src="https://cdn.jsdelivr.net/npm/web-ifc@0.0.53/web-ifc-api.js"></script>
-    <script async src="https://cdn.jsdelivr.net/npm/three-ifc@0.0.132/index.umd.js"></script>
+    <!-- ✅ Carga secuencial y síncrona de Three.js y dependencias -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web-ifc@0.0.53/web-ifc-api.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three-ifc@0.0.132/index.umd.js"></script>
 
-    <!-- ✅ Script para cargar y renderizar archivos IFC reales -->
     <script>
         // Variables globales
         let scene, camera, renderer, controls;
@@ -261,15 +245,23 @@
         function init3DViewer() {
             if (is3DInitialized) return true;
 
+            if (typeof THREE === 'undefined') {
+                console.error("❌ Three.js no se ha cargado en el navegador.");
+                return false;
+            }
+
             const container = document.getElementById('ifc-canvas-container');
-            if (!container || container.clientWidth === 0) {
-                console.error("❌ Contenedor no válido");
+            if (!container || container.clientWidth === 0 || container.clientHeight === 0) {
+                console.warn("⚠️ El contenedor 3D aún no tiene dimensiones visibles.");
                 return false;
             }
 
             try {
                 const width = container.clientWidth;
                 const height = container.clientHeight;
+
+                // Limpiar contenido anterior
+                container.innerHTML = '';
 
                 // Crear escena
                 scene = new THREE.Scene();
@@ -286,10 +278,12 @@
                 renderer.shadowMap.enabled = true;
                 container.appendChild(renderer.domElement);
 
-                // Controles
-                controls = new THREE.OrbitControls(camera, renderer.domElement);
-                controls.enableDamping = true;
-                controls.dampingFactor = 0.05;
+                // Controles OrbitControls
+                if (typeof THREE.OrbitControls === 'function') {
+                    controls = new THREE.OrbitControls(camera, renderer.domElement);
+                    controls.enableDamping = true;
+                    controls.dampingFactor = 0.05;
+                }
 
                 // Iluminación
                 const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -300,11 +294,11 @@
                 directionalLight.castShadow = true;
                 scene.add(directionalLight);
 
-                // Grid
+                // Grid Helper
                 const gridHelper = new THREE.GridHelper(300, 30, 0x003366, 0x334155);
                 scene.add(gridHelper);
 
-                // Listener resize
+                // Resize listener
                 window.addEventListener('resize', () => {
                     if (container && container.clientWidth > 0) {
                         const newWidth = container.clientWidth;
@@ -315,16 +309,16 @@
                     }
                 });
 
-                // Animation loop
+                // Animation Loop
                 function animate() {
                     requestAnimationFrame(animate);
-                    controls.update();
+                    if (controls) controls.update();
                     renderer.render(scene, camera);
                 }
                 animate();
 
                 is3DInitialized = true;
-                console.log("✅ Three.js inicializado");
+                console.log("✅ Three.js inicializado con éxito");
                 return true;
 
             } catch (error) {
@@ -353,26 +347,21 @@
 
         // ✅ FUNCIÓN: Procesar IFC con three-ifc
         async function procesarIFCConThreeIFC(arrayBuffer) {
-            console.log("🔄 Procesando IFC con three-ifc...");
+            console.log("🔄 Procesando IFC...");
             document.getElementById('ifc-status').innerHTML = '<span class="loading-spinner"></span> Procesando IFC...';
 
             try {
-                // Esperar a que three-ifc esté disponible
                 if (typeof IFCLoader === 'undefined') {
-                    throw new Error("three-ifc no está cargado aún");
+                    throw new Error("three-ifc no está disponible aún");
                 }
 
-                // Crear loader
                 ifcLoader = new IFCLoader();
                 ifcLoader.ifcManager.setWasmPath('https://cdn.jsdelivr.net/npm/web-ifc@0.0.53/');
 
-                // Crear blob y file
                 const blob = new Blob([arrayBuffer], { type: 'application/octet-stream' });
                 const file = new File([blob], 'modelo.ifc', { type: 'application/octet-stream' });
 
-                // Cargar IFC
                 const model = await ifcLoader.loadAsync(file, true);
-                
                 console.log("✅ IFC procesado correctamente");
                 return model;
 
@@ -387,15 +376,11 @@
             console.log("📐 Usando visualización genérica del edificio");
             const group = new THREE.Group();
 
-            // Base
             const baseGeom = new THREE.BoxGeometry(80, 4, 60);
             const baseMat = new THREE.MeshPhongMaterial({ color: 0x8B7355 });
             const base = new THREE.Mesh(baseGeom, baseMat);
-            base.castShadow = true;
-            base.receiveShadow = true;
             group.add(base);
 
-            // 5 Pisos
             for (let piso = 0; piso < 5; piso++) {
                 const wallGeom = new THREE.BoxGeometry(80, 14, 60);
                 const wallMat = new THREE.MeshPhongMaterial({
@@ -403,31 +388,14 @@
                 });
                 const wall = new THREE.Mesh(wallGeom, wallMat);
                 wall.position.y = 7 + piso * 14;
-                wall.castShadow = true;
-                wall.receiveShadow = true;
                 group.add(wall);
 
-                // Ventanas
                 for (let col = 0; col < 5; col++) {
                     const windowGeom = new THREE.BoxGeometry(12, 4, 1);
                     const windowMat = new THREE.MeshPhongMaterial({ color: 0x87CEEB });
                     const window = new THREE.Mesh(windowGeom, windowMat);
                     window.position.set(-32 + col * 16, 7 + piso * 14, 30);
                     group.add(window);
-                }
-            }
-
-            // Columnas
-            const colGeom = new THREE.CylinderGeometry(3, 3, 75);
-            const colMat = new THREE.MeshPhongMaterial({ color: 0x555555 });
-
-            for (let x = -30; x <= 30; x += 30) {
-                for (let z = -25; z <= 25; z += 25) {
-                    const col = new THREE.Mesh(colGeom, colMat);
-                    col.position.set(x, 37.5, z);
-                    col.castShadow = true;
-                    col.receiveShadow = true;
-                    group.add(col);
                 }
             }
 
@@ -441,7 +409,6 @@
             ifcModel = model;
             scene.add(ifcModel);
 
-            // Ajustar cámara
             const box = new THREE.Box3().setFromObject(ifcModel);
             const center = box.getCenter(new THREE.Vector3());
             const size = box.getSize(new THREE.Vector3());
@@ -452,8 +419,10 @@
                 center.y + maxDim * 1.2,
                 center.z + maxDim * 1.5
             );
-            controls.target.copy(center);
-            controls.update();
+            if (controls) {
+                controls.target.copy(center);
+                controls.update();
+            }
 
             console.log("✅ Modelo renderizado");
         }
@@ -463,33 +432,26 @@
             if (yaCargado) return;
 
             const container = document.getElementById('ifc-canvas-container');
-            if (!container || container.offsetHeight === 0) {
-                setTimeout(cargarModeloAutomatico, 300);
+            if (!container || container.clientWidth === 0 || container.clientHeight === 0) {
+                setTimeout(cargarModeloAutomatico, 200);
                 return;
             }
 
             try {
-                console.log("========== CARGANDO IFC ==========");
+                if (!init3DViewer()) {
+                    setTimeout(cargarModeloAutomatico, 200);
+                    return;
+                }
 
-                // Inicializar Three.js
-                if (!init3DViewer()) throw new Error("No se pudo inicializar Three.js");
-
-                // Descargar IFC
                 const ifcData = await descargarIFC();
-
-                // Intentar procesar con three-ifc
                 let model = await procesarIFCConThreeIFC(ifcData);
 
-                // Si falla, usar visualización genérica
                 if (!model) {
-                    console.log("⚠️ Usando visualización alternativa");
                     model = crearEdificioGenerico();
                 }
 
-                // Renderizar
                 renderizarModelo(model);
 
-                // Actualizar UI
                 document.getElementById('ifc-status').innerHTML = '✅ Modelo cargado';
                 document.getElementById('ifc-layers-list').innerHTML = `
                     <p style="color:#666; font-size:12px;"><b>Edificio 30 - Hunza</b></p>
@@ -498,7 +460,6 @@
                 `;
 
                 yaCargado = true;
-                console.log("✅ ========== VISUALIZADOR LISTO ==========");
 
             } catch (error) {
                 console.error("❌ Error:", error);
@@ -507,7 +468,6 @@
             }
         }
 
-        // ✅ Exponer función global
         window.cargarModeloIFC = cargarModeloAutomatico;
     </script>
 
@@ -534,7 +494,6 @@
             return String(texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
         }
 
-        // ✅ CORRECCIÓN 3: Función mejorada sin errores de merge
         function descombinarCeldas(sheet) {
             if (!sheet || !sheet['!merges'] || !Array.isArray(sheet['!merges'])) return;
             
@@ -601,7 +560,6 @@
                 if (sheetGeneralesName) {
                     const sheetGen = workbook.Sheets[sheetGeneralesName];
                     descombinarCeldas(sheetGen);
-                    // ✅ CORRECCIÓN 3: Remover defval inválido
                     procesarDatosGenerales(XLSX.utils.sheet_to_json(sheetGen, { header: 1, raw: false }));
                 }
 
@@ -613,7 +571,6 @@
                 
                 const sheetHor = workbook.Sheets[sheetHorariosName];
                 descombinarCeldas(sheetHor);
-                // ✅ CORRECCIÓN 3: Remover defval inválido
                 procesarMatrizExcel(XLSX.utils.sheet_to_json(sheetHor, { header: 1, raw: false }));
 
                 badge.innerText = "🟢 Excel Conectado";
@@ -859,12 +816,11 @@
                 document.getElementById('btn-3d').classList.add('btn-activo');
                 rutaNav.innerText = "Ubicación: Edificio 30 Hunza (Visualizador IFC 3D)";
                 
-                // Activar carga del modelo IFC
                 setTimeout(() => {
                     if (window.cargarModeloIFC) {
                         window.cargarModeloIFC();
                     }
-                }, 100);
+                }, 150);
             } else if (idVista === 'vista-2d') {
                 document.getElementById('btn-2d').classList.add('btn-activo');
                 rutaNav.innerText = "Ubicación: Edificio 30 Hunza (Planta 2D)";
