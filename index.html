@@ -290,7 +290,11 @@
             container.appendChild(renderer.domElement);
 
             controls = new OrbitControls(camera, renderer.domElement);
+            
+            // CONFIGURACIÓN DE SUAVIZADO Y VELOCIDAD DE ZOOM
             controls.enableDamping = true;
+            controls.dampingFactor = 0.05; // Movimiento fluido
+            controls.zoomSpeed = 0.35;     // Reduce la sensibilidad brusca del scroll
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
             scene.add(ambientLight);
@@ -312,7 +316,7 @@
 
             function animate() {
                 requestAnimationFrame(animate);
-                controls.update();
+                controls.update(); // Necesario para el efecto de damping
                 renderer.render(scene, camera);
             }
             animate();
@@ -338,15 +342,15 @@
                     const model = gltf.scene;
                     scene.add(model);
 
-                    // 1. Calcular el tamaño real y centro de la geometría
+                    // 1. Calcular el tamaño real y centro del objeto
                     const box = new THREE.Box3().setFromObject(model);
                     const center = box.getCenter(new THREE.Vector3());
                     const size = box.getSize(new THREE.Vector3());
                     const maxDim = Math.max(size.x, size.y, size.z) || 50;
 
-                    // 2. AJUSTE CRÍTICO: Recalcular frustum de cámara para evitar clipping
-                    camera.near = Math.max(0.01, maxDim / 500);
-                    camera.far = maxDim * 50;
+                    // 2. Ajuste progresivo del plano de visión (Cámara)
+                    camera.near = Math.max(0.1, maxDim / 1000);
+                    camera.far = maxDim * 100;
                     camera.position.set(
                         center.x + maxDim * 1.2,
                         center.y + maxDim * 0.8,
@@ -354,15 +358,15 @@
                     );
                     camera.updateProjectionMatrix();
 
-                    // 3. Limitar zoom en OrbitControls para no perder de vista el objeto
+                    // 3. Rangos de zoom proporcionales y graduales
                     controls.target.copy(center);
-                    controls.minDistance = maxDim * 0.01; // Evita atravesar la malla
-                    controls.maxDistance = maxDim * 8;    // Evita alejarse al infinito
+                    controls.minDistance = maxDim * 0.05; // Zoom gradual de cerca
+                    controls.maxDistance = maxDim * 5;    // Zoom gradual de lejos
                     controls.update();
 
                     statusEl.innerHTML = '🟢 Modelo GLB Cargado';
 
-                    // 4. Mapeo de capas del modelo
+                    // 4. Mapeo de capas
                     const objetosPorCapa = new Map();
                     model.traverse((child) => {
                         if (child.isMesh) {
