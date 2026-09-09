@@ -338,21 +338,31 @@
                     const model = gltf.scene;
                     scene.add(model);
 
+                    // 1. Calcular el tamaño real y centro de la geometría
                     const box = new THREE.Box3().setFromObject(model);
                     const center = box.getCenter(new THREE.Vector3());
                     const size = box.getSize(new THREE.Vector3());
-                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const maxDim = Math.max(size.x, size.y, size.z) || 50;
 
+                    // 2. AJUSTE CRÍTICO: Recalcular frustum de cámara para evitar clipping
+                    camera.near = Math.max(0.01, maxDim / 500);
+                    camera.far = maxDim * 50;
                     camera.position.set(
                         center.x + maxDim * 1.2,
                         center.y + maxDim * 0.8,
                         center.z + maxDim * 1.2
                     );
+                    camera.updateProjectionMatrix();
+
+                    // 3. Limitar zoom en OrbitControls para no perder de vista el objeto
                     controls.target.copy(center);
+                    controls.minDistance = maxDim * 0.01; // Evita atravesar la malla
+                    controls.maxDistance = maxDim * 8;    // Evita alejarse al infinito
                     controls.update();
 
                     statusEl.innerHTML = '🟢 Modelo GLB Cargado';
 
+                    // 4. Mapeo de capas del modelo
                     const objetosPorCapa = new Map();
                     model.traverse((child) => {
                         if (child.isMesh) {
