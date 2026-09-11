@@ -244,7 +244,7 @@
         </div>
     </div>
 
-    <!-- MÓDULO THREE.JS CON MATRICES ACTUALIZADAS Y VISIBILIDAD DIRECTA -->
+    <!-- MÓDULO THREE.JS CORREGIDO CON VISIBILIDAD DIRECTA POR MALLAS -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -351,20 +351,26 @@
                 (gltf) => {
                     const rawModel = gltf.scene;
                     
-                    // Actualizar matrices globales antes de manipular
                     rawModel.updateMatrixWorld(true);
 
+                    // Aislar y clonar materiales para evitar conflictos globales de renderizado
                     rawModel.traverse((child) => {
-                        if (child.isMesh && child.material) {
-                            if (Array.isArray(child.material)) {
-                                child.material.forEach(m => { m.side = THREE.DoubleSide; });
-                            } else {
-                                child.material.side = THREE.DoubleSide;
+                        if (child.isMesh) {
+                            if (child.material) {
+                                if (Array.isArray(child.material)) {
+                                    child.material = child.material.map(m => {
+                                        const clone = m.clone();
+                                        clone.side = THREE.DoubleSide;
+                                        return clone;
+                                    });
+                                } else {
+                                    child.material = child.material.clone();
+                                    child.material.side = THREE.DoubleSide;
+                                }
                             }
                         }
                     });
 
-                    // 1. Calcular caja contenedora global del modelo
                     const boundingBoxGlobal = new THREE.Box3().setFromObject(rawModel);
                     const minY = boundingBoxGlobal.min.y;
                     const maxY = boundingBoxGlobal.max.y;
@@ -372,7 +378,6 @@
                     const numPisos = 5;
                     const alturaPiso = alturaTotal / numPisos;
 
-                    // 2. CREAR GRUPOS POR PISO VINCULADOS A LA ESCENA
                     const pisoGroups = [];
                     for (let i = 0; i < numPisos; i++) {
                         const group = new THREE.Group();
@@ -381,7 +386,6 @@
                         pisoGroups.push(group);
                     }
 
-                    // 3. Recopilar mallas y reubicarlas usando attach() para conservar posición mundial
                     const meshesPorPiso = Array.from({ length: numPisos }, () => 0);
                     const meshes = [];
                     rawModel.traverse((child) => {
@@ -389,7 +393,10 @@
                     });
 
                     meshes.forEach((mesh) => {
-                        const boxMalla = new THREE.Box3().setFromObject(mesh);
+                        mesh.geometry.computeBoundingBox();
+                        const boxMalla = mesh.geometry.boundingBox.clone();
+                        boxMalla.applyMatrix4(mesh.matrixWorld);
+
                         if (!boxMalla.isEmpty()) {
                             const centroMallaY = (boxMalla.min.y + boxMalla.max.y) / 2;
                             let indicePiso = Math.floor((centroMallaY - minY) / alturaPiso);
@@ -400,7 +407,6 @@
                         }
                     });
 
-                    // 4. CREAR CAJAS VISUALES (HELPERS) PARA CADA PISO
                     const boxHelpers = [];
                     pisoGroups.forEach((group, idx) => {
                         const yMin = minY + (idx * alturaPiso);
@@ -414,7 +420,7 @@
                         
                         const helperMat = new THREE.MeshBasicMaterial({
                             transparent: true,
-                            opacity: 0.05,
+                            opacity: 0.03,
                             color: 0x00b4d8,
                             wireframe: true
                         });
@@ -431,7 +437,6 @@
                         boxHelpers.push(helperMesh);
                     });
 
-                    // 5. Construir los checkboxes funcionales VINCULADOS A LOS GRUPOS
                     layersEl.innerHTML = '';
                     const fragment = document.createDocumentFragment();
 
@@ -461,6 +466,13 @@
                             
                             pisoGroups[pisoIdx].visible = mostrar;
                             boxHelpers[pisoIdx].visible = mostrar;
+                            
+                            pisoGroups[pisoIdx].traverse((child) => {
+                                if (child.isMesh) {
+                                    child.visible = mostrar;
+                                }
+                            });
+
                             needsRender = true;
                         });
 
