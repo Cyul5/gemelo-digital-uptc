@@ -27,7 +27,7 @@
             height: 100vh; display: flex; flex-direction: column; overflow: hidden;
         }
 
-        /* HEADER ESTILO GEOPORTAL (SINUPOT) */
+        /* HEADER ESTILO GEOPORTAL */
         header {
             background: #070f1e; color: white;
             height: 48px; padding: 0 16px; border-bottom: 1px solid #1e293b;
@@ -38,7 +38,7 @@
         .header-title { font-size: 14px; font-weight: 600; letter-spacing: 0.5px; }
         .breadcrumb { font-size: 12px; color: #94a3b8; margin-left: 10px; }
 
-        /* BUSCADOR TIPO SINUPOT */
+        /* BUSCADOR TIPO GEOPORTAL */
         .search-box {
             display: flex; align-items: center; background: #1e293b; border: 1px solid #334155;
             border-radius: 4px; padding: 4px 8px; width: 280px;
@@ -83,7 +83,7 @@
         .map-wrapper { 
             width: 100%; 
             height: 100%; 
-            background: #ffffff; /* Fondo blanco para el visor */
+            background: #ffffff; 
             overflow: hidden; 
             cursor: grab; 
             position: relative; 
@@ -101,7 +101,7 @@
             height: 100%; 
             max-height: 100%; 
             display: block; 
-            background-color: #ffffff; /* Asegura lienzo blanco limpio */
+            background-color: #ffffff; 
         }
 
         /* ESTILOS INTERACTIVOS PARA LA GEOMETRÍA HUNZA DENTRO DEL SVG */
@@ -293,7 +293,8 @@
         let is3DInitialized = false;
         let yaCargado = false;
 
-        const URL_GLB = '001-PRO-F2STUDIO-M3D-ARQ-001.glb';
+        // NOMBRE DEL NUEVO MODELO 3D GLB
+        const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
 
         function init3DViewer() {
             if (is3DInitialized) return true;
@@ -320,7 +321,7 @@
 
             controls = new OrbitControls(camera, renderer.domElement);
             
-            // CONFIGURACIÓN DE SUAVIZADO Y VELOCIDAD DE ZOOM
+            // CONFIGURACIÓN DE SUAVIZADO Y ZOOM
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
             controls.zoomSpeed = 0.35;
