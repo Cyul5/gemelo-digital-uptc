@@ -244,7 +244,7 @@
         </div>
     </div>
 
-    <!-- MÓDULO THREE.JS CORREGIDO -->
+    <!-- MÓDULO THREE.JS CON DISTRIBUCIÓN POR ALTURA -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -361,8 +361,15 @@
                         }
                     });
 
-                    // Creamos grupos fijos robustos para los niveles
+                    // 1. Calcular la caja contenedora global para conocer las alturas exactas del GLB
+                    const boundingBoxGlobal = new THREE.Box3().setFromObject(rawModel);
+                    const minY = boundingBoxGlobal.min.y;
+                    const maxY = boundingBoxGlobal.max.y;
+                    const alturaTotal = maxY - minY;
                     const numPisos = 5;
+                    const alturaPiso = alturaTotal / numPisos;
+
+                    // 2. Crear 5 grupos independientes en la escena para los niveles
                     const gruposPisos = Array.from({ length: numPisos }, (_, i) => {
                         const g = new THREE.Group();
                         g.name = `Nivel ${i + 1}`;
@@ -370,9 +377,25 @@
                         return g;
                     });
 
-                    // Por defecto cargamos el modelo entero en el primer grupo para asegurar estabilidad visual
-                    gruposPisos[0].add(rawModel);
+                    // 3. Recoger y reasignar cada malla individual al grupo correspondiente según su altura Y
+                    const mallasAProcesar = [];
+                    rawModel.traverse((child) => {
+                        if (child.isMesh) {
+                            mallasAProcesar.push(child);
+                        }
+                    });
 
+                    mallasAProcesar.forEach((mesh) => {
+                        const boxMalla = new THREE.Box3().setFromObject(mesh);
+                        const centroMallaY = (boxMalla.min.y + boxMalla.max.y) / 2;
+                        
+                        let indicePiso = Math.floor((centroMallaY - minY) / alturaPiso);
+                        indicePiso = Math.max(0, Math.min(numPisos - 1, indicePiso));
+
+                        gruposPisos[indicePiso].add(mesh);
+                    });
+
+                    // Construir los checkboxes funcionales en el panel lateral
                     layersEl.innerHTML = '';
                     const fragment = document.createDocumentFragment();
 
@@ -387,7 +410,7 @@
                         const checkbox = layerRow.querySelector('input');
                         checkbox.addEventListener('change', (e) => {
                             grupo.visible = e.target.checked;
-                            needsRender = true; // Forzamos renderizado al interactuar
+                            needsRender = true; // Forzar redibujado inmediato al marcar/desmarcar
                         });
 
                         fragment.appendChild(layerRow);
@@ -395,7 +418,6 @@
 
                     layersEl.appendChild(fragment);
 
-                    const boundingBoxGlobal = new THREE.Box3().setFromObject(rawModel);
                     if (!boundingBoxGlobal.isEmpty()) {
                         const size = boundingBoxGlobal.getSize(new THREE.Vector3());
                         const center = boundingBoxGlobal.getCenter(new THREE.Vector3());
