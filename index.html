@@ -244,7 +244,7 @@
         </div>
     </div>
 
-    <!-- MÓDULO THREE.JS CON ALINEACIÓN Y NAVEGACIÓN OPTIMIZADA -->
+    <!-- MÓDULO THREE.JS CON RENDER ON DEMAND Y OPTIMIZACIONES ANTI-LAG -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -255,6 +255,7 @@
         let is3DInitialized = false;
         let yaCargado = false;
         let animFrameId = null;
+        let needsRender = true;
 
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
 
@@ -272,7 +273,7 @@
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x020617);
 
-            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 5000);
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.5, 2000);
 
             renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
             renderer.setSize(width, height);
@@ -284,6 +285,10 @@
             controls.dampingFactor = 0.05;
             controls.enableZoom = true;
             controls.zoomSpeed = 1.0;
+
+            controls.addEventListener('change', () => {
+                needsRender = true;
+            });
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
             scene.add(ambientLight);
@@ -300,13 +305,17 @@
                     camera.aspect = container.clientWidth / container.clientHeight;
                     camera.updateProjectionMatrix();
                     renderer.setSize(container.clientWidth, container.clientHeight);
+                    needsRender = true;
                 }
             });
 
             function animate() {
                 animFrameId = requestAnimationFrame(animate);
-                controls.update();
-                renderer.render(scene, camera);
+                const isMoving = controls.update();
+                if (isMoving || needsRender) {
+                    renderer.render(scene, camera);
+                    needsRender = false;
+                }
             }
 
             if (animFrameId) cancelAnimationFrame(animFrameId);
@@ -337,22 +346,28 @@
                     const center = box.getCenter(new THREE.Vector3());
                     const size = box.getSize(new THREE.Vector3());
 
-                    // 2. ALINEACIÓN (Suelo del modelo sobre la grilla Y = 0)
+                    // 2. ALINEACIÓN (Suelo sobre la grilla Y = 0)
                     model.position.x = -center.x;
                     model.position.z = -center.z;
                     model.position.y = -box.min.y;
 
                     scene.add(model);
 
-                    // 3. DESACTIVACIÓN DE RECALCULO DE MATRICES ESTÁTICAS (Elimina Lag)
+                    // 3. OPTIMIZACIÓN EXTREMA DE RENDIMIENTO
                     model.traverse((child) => {
                         if (child.isMesh) {
                             child.matrixAutoUpdate = false;
                             child.updateMatrix();
+                            child.frustumCulled = true;
+                            child.castShadow = false;
+                            child.receiveShadow = false;
+                            if (child.material) {
+                                child.material.precision = 'lowp';
+                            }
                         }
                     });
 
-                    // 4. CÁMARA Y PIVOTE DE ZOOM
+                    // 4. CONFIGURACIÓN DE CÁMARA Y LIMITES DE VISIÓN
                     const maxDim = Math.max(size.x, size.y, size.z);
                     const fovRad = (camera.fov * Math.PI) / 180;
                     let cameraDist = Math.abs((maxDim / 2) / Math.tan(fovRad / 2)) * 2.2;
@@ -361,15 +376,16 @@
                     controls.target.set(0, centerY, 0);
 
                     camera.position.set(cameraDist * 0.8, centerY + cameraDist * 0.6, cameraDist * 0.8);
-                    camera.near = 0.1;
-                    camera.far = cameraDist * 20;
+                    camera.near = 0.5;
+                    camera.far = cameraDist * 4;
                     camera.updateProjectionMatrix();
 
                     controls.minDistance = 0.5;
                     controls.maxDistance = cameraDist * 10;
                     controls.update();
 
-                    statusEl.innerText = '🟢 Modelo Alineado y Cargado';
+                    needsRender = true;
+                    statusEl.innerText = '🟢 Modelo Optimizado Cargado';
 
                     // 5. AGRUPACIÓN DE CAPAS
                     const objetosPorCapa = new Map();
@@ -395,6 +411,7 @@
                         checkbox.addEventListener('change', (e) => {
                             const visible = e.target.checked;
                             meshes.forEach(m => { m.visible = visible; });
+                            needsRender = true;
                         });
                         fragment.appendChild(layerRow);
                     });
