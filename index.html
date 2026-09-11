@@ -244,7 +244,7 @@
         </div>
     </div>
 
-    <!-- SCRIPT THREE.JS CON OCULTAMIENTO ABSOLUTO DE MALLAS Y MATERIALES -->
+    <!-- SCRIPT THREE.JS CON REMOCIÓN FÍSICA DE ESCENA PARA LAS CAPAS -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -459,33 +459,25 @@
                         layerRow.appendChild(checkbox);
                         layerRow.appendChild(label);
 
-                        // LÓGICA BLINDADA: OCULTAMIENTO TOTAL Y EXPLÍCITO DE CADA MALLA Y MATERIAL
+                        // LÓGICA RADICAL DE CAPAS: Añadir o remover físicamente de la escena
                         checkbox.addEventListener('change', (e) => {
                             const mostrar = e.target.checked;
                             const pisoIdx = parseInt(e.target.dataset.pisoIdx);
                             
-                            pisoGroups[pisoIdx].visible = mostrar;
-                            boxHelpers[pisoIdx].visible = mostrar;
-                            
-                            pisoGroups[pisoIdx].traverse((child) => {
-                                if (child.isMesh) {
-                                    child.visible = mostrar;
-                                    child.frustumCulled = mostrar;
-                                    if (child.material) {
-                                        if (Array.isArray(child.material)) {
-                                            child.material.forEach(mat => {
-                                                mat.visible = mostrar;
-                                                mat.opacity = mostrar ? 1.0 : 0.0;
-                                                mat.transparent = !mostrar || mat.transparent;
-                                            });
-                                        } else {
-                                            child.material.visible = mostrar;
-                                            child.material.opacity = mostrar ? 1.0 : 0.0;
-                                            child.material.transparent = !mostrar || child.material.transparent;
-                                        }
-                                    }
-                                }
-                            });
+                            const grupoPiso = pisoGroups[pisoIdx];
+                            const helperPiso = boxHelpers[pisoIdx];
+
+                            if (mostrar) {
+                                if (!scene.getObjectById(grupoPiso.id)) scene.add(grupoPiso);
+                                if (!scene.getObjectById(helperPiso.id)) scene.add(helperPiso);
+                                grupoPiso.visible = true;
+                                helperPiso.visible = true;
+                            } else {
+                                scene.remove(grupoPiso);
+                                scene.remove(helperPiso);
+                                grupoPiso.visible = false;
+                                helperPiso.visible = false;
+                            }
 
                             needsRender = true;
                         });
