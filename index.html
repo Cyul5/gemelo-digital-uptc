@@ -244,7 +244,7 @@
         </div>
     </div>
 
-    <!-- MÓDULO THREE.JS CON REORGANIZACIÓN ESPACIAL DE NODOS -->
+    <!-- MÓDULO THREE.JS CON REORGANIZACIÓN ESPACIAL USANDO .attach() -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -392,11 +392,8 @@
                         let floorIdx = Math.floor((centerVec.y - minY) / heightPerFloor);
                         floorIdx = Math.max(0, Math.min(numPisos - 1, floorIdx));
 
-                        const parent = mesh.parent;
-                        if (parent) {
-                            parent.remove(mesh);
-                        }
-                        gruposPisos[floorIdx].add(mesh);
+                        // Uso de .attach() para preservar las coordenadas exactas del mundo 3D
+                        gruposPisos[floorIdx].attach(mesh);
                     });
 
                     layersEl.innerHTML = '';
