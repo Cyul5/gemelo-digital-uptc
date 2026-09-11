@@ -361,8 +361,6 @@
                         }
                     });
 
-                    scene.add(rawModel);
-
                     // Forzar actualización de matrices globales para calcular coordenadas mundiales correctas
                     rawModel.updateMatrixWorld(true);
 
@@ -374,9 +372,19 @@
                     const numPisos = 5;
                     const alturaPiso = alturaTotal / numPisos;
 
-                    // 2. Agrupar las mallas por niveles usando sus posiciones mundiales reales
-                    const pisosMeshes = Array.from({ length: numPisos }, () => []);
+                    // 2. CREAR GRUPOS POR PISO VINCULADOS A LA ESCENA
+                    const pisoGroups = [];
+                    for (let i = 0; i < numPisos; i++) {
+                        const group = new THREE.Group();
+                        group.name = `Piso_${i + 1}`;
+                        scene.add(group);
+                        pisoGroups.push(group);
+                        console.log(`✅ Creado grupo para Piso ${i + 1}`);
+                    }
 
+                    // 3. Agrupar las mallas por niveles y ASIGNARLAS A LOS GRUPOS
+                    const meshesPorPiso = Array.from({ length: numPisos }, () => 0);
+                    
                     rawModel.traverse((child) => {
                         if (child.isMesh) {
                             const boxMalla = new THREE.Box3().setFromObject(child);
@@ -387,16 +395,57 @@
                                 let indicePiso = Math.floor((centroMallaY - minY) / alturaPiso);
                                 indicePiso = Math.max(0, Math.min(numPisos - 1, indicePiso));
 
-                                pisosMeshes[indicePiso].push(child);
+                                // AÑADIR LA MALLA AL GRUPO DEL PISO
+                                pisoGroups[indicePiso].add(child);
+                                meshesPorPiso[indicePiso]++;
                             }
                         }
                     });
 
-                    // Construir los checkboxes funcionales en el panel lateral
+                    console.log('📊 Distribución de mallas por piso:', meshesPorPiso);
+
+                    // 4. CREAR CAJAS VISUALES (HELPERS) PARA CADA PISO
+                    const boxHelpers = [];
+                    pisoGroups.forEach((group, idx) => {
+                        const yMin = minY + (idx * alturaPiso);
+                        const yMax = minY + ((idx + 1) * alturaPiso);
+                        
+                        const boxHelper = new THREE.Box3(
+                            new THREE.Vector3(boundingBoxGlobal.min.x, yMin, boundingBoxGlobal.min.z),
+                            new THREE.Vector3(boundingBoxGlobal.max.x, yMax, boundingBoxGlobal.max.z)
+                        );
+                        
+                        const helperGeo = new THREE.BoxGeometry(
+                            boundingBoxGlobal.max.x - boundingBoxGlobal.min.x,
+                            yMax - yMin,
+                            boundingBoxGlobal.max.z - boundingBoxGlobal.min.z
+                        );
+                        
+                        const helperMat = new THREE.MeshBasicMaterial({
+                            transparent: true,
+                            opacity: 0.1,
+                            color: 0x00b4d8,
+                            wireframe: true
+                        });
+                        
+                        const helperMesh = new THREE.Mesh(helperGeo, helperMat);
+                        helperMesh.position.set(
+                            (boundingBoxGlobal.min.x + boundingBoxGlobal.max.x) / 2,
+                            (yMin + yMax) / 2,
+                            (boundingBoxGlobal.min.z + boundingBoxGlobal.max.z) / 2
+                        );
+                        
+                        helperMesh.name = `Helper_Piso_${idx + 1}`;
+                        scene.add(helperMesh);
+                        boxHelpers.push(helperMesh);
+                        console.log(`📦 Helper Piso ${idx + 1} creado en Y: ${yMin.toFixed(2)} - ${yMax.toFixed(2)}`);
+                    });
+
+                    // 5. Construir los checkboxes funcionales VINCULADOS A LOS GRUPOS
                     layersEl.innerHTML = '';
                     const fragment = document.createDocumentFragment();
 
-                    pisosMeshes.forEach((meshesPiso, idx) => {
+                    pisoGroups.forEach((group, idx) => {
                         const layerRow = document.createElement('div');
                         layerRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:12px; color:#cbd5e1;';
                         
@@ -405,24 +454,28 @@
                         checkbox.checked = true;
                         checkbox.id = `chk-piso-${idx+1}`;
                         checkbox.style.cursor = 'pointer';
+                        checkbox.dataset.pisoIdx = idx;
                         
                         const label = document.createElement('label');
                         label.htmlFor = `chk-piso-${idx+1}`;
                         label.style.cursor = 'pointer';
                         label.style.fontWeight = '600';
-                        label.textContent = `🏢 Nivel ${idx + 1} (${meshesPiso.length} pza)`;
+                        label.textContent = `🏢 Nivel ${idx + 1} (${meshesPorPiso[idx]} pza)`;
                         
                         layerRow.appendChild(checkbox);
                         layerRow.appendChild(label);
 
-                        // EVENT LISTENER CORRECTO - acceso directo a renderer y scene
+                        // EVENT LISTENER VINCULADO AL GRUPO
                         checkbox.addEventListener('change', (e) => {
                             const mostrar = e.target.checked;
-                            console.log(`🎯 Piso ${idx + 1}: ${mostrar ? 'VISIBLE' : 'OCULTO'}`);
+                            const pisoIdx = parseInt(e.target.dataset.pisoIdx);
                             
-                            meshesPiso.forEach(mesh => {
-                                mesh.visible = mostrar;
-                            });
+                            // CAMBIAR VISIBILIDAD DEL GRUPO COMPLETO Y DEL HELPER
+                            pisoGroups[pisoIdx].visible = mostrar;
+                            boxHelpers[pisoIdx].visible = mostrar;
+                            
+                            console.log(`🎯 Grupo Piso ${pisoIdx + 1}: ${mostrar ? '✅ VISIBLE' : '❌ OCULTO'}`);
+                            console.log(`   Mallas en grupo: ${pisoGroups[pisoIdx].children.length}`);
                             
                             // Forzar render inmediato
                             renderer.render(scene, camera);
@@ -432,6 +485,9 @@
                     });
 
                     layersEl.appendChild(fragment);
+
+                    // 6. Agregar el modelo original a la escena (pero sus mallas ya están en los grupos)
+                    scene.add(rawModel);
 
                     if (!boundingBoxGlobal.isEmpty()) {
                         const size = boundingBoxGlobal.getSize(new THREE.Vector3());
@@ -447,6 +503,8 @@
                     needsRender = true;
                     statusEl.innerText = '🟢 Visor 3D Listo';
                     yaCargado = true;
+                    
+                    console.log(`✅ MODELO 3D CARGADO - ${pisoGroups.length} pisos listos para activar/desactivar`);
                 },
                 (xhr) => {
                     if (xhr.lengthComputable && xhr.total > 0) {
@@ -455,8 +513,9 @@
                     }
                 },
                 (error) => {
-                    console.error('Error al cargar GLB:', error);
+                    console.error('❌ Error al cargar GLB:', error);
                     statusEl.innerText = '❌ Error al cargar modelo GLB';
+                    console.error('Detalles del error:', error.message);
                 }
             );
         }
