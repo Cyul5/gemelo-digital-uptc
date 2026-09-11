@@ -244,6 +244,46 @@
         </div>
     </div>
 
+    <!-- SCRIPT GENERAL: DECLARACIONES PRIMERO -->
+    <script>
+        const TODAS_HORAS = ["06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"];
+        const TODOS_DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+
+        let dbHunza = {};
+        let datosGeneralesEdificio = {
+            nombre: "Edificio 30 - Aulas Hunza",
+            codigo: "30",
+            institucion: "UPTC - Sede Central Tunja",
+            uso: "Aulas de Clase y Laboratorios",
+            pisos: "5",
+            area: "Por definir"
+        };
+        let aulaSeleccionada = "H-101";
+        let vistaActual = "vista-campus";
+
+        let zoomScale = 1, panX = 0, panY = 0, isDragging = false, startX = 0, startY = 0;
+
+        function crearEstructuraVaciaEspacio(idSVG, codigoNombre) {
+            let obj = { nombre: `Aula ${codigoNombre}`, aforo: "35", horarios: {} };
+            TODAS_DIAS.forEach(d => {
+                obj.horarios[d] = {};
+                TODAS_HORAS.forEach(h => { obj.horarios[d][h] = { est: "Libre", materia: "Disponible", docente: "" }; });
+            });
+            return obj;
+        }
+
+        function inicializarDatosBase() {
+            dbHunza = {
+                "H-101": crearEstructuraVaciaEspacio("H-101", "A-101"),
+                "H-102": crearEstructuraVaciaEspacio("H-102", "A-102"),
+                "H-103": crearEstructuraVaciaEspacio("H-103", "A-103")
+            };
+        }
+        
+        // Inicializar de entrada para evitar vacíos
+        inicializarDatosBase();
+    </script>
+
     <!-- SCRIPT THREE.JS CON PLANO DE CORTE (CLIPPING PLANE) -->
     <script type="module">
         import * as THREE from 'three';
@@ -474,25 +514,8 @@
         window.cargarModeloIFC = cargarModeloGLBReal;
     </script>
 
-    <!-- SCRIPT GENERAL: NAVEGACIÓN, EXCEL Y SVG -->
+    <!-- SCRIPT GENERAL: LOGICA, EXCEL Y SVG -->
     <script>
-        let dbHunza = {};
-        let datosGeneralesEdificio = {
-            nombre: "Edificio 30 - Aulas Hunza",
-            codigo: "30",
-            institucion: "UPTC - Sede Central Tunja",
-            uso: "Aulas de Clase y Laboratorios",
-            pisos: "5",
-            area: "Por definir"
-        };
-        let aulaSeleccionada = "H-101";
-        let vistaActual = "vista-campus";
-
-        let zoomScale = 1, panX = 0, panY = 0, isDragging = false, startX = 0, startY = 0;
-
-        const TODAS_HORAS = ["06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"];
-        const TODOS_DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
-
         async function cargarPlanoSVG() {
             const mapContent = document.getElementById('map-content');
             try {
@@ -628,23 +651,6 @@
             `;
         }
 
-        function crearEstructuraVaciaEspacio(idSVG, codigoNombre) {
-            let obj = { nombre: `Aula ${codigoNombre}`, aforo: "35", horarios: {} };
-            TODAS_DIAS.forEach(d => {
-                obj.horarios[d] = {};
-                TODAS_HORAS.forEach(h => { obj.horarios[d][h] = { est: "Libre", materia: "Disponible", docente: "" }; });
-            });
-            return obj;
-        }
-
-        function inicializarDatosBase() {
-            dbHunza = {
-                "H-101": crearEstructuraVaciaEspacio("H-101", "A-101"),
-                "H-102": crearEstructuraVaciaEspacio("H-102", "A-102"),
-                "H-103": crearEstructuraVaciaEspacio("H-103", "A-103")
-            };
-        }
-
         function desgloseHorasRango(horaTexto) {
             let matches = String(horaTexto || "").match(/\d{1,2}/g);
             if (!matches || matches.length === 0) return ["07:00"];
@@ -709,7 +715,7 @@
                 let matGen = (colMateria !== -1 && row[colMateria]) ? String(row[colMateria]).trim() : "";
                 let docGen = (colDocente !== -1 && row[colDocente]) ? String(row[colDocente]).trim() : "";
 
-                TODOS_DIAS.forEach(dia => {
+                TODAS_DIAS.forEach(dia => {
                     let cIdx = colDiasMatriz[dia];
                     let valDia = (cIdx !== -1 && row[cIdx]) ? String(row[cIdx]).trim() : "";
                     let materiaAsignada = "", esOcupado = false;
