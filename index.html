@@ -95,6 +95,13 @@
         .ifc-layout { width: 100%; height: 100%; display: flex; position: relative; }
         #ifc-canvas-container { flex: 1; height: 100%; background: #020617; position: relative; }
         
+        #ifc-canvas-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+            touch-action: none;
+        }
+
         .ifc-layers-panel {
             width: 260px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px);
             border-left: 1px solid #1e293b; padding: 12px; overflow-y: auto; font-size: 12px;
@@ -173,7 +180,6 @@
     </div>
 
     <div class="app-layout">
-        
         <div class="left-dock">
             <button id="btn-campus" class="dock-btn active" title="Mapa General" onclick="irAVista('vista-campus')">🌐</button>
             <button id="btn-3d" class="dock-btn" title="Modelo 3D" onclick="irAVista('vista-3d')">🏢</button>
@@ -181,7 +187,6 @@
         </div>
 
         <div class="viewport-container">
-            
             <div id="vista-campus" class="vista activa">
                 <div id="map-wrapper" class="map-wrapper">
                     <div id="map-content" class="map-content">
@@ -226,7 +231,6 @@
                     <text id="lbl-H-103" x="405" y="85" font-size="11" fill="#ffffff" text-anchor="middle">LIBRE</text>
                 </svg>
             </div>
-
         </div>
 
         <div class="right-info-panel">
@@ -238,10 +242,9 @@
                 <b>Estado de Carga:</b> Inicializando...
             </div>
         </div>
-
     </div>
 
-    <!-- MÓDULO THREE.JS OPTIMIZADO -->
+    <!-- MÓDULO THREE.JS CON ALINEACIÓN Y NAVEGACIÓN OPTIMIZADA -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -254,41 +257,6 @@
         let animFrameId = null;
 
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
-
-        function esNombreGenerico(nombre) {
-            if (!nombre) return true;
-            const clean = nombre.trim().toLowerCase();
-            return (
-                clean === '' ||
-                clean.includes('empty') ||
-                clean.includes('object') ||
-                clean.includes('node') ||
-                clean.includes('mesh') ||
-                clean.startsWith('default')
-            );
-        }
-
-        function obtenerNombreCapa(mesh) {
-            if (mesh.name && !esNombreGenerico(mesh.name)) return limpiarNombre(mesh.name);
-            if (mesh.userData) {
-                if (mesh.userData.category && !esNombreGenerico(mesh.userData.category)) return limpiarNombre(mesh.userData.category);
-                if (mesh.userData.name && !esNombreGenerico(mesh.userData.name)) return limpiarNombre(mesh.userData.name);
-            }
-            let parent = mesh.parent;
-            while (parent && parent.type !== 'Scene') {
-                if (parent.name && !esNombreGenerico(parent.name)) return limpiarNombre(parent.name);
-                parent = parent.parent;
-            }
-            return 'Elementos Estructurales';
-        }
-
-        function limpiarNombre(str) {
-            return str
-                .replace(/^Ifc/i, '')
-                .replace(/[_-]\d+$/g, '')
-                .replace(/([a-z])([A-Z])/g, '$1 $2')
-                .trim();
-        }
 
         function init3DViewer() {
             if (is3DInitialized) return true;
@@ -304,24 +272,23 @@
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x020617);
 
-            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 2000);
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 5000);
 
-            // DESACTIVAR ANTI-ALIAS SI EL MODELO ES MUY PESADO PARA MANTENER FPS
-            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
             renderer.setSize(width, height);
-            renderer.setPixelRatio(1); // Forzar a 1 para evitar lag en pantallas 2K/4K/Retina
+            renderer.setPixelRatio(1);
             container.appendChild(renderer.domElement);
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.dampingFactor = 0.08;
+            controls.dampingFactor = 0.05;
             controls.enableZoom = true;
-            controls.zoomSpeed = 1.2;
+            controls.zoomSpeed = 1.0;
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 1.8);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
             dirLight.position.set(100, 200, 100);
             scene.add(dirLight);
 
@@ -336,7 +303,6 @@
                 }
             });
 
-            // UN SOLO BUCLE DE RENDIMIENTO FIJO
             function animate() {
                 animFrameId = requestAnimationFrame(animate);
                 controls.update();
@@ -366,71 +332,70 @@
                 (gltf) => {
                     const model = gltf.scene;
 
-                    // 1. CÁLCULO PRECISO DEL CENTRO
+                    // 1. CÁLCULO DE CAJA Y TAMAÑO
                     const box = new THREE.Box3().setFromObject(model);
                     const center = box.getCenter(new THREE.Vector3());
-                    const sphere = box.getBoundingSphere(new THREE.Sphere());
-                    const radius = sphere.radius || 30;
+                    const size = box.getSize(new THREE.Vector3());
 
-                    // Centrar modelo en (0,0,0)
-                    model.position.sub(center);
+                    // 2. ALINEACIÓN (Suelo del modelo sobre la grilla Y = 0)
+                    model.position.x = -center.x;
+                    model.position.z = -center.z;
+                    model.position.y = -box.min.y;
+
                     scene.add(model);
 
-                    // 2. AJUSTE CORRECTO DE CÁMARA Y ZOOM
-                    const fovRad = (camera.fov * Math.PI) / 180;
-                    let dist = Math.abs(radius / Math.sin(fovRad / 2)) * 1.2;
-
-                    camera.near = Math.max(0.1, radius / 100);
-                    camera.far = radius * 50;
-                    camera.position.set(dist, dist * 0.7, dist);
-                    camera.updateProjectionMatrix();
-
-                    // 3. ENFOQUE TOTAL DE CONTROLES
-                    controls.target.set(0, 0, 0);
-                    controls.minDistance = radius * 0.05;
-                    controls.maxDistance = radius * 10;
-                    controls.update();
-
-                    statusEl.innerText = '🟢 Modelo Creado y Centrado';
-
-                    // 4. AGRUPACIÓN DE MESHS PARA EVITAR CONGELAR EL NAVEGADOR
-                    const objetosPorCapa = new Map();
-
+                    // 3. DESACTIVACIÓN DE RECALCULO DE MATRICES ESTÁTICAS (Elimina Lag)
                     model.traverse((child) => {
                         if (child.isMesh) {
-                            child.matrixAutoUpdate = true;
-                            let nombreCapa = obtenerNombreCapa(child);
-                            if (!objetosPorCapa.has(nombreCapa)) {
-                                objetosPorCapa.set(nombreCapa, []);
-                            }
+                            child.matrixAutoUpdate = false;
+                            child.updateMatrix();
+                        }
+                    });
+
+                    // 4. CÁMARA Y PIVOTE DE ZOOM
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const fovRad = (camera.fov * Math.PI) / 180;
+                    let cameraDist = Math.abs((maxDim / 2) / Math.tan(fovRad / 2)) * 2.2;
+
+                    const centerY = size.y / 2;
+                    controls.target.set(0, centerY, 0);
+
+                    camera.position.set(cameraDist * 0.8, centerY + cameraDist * 0.6, cameraDist * 0.8);
+                    camera.near = 0.1;
+                    camera.far = cameraDist * 20;
+                    camera.updateProjectionMatrix();
+
+                    controls.minDistance = 0.5;
+                    controls.maxDistance = cameraDist * 10;
+                    controls.update();
+
+                    statusEl.innerText = '🟢 Modelo Alineado y Cargado';
+
+                    // 5. AGRUPACIÓN DE CAPAS
+                    const objetosPorCapa = new Map();
+                    model.traverse((child) => {
+                        if (child.isMesh) {
+                            let nombreCapa = child.name || child.parent?.name || 'Estructura';
+                            if (!objetosPorCapa.has(nombreCapa)) objetosPorCapa.set(nombreCapa, []);
                             objetosPorCapa.get(nombreCapa).push(child);
                         }
                     });
 
-                    // 5. RENDERIZAR CAPAS SIN BLOQUEAR EL HILO DE EJECUCIÓN (FRAGMENT)
                     layersEl.innerHTML = '';
                     const fragment = document.createDocumentFragment();
 
-                    const capasOrdenadas = Array.from(objetosPorCapa.entries()).sort((a, b) => b[1].length - a[1].length);
-
-                    capasOrdenadas.forEach(([nombreCapa, meshes]) => {
+                    Array.from(objetosPorCapa.entries()).slice(0, 30).forEach(([nombreCapa, meshes]) => {
                         const layerRow = document.createElement('div');
-                        layerRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:11px; color:#cbd5e1;';
-
-                        const checkboxId = `layer-${nombreCapa.replace(/[^a-zA-Z0-9]/g, '-')}`;
+                        layerRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:4px; font-size:11px; color:#cbd5e1;';
                         layerRow.innerHTML = `
-                            <input type="checkbox" id="${checkboxId}" checked style="cursor:pointer;">
-                            <label for="${checkboxId}" style="cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${nombreCapa}">
-                                👁️ ${nombreCapa} (${meshes.length})
-                            </label>
+                            <input type="checkbox" checked style="cursor:pointer;">
+                            <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${nombreCapa} (${meshes.length})</span>
                         `;
-
                         const checkbox = layerRow.querySelector('input');
                         checkbox.addEventListener('change', (e) => {
                             const visible = e.target.checked;
-                            meshes.forEach(mesh => { mesh.visible = visible; });
+                            meshes.forEach(m => { m.visible = visible; });
                         });
-
                         fragment.appendChild(layerRow);
                     });
 
@@ -440,12 +405,12 @@
                 (xhr) => {
                     if (xhr.lengthComputable && xhr.total > 0) {
                         const pct = Math.round((xhr.loaded / xhr.total) * 100);
-                        statusEl.innerHTML = `<span class="loading-spinner"></span> Descargando: ${pct}%`;
+                        statusEl.innerHTML = `<span class="loading-spinner"></span> Cargando: ${pct}%`;
                     }
                 },
                 (error) => {
-                    console.error('❌ Error al cargar GLB:', error);
-                    statusEl.innerHTML = '❌ Error al cargar GLB';
+                    console.error('Error al cargar GLB:', error);
+                    statusEl.innerText = '❌ Error al cargar modelo';
                 }
             );
         }
@@ -466,7 +431,7 @@
         window.cargarModeloIFC = cargarModeloGLBReal;
     </script>
 
-    <!-- SCRIPT GENERAL: INYECCIÓN DE SVG, EXCEL Y NAVEGACIÓN -->
+    <!-- SCRIPT GENERAL: NAVEGACIÓN, EXCEL Y SVG -->
     <script>
         let dbHunza = {};
         let datosGeneralesEdificio = {
