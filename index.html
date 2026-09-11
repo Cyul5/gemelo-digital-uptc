@@ -244,7 +244,7 @@
         </div>
     </div>
 
-    <!-- MÓDULO THREE.JS CON RENDER ON DEMAND Y OPTIMIZACIONES ANTI-LAG -->
+    <!-- MÓDULO THREE.JS CON ULTRA-OPTIMIZACIÓN DE MATERIALES Y RENDER ON DEMAND -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -275,14 +275,24 @@
 
             camera = new THREE.PerspectiveCamera(45, width / height, 0.5, 2000);
 
-            renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+            // Renderer hiperoptimizado (sin stencil ni alpha)
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: false, 
+                powerPreference: "high-performance",
+                precision: "lowp",
+                stencil: false,
+                depth: true,
+                alpha: false
+            });
             renderer.setSize(width, height);
-            renderer.setPixelRatio(1);
+            
+            // Reducción del Pixel Ratio al 80% para disparar la tasa de FPS
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 0.8));
             container.appendChild(renderer.domElement);
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
+            controls.dampingFactor = 0.08;
             controls.enableZoom = true;
             controls.zoomSpeed = 1.0;
 
@@ -290,10 +300,11 @@
                 needsRender = true;
             });
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
+            // Luz ambiental fuerte para equilibrar materiales Lambert simples
+            const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
             dirLight.position.set(100, 200, 100);
             scene.add(dirLight);
 
@@ -305,6 +316,7 @@
                     camera.aspect = container.clientWidth / container.clientHeight;
                     camera.updateProjectionMatrix();
                     renderer.setSize(container.clientWidth, container.clientHeight);
+                    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 0.8));
                     needsRender = true;
                 }
             });
@@ -341,19 +353,17 @@
                 (gltf) => {
                     const model = gltf.scene;
 
-                    // 1. CÁLCULO DE CAJA Y TAMAÑO
                     const box = new THREE.Box3().setFromObject(model);
                     const center = box.getCenter(new THREE.Vector3());
                     const size = box.getSize(new THREE.Vector3());
 
-                    // 2. ALINEACIÓN (Suelo sobre la grilla Y = 0)
                     model.position.x = -center.x;
                     model.position.z = -center.z;
                     model.position.y = -box.min.y;
 
                     scene.add(model);
 
-                    // 3. OPTIMIZACIÓN EXTREMA DE RENDIMIENTO
+                    // OPTIMIZACIÓN EXTREMA DE MATERIALES Y MALLAS
                     model.traverse((child) => {
                         if (child.isMesh) {
                             child.matrixAutoUpdate = false;
@@ -361,13 +371,26 @@
                             child.frustumCulled = true;
                             child.castShadow = false;
                             child.receiveShadow = false;
+
+                            // CONVERSIÓN COMPLETA A MATERIAL LAMBERT ULTRA-LIGERO
                             if (child.material) {
-                                child.material.precision = 'lowp';
+                                const colorOriginal = child.material.color ? child.material.color.clone() : new THREE.Color(0xcccccc);
+                                
+                                const simplificarMaterial = (mat) => new THREE.MeshLambertMaterial({
+                                    color: colorOriginal,
+                                    side: THREE.FrontSide,
+                                    precision: 'lowp'
+                                });
+
+                                if (Array.isArray(child.material)) {
+                                    child.material = child.material.map(simplificarMaterial);
+                                } else {
+                                    child.material = simplificarMaterial(child.material);
+                                }
                             }
                         }
                     });
 
-                    // 4. CONFIGURACIÓN DE CÁMARA Y LIMITES DE VISIÓN
                     const maxDim = Math.max(size.x, size.y, size.z);
                     const fovRad = (camera.fov * Math.PI) / 180;
                     let cameraDist = Math.abs((maxDim / 2) / Math.tan(fovRad / 2)) * 2.2;
@@ -377,17 +400,16 @@
 
                     camera.position.set(cameraDist * 0.8, centerY + cameraDist * 0.6, cameraDist * 0.8);
                     camera.near = 0.5;
-                    camera.far = cameraDist * 4;
+                    camera.far = cameraDist * 3;
                     camera.updateProjectionMatrix();
 
                     controls.minDistance = 0.5;
-                    controls.maxDistance = cameraDist * 10;
+                    controls.maxDistance = cameraDist * 8;
                     controls.update();
 
                     needsRender = true;
-                    statusEl.innerText = '🟢 Modelo Optimizado Cargado';
+                    statusEl.innerText = '🟢 Modelo Ultra-Optimizado Cargado';
 
-                    // 5. AGRUPACIÓN DE CAPAS
                     const objetosPorCapa = new Map();
                     model.traverse((child) => {
                         if (child.isMesh) {
