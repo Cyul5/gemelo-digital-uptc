@@ -244,7 +244,7 @@
         </div>
     </div>
 
-    <!-- MÓDULO THREE.JS: DIVISION FISICA POR GEOMETRIA DE PISOS -->
+    <!-- MÓDULO THREE.JS CON REORGANIZACIÓN ESPACIAL DE NODOS -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -344,99 +344,61 @@
             const layersEl = document.getElementById('ifc-layers-list');
             if (!init3DViewer()) return;
 
-            statusEl.innerHTML = '<span class="loading-spinner"></span> Reconstruyendo capas por geometría...';
+            statusEl.innerHTML = '<span class="loading-spinner"></span> Analizando niveles del edificio...';
 
             gltfLoader.load(
                 URL_GLB,
                 (gltf) => {
                     const rawModel = gltf.scene;
+                    
+                    rawModel.traverse((child) => {
+                        if (child.isMesh && child.material) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(m => { m.side = THREE.DoubleSide; });
+                            } else {
+                                child.material.side = THREE.DoubleSide;
+                            }
+                        }
+                    });
 
-                    // 1. Obtener la caja delimitadora total
                     const boundingBoxGlobal = new THREE.Box3().setFromObject(rawModel);
                     const minY = boundingBoxGlobal.min.y;
                     const totalHeight = boundingBoxGlobal.max.y - minY;
                     const numPisos = 5;
                     const heightPerFloor = totalHeight / numPisos;
 
-                    // 2. Extraer todas las sub-mallas del GLB original
-                    const sourceMeshes = [];
+                    const gruposPisos = Array.from({ length: numPisos }, (_, i) => {
+                        const g = new THREE.Group();
+                        g.name = `Nivel ${i + 1}`;
+                        scene.add(g);
+                        return g;
+                    });
+
+                    const meshesToProcess = [];
                     rawModel.traverse((child) => {
                         if (child.isMesh) {
-                            child.updateWorldMatrix(true, false);
-                            sourceMeshes.push(child);
+                            meshesToProcess.push(child);
                         }
                     });
 
-                    // 3. Crear 5 Grupos reales en la escena para cada piso
-                    const gruposPisos = [];
-                    for (let i = 0; i < numPisos; i++) {
-                        const grupo = new THREE.Group();
-                        grupo.name = `Nivel ${i + 1}`;
-                        scene.add(grupo);
-                        gruposPisos.push(grupo);
-                    }
+                    const tempBox = new THREE.Box3();
+                    const centerVec = new THREE.Vector3();
 
-                    // 4. Fragmentar geometrías por cada triángulo según su cota Y
-                    sourceMeshes.forEach((mesh) => {
-                        const geom = mesh.geometry.clone();
-                        geom.applyMatrix4(mesh.matrixWorld);
+                    meshesToProcess.forEach((mesh) => {
+                        mesh.updateWorldMatrix(true, false);
+                        tempBox.setFromObject(mesh);
+                        tempBox.getCenter(centerVec);
 
-                        const posAttr = geom.attributes.position;
-                        const indexAttr = geom.index;
+                        let floorIdx = Math.floor((centerVec.y - minY) / heightPerFloor);
+                        floorIdx = Math.max(0, Math.min(numPisos - 1, floorIdx));
 
-                        if (!posAttr) return;
-
-                        // Estructuras temporales para guardar triángulos clasificados por piso
-                        const indicesPorPiso = Array.from({ length: numPisos }, () => []);
-
-                        const numTriangulos = indexAttr ? indexAttr.count / 3 : posAttr.count / 3;
-
-                        for (let t = 0; t < numTriangulos; t++) {
-                            let idxA, idxB, idxC;
-                            if (indexAttr) {
-                                idxA = indexAttr.getX(t * 3);
-                                idxB = indexAttr.getX(t * 3 + 1);
-                                idxC = indexAttr.getX(t * 3 + 2);
-                            } else {
-                                idxA = t * 3;
-                                idxB = t * 3 + 1;
-                                idxC = t * 3 + 2;
-                            }
-
-                            const yA = posAttr.getY(idxA);
-                            const yB = posAttr.getY(idxB);
-                            const yC = posAttr.getY(idxC);
-
-                            // Altura media del triángulo
-                            const avgY = (yA + yB + yC) / 3;
-                            let floorIdx = Math.floor((avgY - minY) / heightPerFloor);
-                            floorIdx = Math.max(0, Math.min(numPisos - 1, floorIdx));
-
-                            indicesPorPiso[floorIdx].push(idxA, idxB, idxC);
+                        const parent = mesh.parent;
+                        if (parent) {
+                            parent.remove(mesh);
                         }
-
-                        // Generar mallas individuales para los pisos que contienen triángulos
-                        for (let f = 0; f < numPisos; f++) {
-                            if (indicesPorPiso[f].length > 0) {
-                                const newGeom = geom.clone();
-                                newGeom.setIndex(indicesPorPiso[f]);
-                                
-                                const mat = Array.isArray(mesh.material) ? 
-                                    mesh.material.map(m => m.clone()) : mesh.material.clone();
-                                
-                                if (Array.isArray(mat)) {
-                                    mat.forEach(m => { m.side = THREE.DoubleSide; });
-                                } else {
-                                    mat.side = THREE.DoubleSide;
-                                }
-
-                                const newMesh = new THREE.Mesh(newGeom, mat);
-                                gruposPisos[f].add(newMesh);
-                            }
-                        }
+                        gruposPisos[floorIdx].add(mesh);
                     });
 
-                    // 5. Crear la interfaz con las casillas de verificación
                     layersEl.innerHTML = '';
                     const fragment = document.createDocumentFragment();
 
@@ -445,7 +407,7 @@
                         layerRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:12px; color:#cbd5e1;';
                         layerRow.innerHTML = `
                             <input type="checkbox" checked id="chk-piso-${idx+1}" style="cursor:pointer;">
-                            <label for="chk-piso-${idx+1}" style="cursor:pointer; font-weight:600;">🏢 ${grupo.name}</label>
+                            <label for="chk-piso-${idx+1}" style="cursor:pointer; font-weight:600;">🏢 Nivel ${idx + 1}</label>
                         `;
 
                         const checkbox = layerRow.querySelector('input');
@@ -459,7 +421,6 @@
 
                     layersEl.appendChild(fragment);
 
-                    // 6. Centrar cámara
                     if (!boundingBoxGlobal.isEmpty()) {
                         const size = boundingBoxGlobal.getSize(new THREE.Vector3());
                         const center = boundingBoxGlobal.getCenter(new THREE.Vector3());
@@ -472,13 +433,13 @@
                     }
 
                     needsRender = true;
-                    statusEl.innerText = '🟢 5 Niveles independientes activos';
+                    statusEl.innerText = '🟢 5 Niveles sincronizados';
                     yaCargado = true;
                 },
                 (xhr) => {
                     if (xhr.lengthComputable && xhr.total > 0) {
                         const pct = Math.round((xhr.loaded / xhr.total) * 100);
-                        statusEl.innerHTML = `<span class="loading-spinner"></span> Procesando: ${pct}%`;
+                        statusEl.innerHTML = `<span class="loading-spinner"></span> Cargando: ${pct}%`;
                     }
                 },
                 (error) => {
