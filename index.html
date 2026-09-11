@@ -277,7 +277,6 @@
 
             camera = new THREE.PerspectiveCamera(45, width / height, 0.5, 2000);
 
-            // IMPORTANTE: Habilitar el motor de clipping local en el renderer
             renderer = new THREE.WebGLRenderer({ 
                 antialias: false, 
                 powerPreference: "high-performance",
@@ -361,10 +360,8 @@
                     const numPisos = 5;
                     const alturaPiso = alturaTotal / numPisos;
 
-                    // Crear un plano de corte inicial apuntando hacia abajo (corta todo lo que esté por encima de maxY)
                     globalClippingPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), maxY);
 
-                    // Aplicar el plano de corte a todos los materiales del modelo de forma segura
                     model.traverse((child) => {
                         if (child.isMesh) {
                             if (child.material) {
@@ -383,7 +380,6 @@
                         }
                     });
 
-                    // Generar controles de capa basados en alturas de corte exactas
                     layersEl.innerHTML = '';
                     const fragment = document.createDocumentFragment();
 
@@ -412,9 +408,7 @@
                         layerRow.appendChild(checkbox);
                         layerRow.appendChild(label);
 
-                        // Lógica del plano de corte por niveles
                         checkbox.addEventListener('change', () => {
-                            // Encontrar el nivel más alto que esté marcado
                             let maxAlturaActiva = maxY;
                             for (let j = numPisos - 1; j >= 0; j--) {
                                 const chk = document.getElementById(`chk-piso-${j+1}`);
@@ -423,12 +417,10 @@
                                     break;
                                 }
                                 if (j === 0 && chk && !chk.checked) {
-                                    // Si apagan el piso 1, ponemos el corte por debajo del modelo para ocultarlo todo
                                     maxAlturaActiva = minY - 10;
                                 }
                             }
 
-                            // Actualizar la constante "constant" del plano matemático de Three.js
                             globalClippingPlane.constant = maxAlturaActiva;
                             needsRender = true;
                         });
