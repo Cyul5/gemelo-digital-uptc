@@ -201,7 +201,7 @@
                 <div class="ifc-layout">
                     <div id="ifc-canvas-container"></div>
                     <div class="ifc-layers-panel">
-                        <h4>Niveles / Pisos 3D</h4>
+                        <h4>Sección de Niveles (Corte 3D)</h4>
                         <div id="ifc-status" style="margin-bottom:8px; font-size:11px; color:#94a3b8;">
                             <span class="loading-spinner"></span> Esperando activación...
                         </div>
@@ -244,7 +244,7 @@
         </div>
     </div>
 
-    <!-- SCRIPT THREE.JS CON REMOCIÓN FÍSICA DE ESCENA PARA LAS CAPAS -->
+    <!-- SCRIPT THREE.JS CON PLANO DE CORTE (CLIPPING PLANE) -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -257,6 +257,7 @@
         let yaCargado = false;
         let animFrameId = null;
         let needsRender = true;
+        let globalClippingPlane = null;
 
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
 
@@ -276,11 +277,11 @@
 
             camera = new THREE.PerspectiveCamera(45, width / height, 0.5, 2000);
 
+            // IMPORTANTE: Habilitar el motor de clipping local en el renderer
             renderer = new THREE.WebGLRenderer({ 
                 antialias: false, 
                 powerPreference: "high-performance",
-                stencil: false,
-                depth: true
+                localClippingEnabled: true 
             });
             renderer.setSize(width, height);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
@@ -344,146 +345,96 @@
             const layersEl = document.getElementById('ifc-layers-list');
             if (!init3DViewer()) return;
 
-            statusEl.innerHTML = '<span class="loading-spinner"></span> Analizando niveles del edificio...';
+            statusEl.innerHTML = '<span class="loading-spinner"></span> Cargando modelo 3D...';
 
             gltfLoader.load(
                 URL_GLB,
                 (gltf) => {
-                    const rawModel = gltf.scene;
-                    
-                    rawModel.updateMatrixWorld(true);
+                    const model = gltf.scene;
+                    scene.add(model);
+                    model.updateMatrixWorld(true);
 
-                    rawModel.traverse((child) => {
-                        if (child.isMesh) {
-                            if (child.material) {
-                                if (Array.isArray(child.material)) {
-                                    child.material = child.material.map(m => {
-                                        const clone = m.clone();
-                                        clone.side = THREE.DoubleSide;
-                                        return clone;
-                                    });
-                                } else {
-                                    child.material = child.material.clone();
-                                    child.material.side = THREE.DoubleSide;
-                                }
-                            }
-                        }
-                    });
-
-                    const boundingBoxGlobal = new THREE.Box3().setFromObject(rawModel);
+                    const boundingBoxGlobal = new THREE.Box3().setFromObject(model);
                     const minY = boundingBoxGlobal.min.y;
                     const maxY = boundingBoxGlobal.max.y;
                     const alturaTotal = maxY - minY;
                     const numPisos = 5;
                     const alturaPiso = alturaTotal / numPisos;
 
-                    const pisoGroups = [];
-                    for (let i = 0; i < numPisos; i++) {
-                        const group = new THREE.Group();
-                        group.name = `Piso_${i + 1}`;
-                        scene.add(group);
-                        pisoGroups.push(group);
-                    }
+                    // Crear un plano de corte inicial apuntando hacia abajo (corta todo lo que esté por encima de maxY)
+                    globalClippingPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), maxY);
 
-                    const meshesPorPiso = Array.from({ length: numPisos }, () => 0);
-                    const meshes = [];
-                    rawModel.traverse((child) => {
-                        if (child.isMesh) meshes.push(child);
-                    });
-
-                    meshes.forEach((mesh) => {
-                        mesh.geometry.computeBoundingBox();
-                        const boxMalla = mesh.geometry.boundingBox.clone();
-                        boxMalla.applyMatrix4(mesh.matrixWorld);
-
-                        if (!boxMalla.isEmpty()) {
-                            const centroMallaY = (boxMalla.min.y + boxMalla.max.y) / 2;
-                            let indicePiso = Math.floor((centroMallaY - minY) / alturaPiso);
-                            indicePiso = Math.max(0, Math.min(numPisos - 1, indicePiso));
-
-                            pisoGroups[indicePiso].attach(mesh);
-                            meshesPorPiso[indicePiso]++;
+                    // Aplicar el plano de corte a todos los materiales del modelo de forma segura
+                    model.traverse((child) => {
+                        if (child.isMesh) {
+                            if (child.material) {
+                                if (Array.isArray(child.material)) {
+                                    child.material.forEach(m => {
+                                        m.side = THREE.DoubleSide;
+                                        m.clippingPlanes = [globalClippingPlane];
+                                        m.clipShadows = true;
+                                    });
+                                } else {
+                                    child.material.side = THREE.DoubleSide;
+                                    child.material.clippingPlanes = [globalClippingPlane];
+                                    child.material.clipShadows = true;
+                                }
+                            }
                         }
                     });
 
-                    const boxHelpers = [];
-                    pisoGroups.forEach((group, idx) => {
-                        const yMin = minY + (idx * alturaPiso);
-                        const yMax = minY + ((idx + 1) * alturaPiso);
-                        
-                        const helperGeo = new THREE.BoxGeometry(
-                            boundingBoxGlobal.max.x - boundingBoxGlobal.min.x,
-                            yMax - yMin,
-                            boundingBoxGlobal.max.z - boundingBoxGlobal.min.z
-                        );
-                        
-                        const helperMat = new THREE.MeshBasicMaterial({
-                            transparent: true,
-                            opacity: 0.03,
-                            color: 0x00b4d8,
-                            wireframe: true
-                        });
-                        
-                        const helperMesh = new THREE.Mesh(helperGeo, helperMat);
-                        helperMesh.position.set(
-                            (boundingBoxGlobal.min.x + boundingBoxGlobal.max.x) / 2,
-                            (yMin + yMax) / 2,
-                            (boundingBoxGlobal.min.z + boundingBoxGlobal.max.z) / 2
-                        );
-                        
-                        helperMesh.name = `Helper_Piso_${idx + 1}`;
-                        scene.add(helperMesh);
-                        boxHelpers.push(helperMesh);
-                    });
-
+                    // Generar controles de capa basados en alturas de corte exactas
                     layersEl.innerHTML = '';
                     const fragment = document.createDocumentFragment();
 
-                    pisoGroups.forEach((group, idx) => {
+                    const alturasPisos = [];
+                    for (let i = 0; i < numPisos; i++) {
+                        alturasPisos.push(minY + ((i + 1) * alturaPiso));
+                    }
+
+                    for (let i = 0; i < numPisos; i++) {
                         const layerRow = document.createElement('div');
                         layerRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:12px; color:#cbd5e1;';
                         
                         const checkbox = document.createElement('input');
                         checkbox.type = 'checkbox';
                         checkbox.checked = true;
-                        checkbox.id = `chk-piso-${idx+1}`;
+                        checkbox.id = `chk-piso-${i+1}`;
                         checkbox.style.cursor = 'pointer';
-                        checkbox.dataset.pisoIdx = idx;
+                        checkbox.dataset.alturaCorte = alturasPisos[i];
                         
                         const label = document.createElement('label');
-                        label.htmlFor = `chk-piso-${idx+1}`;
+                        label.htmlFor = `chk-piso-${i+1}`;
                         label.style.cursor = 'pointer';
                         label.style.fontWeight = '600';
-                        label.textContent = `🏢 Nivel ${idx + 1} (${meshesPorPiso[idx]} pza)`;
+                        label.textContent = `🏢 Nivel ${i + 1} (Hasta ${Math.round(alturasPisos[i])}m)`;
                         
                         layerRow.appendChild(checkbox);
                         layerRow.appendChild(label);
 
-                        // LÓGICA RADICAL DE CAPAS: Añadir o remover físicamente de la escena
-                        checkbox.addEventListener('change', (e) => {
-                            const mostrar = e.target.checked;
-                            const pisoIdx = parseInt(e.target.dataset.pisoIdx);
-                            
-                            const grupoPiso = pisoGroups[pisoIdx];
-                            const helperPiso = boxHelpers[pisoIdx];
-
-                            if (mostrar) {
-                                if (!scene.getObjectById(grupoPiso.id)) scene.add(grupoPiso);
-                                if (!scene.getObjectById(helperPiso.id)) scene.add(helperPiso);
-                                grupoPiso.visible = true;
-                                helperPiso.visible = true;
-                            } else {
-                                scene.remove(grupoPiso);
-                                scene.remove(helperPiso);
-                                grupoPiso.visible = false;
-                                helperPiso.visible = false;
+                        // Lógica del plano de corte por niveles
+                        checkbox.addEventListener('change', () => {
+                            // Encontrar el nivel más alto que esté marcado
+                            let maxAlturaActiva = maxY;
+                            for (let j = numPisos - 1; j >= 0; j--) {
+                                const chk = document.getElementById(`chk-piso-${j+1}`);
+                                if (chk && chk.checked) {
+                                    maxAlturaActiva = alturasPisos[j];
+                                    break;
+                                }
+                                if (j === 0 && chk && !chk.checked) {
+                                    // Si apagan el piso 1, ponemos el corte por debajo del modelo para ocultarlo todo
+                                    maxAlturaActiva = minY - 10;
+                                }
                             }
 
+                            // Actualizar la constante "constant" del plano matemático de Three.js
+                            globalClippingPlane.constant = maxAlturaActiva;
                             needsRender = true;
                         });
 
                         fragment.appendChild(layerRow);
-                    });
+                    }
 
                     layersEl.appendChild(fragment);
 
@@ -499,7 +450,7 @@
                     }
 
                     needsRender = true;
-                    statusEl.innerText = '🟢 Visor 3D Listo';
+                    statusEl.innerText = '🟢 Visor 3D Listo (Sección Activa)';
                     yaCargado = true;
                 },
                 (xhr) => {
@@ -687,7 +638,7 @@
 
         function crearEstructuraVaciaEspacio(idSVG, codigoNombre) {
             let obj = { nombre: `Aula ${codigoNombre}`, aforo: "35", horarios: {} };
-            TODOS_DIAS.forEach(d => {
+            TODAS_DIAS.forEach(d => {
                 obj.horarios[d] = {};
                 TODAS_HORAS.forEach(h => { obj.horarios[d][h] = { est: "Libre", materia: "Disponible", docente: "" }; });
             });
@@ -876,7 +827,7 @@
                 mostrarInformacionGeneralEdificio();
             } else if (idVista === 'vista-3d') {
                 document.getElementById('btn-3d').classList.add('active');
-                rutaNav.innerText = "Edificio 30 Hunza (Modelo 3D BIM)";
+                rutaNav.innerText = "Edificio 30 Hunza (Sección 3D BIM)";
                 if (window.cargarModeloIFC) {
                     window.cargarModeloIFC();
                 }
