@@ -244,7 +244,7 @@
         </div>
     </div>
 
-    <!-- MÓDULO THREE.JS CON DISTRIBUCIÓN POR ALTURA -->
+    <!-- MÓDULO THREE.JS CON CONTROL DE VISIBILIDAD DIRECTA POR ALTURA -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -361,7 +361,9 @@
                         }
                     });
 
-                    // 1. Calcular la caja contenedora global para conocer las alturas exactas del GLB
+                    scene.add(rawModel);
+
+                    // 1. Calcular caja contenedora global del modelo
                     const boundingBoxGlobal = new THREE.Box3().setFromObject(rawModel);
                     const minY = boundingBoxGlobal.min.y;
                     const maxY = boundingBoxGlobal.max.y;
@@ -369,48 +371,40 @@
                     const numPisos = 5;
                     const alturaPiso = alturaTotal / numPisos;
 
-                    // 2. Crear 5 grupos independientes en la escena para los niveles
-                    const gruposPisos = Array.from({ length: numPisos }, (_, i) => {
-                        const g = new THREE.Group();
-                        g.name = `Nivel ${i + 1}`;
-                        scene.add(g);
-                        return g;
-                    });
+                    // 2. Agrupar las mallas por niveles en arrays de control de visibilidad directa
+                    const pisosMeshes = Array.from({ length: numPisos }, () => []);
 
-                    // 3. Recoger y reasignar cada malla individual al grupo correspondiente según su altura Y
-                    const mallasAProcesar = [];
                     rawModel.traverse((child) => {
                         if (child.isMesh) {
-                            mallasAProcesar.push(child);
+                            const boxMalla = new THREE.Box3().setFromObject(child);
+                            const centroMallaY = (boxMalla.min.y + boxMalla.max.y) / 2;
+                            
+                            let indicePiso = Math.floor((centroMallaY - minY) / alturaPiso);
+                            indicePiso = Math.max(0, Math.min(numPisos - 1, indicePiso));
+
+                            pisosMeshes[indicePiso].push(child);
                         }
-                    });
-
-                    mallasAProcesar.forEach((mesh) => {
-                        const boxMalla = new THREE.Box3().setFromObject(mesh);
-                        const centroMallaY = (boxMalla.min.y + boxMalla.max.y) / 2;
-                        
-                        let indicePiso = Math.floor((centroMallaY - minY) / alturaPiso);
-                        indicePiso = Math.max(0, Math.min(numPisos - 1, indicePiso));
-
-                        gruposPisos[indicePiso].add(mesh);
                     });
 
                     // Construir los checkboxes funcionales en el panel lateral
                     layersEl.innerHTML = '';
                     const fragment = document.createDocumentFragment();
 
-                    gruposPisos.forEach((grupo, idx) => {
+                    pisosMeshes.forEach((meshesPiso, idx) => {
                         const layerRow = document.createElement('div');
                         layerRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:12px; color:#cbd5e1;';
                         layerRow.innerHTML = `
                             <input type="checkbox" checked id="chk-piso-${idx+1}" style="cursor:pointer;">
-                            <label for="chk-piso-${idx+1}" style="cursor:pointer; font-weight:600;">🏢 Nivel ${idx + 1}</label>
+                            <label for="chk-piso-${idx+1}" style="cursor:pointer; font-weight:600;">🏢 Nivel ${idx + 1} (${meshesPiso.length} piezas)</label>
                         `;
 
                         const checkbox = layerRow.querySelector('input');
                         checkbox.addEventListener('change', (e) => {
-                            grupo.visible = e.target.checked;
-                            needsRender = true; // Forzar redibujado inmediato al marcar/desmarcar
+                            const mostrar = e.target.checked;
+                            meshesPiso.forEach(mesh => {
+                                mesh.visible = mostrar;
+                            });
+                            needsRender = true; // Forzar redibujado inmediato al cambiar
                         });
 
                         fragment.appendChild(layerRow);
