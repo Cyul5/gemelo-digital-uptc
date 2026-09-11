@@ -201,7 +201,7 @@
                 <div class="ifc-layout">
                     <div id="ifc-canvas-container"></div>
                     <div class="ifc-layers-panel">
-                        <h4>Capas / Elementos 3D</h4>
+                        <h4>Niveles / Pisos 3D</h4>
                         <div id="ifc-status" style="margin-bottom:8px; font-size:11px; color:#94a3b8;">
                             <span class="loading-spinner"></span> Esperando activación...
                         </div>
@@ -244,12 +244,13 @@
         </div>
     </div>
 
-    <!-- MÓDULO THREE.JS ULTRA-OPTIMIZADO CON CACHÉ DE MATERIALES Y DRACO -->
+    <!-- MÓDULO THREE.JS OPTIMIZADO: FUSIÓN DE GEOMETRÍA POR PISO + CONTROL DE CAPAS -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+        import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 
         let scene, camera, renderer, controls;
         let gltfLoader = null;
@@ -260,7 +261,7 @@
 
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
 
-        // CACHÉ DE MATERIALES: Comparte 1 instancia de material por cada color para reducir Draw Calls
+        // Caché de materiales compartidos para minimizar transiciones en GPU
         const materialCache = new Map();
 
         function getSharedMaterial(colorHex) {
@@ -290,7 +291,6 @@
 
             camera = new THREE.PerspectiveCamera(45, width / height, 0.5, 2000);
 
-            // Renderer liviano sin buffers pesados
             renderer = new THREE.WebGLRenderer({ 
                 antialias: false, 
                 powerPreference: "high-performance",
@@ -332,7 +332,6 @@
                 }
             });
 
-            // Render loop por demanda (ahorra GPU)
             function animate() {
                 animFrameId = requestAnimationFrame(animate);
                 const isMoving = controls.update();
@@ -345,7 +344,6 @@
             if (animFrameId) cancelAnimationFrame(animFrameId);
             animate();
 
-            // Configuración de GLTFLoader con descompresión Draco
             gltfLoader = new GLTFLoader();
             const dracoLoader = new DRACOLoader();
             dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
@@ -360,98 +358,87 @@
 
             const statusEl = document.getElementById('ifc-status');
             const layersEl = document.getElementById('ifc-layers-list');
-
             if (!init3DViewer()) return;
 
-            statusEl.innerHTML = '<span class="loading-spinner"></span> Optimizando geometría...';
+            statusEl.innerHTML = '<span class="loading-spinner"></span> Agrupando por pisos y optimizando...';
 
             gltfLoader.load(
                 URL_GLB,
                 (gltf) => {
                     const model = gltf.scene;
 
-                    const box = new THREE.Box3().setFromObject(model);
-                    const center = box.getCenter(new THREE.Vector3());
-                    const size = box.getSize(new THREE.Vector3());
+                    // Agrupar las mallas por el nombre del piso/nodo padre
+                    const mallasPorPiso = new Map();
 
-                    model.position.x = -center.x;
-                    model.position.z = -center.z;
-                    model.position.y = -box.min.y;
-
-                    scene.add(model);
-
-                    // OPTIMIZACIÓN EXTREMA: Reutilización de materiales e inhabilitación de matrices dinámicas
                     model.traverse((child) => {
-                        if (child.isMesh) {
-                            child.frustumCulled = true;
-                            child.castShadow = false;
-                            child.receiveShadow = false;
+                        if (child.isMesh && child.geometry) {
+                            let nombrePiso = child.parent?.name || child.name || 'Estructura General';
 
-                            // Reemplazo a material único compartido
-                            if (child.material) {
-                                const originalColor = child.material.color ? child.material.color.getHex() : 0xcccccc;
-                                
-                                if (Array.isArray(child.material)) {
-                                    child.material = child.material.map(m => getSharedMaterial(m.color ? m.color.getHex() : 0xcccccc));
-                                } else {
-                                    child.material = getSharedMaterial(originalColor);
-                                }
+                            if (!mallasPorPiso.has(nombrePiso)) {
+                                mallasPorPiso.set(nombrePiso, []);
                             }
 
-                            // Congelar matriz de transformación para que no consuma CPU por frame
-                            child.matrixAutoUpdate = false;
-                            child.updateMatrix();
-                        }
-                    });
+                            const clonedGeom = child.geometry.clone();
+                            child.updateMatrixWorld(true);
+                            clonedGeom.applyMatrix4(child.matrixWorld);
 
-                    const maxDim = Math.max(size.x, size.y, size.z);
-                    const fovRad = (camera.fov * Math.PI) / 180;
-                    let cameraDist = Math.abs((maxDim / 2) / Math.tan(fovRad / 2)) * 2.2;
-
-                    const centerY = size.y / 2;
-                    controls.target.set(0, centerY, 0);
-
-                    camera.position.set(cameraDist * 0.8, centerY + cameraDist * 0.6, cameraDist * 0.8);
-                    camera.near = 0.5;
-                    camera.far = cameraDist * 3;
-                    camera.updateProjectionMatrix();
-
-                    controls.minDistance = 0.5;
-                    controls.maxDistance = cameraDist * 8;
-                    controls.update();
-
-                    needsRender = true;
-                    statusEl.innerText = '🟢 Modelo Ultra-Optimizado Cargado';
-
-                    const objetosPorCapa = new Map();
-                    model.traverse((child) => {
-                        if (child.isMesh) {
-                            let nombreCapa = child.name || child.parent?.name || 'Estructura';
-                            if (!objetosPorCapa.has(nombreCapa)) objetosPorCapa.set(nombreCapa, []);
-                            objetosPorCapa.get(nombreCapa).push(child);
+                            mallasPorPiso.get(nombrePiso).push({
+                                geometry: clonedGeom,
+                                color: child.material?.color ? child.material.color.getHex() : 0xcccccc
+                            });
                         }
                     });
 
                     layersEl.innerHTML = '';
                     const fragment = document.createDocumentFragment();
+                    const boundingBoxGlobal = new THREE.Box3();
 
-                    Array.from(objetosPorCapa.entries()).slice(0, 30).forEach(([nombreCapa, meshes]) => {
-                        const layerRow = document.createElement('div');
-                        layerRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:4px; font-size:11px; color:#cbd5e1;';
-                        layerRow.innerHTML = `
-                            <input type="checkbox" checked style="cursor:pointer;">
-                            <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${nombreCapa} (${meshes.length})</span>
-                        `;
-                        const checkbox = layerRow.querySelector('input');
-                        checkbox.addEventListener('change', (e) => {
-                            const visible = e.target.checked;
-                            meshes.forEach(m => { m.visible = visible; });
-                            needsRender = true;
-                        });
-                        fragment.appendChild(layerRow);
+                    // Fusionar las mallas de cada piso en 1 sola malla por nivel (reduce miles de Draw Calls a solo 1 por piso)
+                    mallasPorPiso.forEach((items, nombrePiso) => {
+                        if (items.length === 0) return;
+
+                        const geoms = items.map(i => i.geometry);
+                        const mergedGeometry = BufferGeometryUtils.mergeGeometries(geoms, false);
+
+                        if (mergedGeometry) {
+                            const materialPiso = getSharedMaterial(items[0].color);
+                            const meshPiso = new THREE.Mesh(mergedGeometry, materialPiso);
+                            meshPiso.name = nombrePiso;
+
+                            scene.add(meshPiso);
+                            boundingBoxGlobal.expandByObject(meshPiso);
+
+                            const layerRow = document.createElement('div');
+                            layerRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:12px; color:#cbd5e1;';
+                            layerRow.innerHTML = `
+                                <input type="checkbox" checked style="cursor:pointer;">
+                                <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">🏢 ${nombrePiso}</span>
+                            `;
+
+                            const checkbox = layerRow.querySelector('input');
+                            checkbox.addEventListener('change', (e) => {
+                                meshPiso.visible = e.target.checked;
+                                needsRender = true;
+                            });
+
+                            fragment.appendChild(layerRow);
+                        }
                     });
 
                     layersEl.appendChild(fragment);
+
+                    // Auto-encuadre de la cámara
+                    const size = boundingBoxGlobal.getSize(new THREE.Vector3());
+                    const center = boundingBoxGlobal.getCenter(new THREE.Vector3());
+
+                    controls.target.copy(center);
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    camera.position.set(center.x + maxDim * 1.2, center.y + maxDim * 1.2, center.z + maxDim * 1.2);
+                    camera.updateProjectionMatrix();
+                    controls.update();
+
+                    needsRender = true;
+                    statusEl.innerText = '🟢 Pisos optimizados y funcionales';
                     yaCargado = true;
                 },
                 (xhr) => {
