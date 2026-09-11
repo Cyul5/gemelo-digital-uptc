@@ -79,10 +79,30 @@
         .vista { display: none; width: 100%; height: 100%; position: relative; }
         .vista.activa { display: block; }
 
-        /* MAPA GENERAL Y SVG INYECTADO */
-        .map-wrapper { width: 100%; height: 100%; background: #020617; overflow: hidden; cursor: grab; position: relative; }
-        .map-content { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; transform-origin: center center; }
-        .map-content svg { width: 100%; height: 100%; max-height: 100%; display: block; }
+        /* MAPA GENERAL Y SVG CON FONDO BLANCO */
+        .map-wrapper { 
+            width: 100%; 
+            height: 100%; 
+            background: #ffffff; /* Fondo blanco para el visor */
+            overflow: hidden; 
+            cursor: grab; 
+            position: relative; 
+        }
+        .map-content { 
+            width: 100%; 
+            height: 100%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            transform-origin: center center; 
+        }
+        .map-content svg { 
+            width: 100%; 
+            height: 100%; 
+            max-height: 100%; 
+            display: block; 
+            background-color: #ffffff; /* Asegura lienzo blanco limpio */
+        }
 
         /* ESTILOS INTERACTIVOS PARA LA GEOMETRÍA HUNZA DENTRO DEL SVG */
         #HUNZA, [id*="HUNZA"], .hotspot-edificio {
@@ -92,7 +112,7 @@
         }
         #HUNZA:hover, [id*="HUNZA"]:hover, .hotspot-edificio:hover {
             fill: #00b4d8 !important;
-            stroke: #ffffff !important;
+            stroke: #070f1e !important;
             stroke-width: 2px !important;
             filter: drop-shadow(0px 0px 8px #00b4d8);
             opacity: 0.85;
@@ -198,7 +218,7 @@
         <!-- ÁREA DE VISUALIZACIÓN CANVAS -->
         <div class="viewport-container">
             
-            <!-- VISTA 1: PLANO CENTRAL SVG -->
+            <!-- VISTA 1: PLANO CENTRAL SVG CON FONDO BLANCO -->
             <div id="vista-campus" class="vista activa">
                 <div id="map-wrapper" class="map-wrapper">
                     <div id="map-content" class="map-content">
