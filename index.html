@@ -244,11 +244,12 @@
         </div>
     </div>
 
-    <!-- MÓDULO THREE.JS CON ULTRA-OPTIMIZACIÓN DE MATERIALES Y RENDER ON DEMAND -->
+    <!-- MÓDULO THREE.JS ULTRA-OPTIMIZADO CON CACHÉ DE MATERIALES Y DRACO -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
         let scene, camera, renderer, controls;
         let gltfLoader = null;
@@ -258,6 +259,20 @@
         let needsRender = true;
 
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
+
+        // CACHÉ DE MATERIALES: Comparte 1 instancia de material por cada color para reducir Draw Calls
+        const materialCache = new Map();
+
+        function getSharedMaterial(colorHex) {
+            if (!materialCache.has(colorHex)) {
+                materialCache.set(colorHex, new THREE.MeshLambertMaterial({
+                    color: colorHex,
+                    side: THREE.FrontSide,
+                    precision: 'lowp'
+                }));
+            }
+            return materialCache.get(colorHex);
+        }
 
         function init3DViewer() {
             if (is3DInitialized) return true;
@@ -275,7 +290,7 @@
 
             camera = new THREE.PerspectiveCamera(45, width / height, 0.5, 2000);
 
-            // Renderer hiperoptimizado (sin stencil ni alpha)
+            // Renderer liviano sin buffers pesados
             renderer = new THREE.WebGLRenderer({ 
                 antialias: false, 
                 powerPreference: "high-performance",
@@ -285,23 +300,19 @@
                 alpha: false
             });
             renderer.setSize(width, height);
-            
-            // Reducción del Pixel Ratio al 80% para disparar la tasa de FPS
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 0.8));
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 0.75));
             container.appendChild(renderer.domElement);
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.08;
             controls.enableZoom = true;
-            controls.zoomSpeed = 1.0;
 
             controls.addEventListener('change', () => {
                 needsRender = true;
             });
 
-            // Luz ambiental fuerte para equilibrar materiales Lambert simples
-            const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 2.2);
             scene.add(ambientLight);
 
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -316,11 +327,12 @@
                     camera.aspect = container.clientWidth / container.clientHeight;
                     camera.updateProjectionMatrix();
                     renderer.setSize(container.clientWidth, container.clientHeight);
-                    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 0.8));
+                    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 0.75));
                     needsRender = true;
                 }
             });
 
+            // Render loop por demanda (ahorra GPU)
             function animate() {
                 animFrameId = requestAnimationFrame(animate);
                 const isMoving = controls.update();
@@ -333,7 +345,12 @@
             if (animFrameId) cancelAnimationFrame(animFrameId);
             animate();
 
+            // Configuración de GLTFLoader con descompresión Draco
             gltfLoader = new GLTFLoader();
+            const dracoLoader = new DRACOLoader();
+            dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+            gltfLoader.setDRACOLoader(dracoLoader);
+
             is3DInitialized = true;
             return true;
         }
@@ -346,7 +363,7 @@
 
             if (!init3DViewer()) return;
 
-            statusEl.innerHTML = '<span class="loading-spinner"></span> Cargando geometría...';
+            statusEl.innerHTML = '<span class="loading-spinner"></span> Optimizando geometría...';
 
             gltfLoader.load(
                 URL_GLB,
@@ -363,31 +380,27 @@
 
                     scene.add(model);
 
-                    // OPTIMIZACIÓN EXTREMA DE MATERIALES Y MALLAS
+                    // OPTIMIZACIÓN EXTREMA: Reutilización de materiales e inhabilitación de matrices dinámicas
                     model.traverse((child) => {
                         if (child.isMesh) {
-                            child.matrixAutoUpdate = false;
-                            child.updateMatrix();
                             child.frustumCulled = true;
                             child.castShadow = false;
                             child.receiveShadow = false;
 
-                            // CONVERSIÓN COMPLETA A MATERIAL LAMBERT ULTRA-LIGERO
+                            // Reemplazo a material único compartido
                             if (child.material) {
-                                const colorOriginal = child.material.color ? child.material.color.clone() : new THREE.Color(0xcccccc);
+                                const originalColor = child.material.color ? child.material.color.getHex() : 0xcccccc;
                                 
-                                const simplificarMaterial = (mat) => new THREE.MeshLambertMaterial({
-                                    color: colorOriginal,
-                                    side: THREE.FrontSide,
-                                    precision: 'lowp'
-                                });
-
                                 if (Array.isArray(child.material)) {
-                                    child.material = child.material.map(simplificarMaterial);
+                                    child.material = child.material.map(m => getSharedMaterial(m.color ? m.color.getHex() : 0xcccccc));
                                 } else {
-                                    child.material = simplificarMaterial(child.material);
+                                    child.material = getSharedMaterial(originalColor);
                                 }
                             }
+
+                            // Congelar matriz de transformación para que no consuma CPU por frame
+                            child.matrixAutoUpdate = false;
+                            child.updateMatrix();
                         }
                     });
 
