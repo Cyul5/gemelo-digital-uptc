@@ -244,7 +244,7 @@
         </div>
     </div>
 
-    <!-- MÓDULO THREE.JS: AGRUPACIÓN INTELIGENTE POR PISOS & OPTIMIZACIÓN DE RENDIMIENTO -->
+    <!-- MÓDULO THREE.JS: CONTROL DIRECTO DE VISIBILIDAD DE MALLAS Y RENDERIZADO FLUIDO -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -276,7 +276,6 @@
 
             camera = new THREE.PerspectiveCamera(45, width / height, 0.5, 2000);
 
-            // Ajustes optimizados anti-lag
             renderer = new THREE.WebGLRenderer({ 
                 antialias: false, 
                 powerPreference: "high-performance",
@@ -291,13 +290,11 @@
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.08;
-            controls.enableZoom = true;
 
             controls.addEventListener('change', () => {
                 needsRender = true;
             });
 
-            // Iluminación balanceada
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
             scene.add(ambientLight);
 
@@ -347,15 +344,29 @@
             const layersEl = document.getElementById('ifc-layers-list');
             if (!init3DViewer()) return;
 
-            statusEl.innerHTML = '<span class="loading-spinner"></span> Agrupando por niveles...';
+            statusEl.innerHTML = '<span class="loading-spinner"></span> Analizando niveles...';
 
             gltfLoader.load(
                 URL_GLB,
                 (gltf) => {
                     const rootModel = gltf.scene;
+                    scene.add(rootModel);
 
-                    // 1. Recolectar todas las mallas
-                    const mallas = [];
+                    // 1. Calcular cota vertical para dividir el modelo en 5 niveles
+                    const boundingBoxGlobal = new THREE.Box3().setFromObject(rootModel);
+                    const minY = boundingBoxGlobal.min.y;
+                    const totalHeight = boundingBoxGlobal.max.y - minY;
+
+                    const numPisos = 5;
+                    const heightPerFloor = totalHeight / numPisos;
+
+                    // Arreglo de arreglos para almacenar las mallas pertenecientes a cada piso
+                    const nivelesMeshes = Array.from({ length: numPisos }, () => []);
+
+                    const tempBox = new THREE.Box3();
+                    const centerVec = new THREE.Vector3();
+
+                    // 2. Clasificar mallas sin alterar la jerarquía original del GLTF
                     rootModel.traverse((child) => {
                         if (child.isMesh) {
                             if (Array.isArray(child.material)) {
@@ -363,69 +374,48 @@
                             } else if (child.material) {
                                 child.material.side = THREE.DoubleSide;
                             }
-                            mallas.push(child);
+
+                            child.updateWorldMatrix(true, false);
+                            child.geometry.computeBoundingBox();
+                            tempBox.copy(child.geometry.boundingBox);
+                            tempBox.applyMatrix4(child.matrixWorld);
+                            tempBox.getCenter(centerVec);
+
+                            let floorIndex = Math.floor((centerVec.y - minY) / heightPerFloor);
+                            floorIndex = Math.max(0, Math.min(numPisos - 1, floorIndex));
+
+                            nivelesMeshes[floorIndex].push(child);
                         }
                     });
 
-                    // 2. Calcular límites globales de altura
-                    const boundingBoxGlobal = new THREE.Box3().setFromObject(rootModel);
-                    const minY = boundingBoxGlobal.min.y;
-                    const totalHeight = boundingBoxGlobal.max.y - minY;
-
-                    // 3. Crear 5 Grupos para los Pisos (Edificio 30)
-                    const numPisos = 5;
-                    const heightPerFloor = totalHeight / numPisos;
-                    const gruposPisos = [];
-
-                    for (let i = 0; i < numPisos; i++) {
-                        const grupo = new THREE.Group();
-                        grupo.name = `Nivel ${i + 1}`;
-                        scene.add(grupo);
-                        gruposPisos.push(grupo);
-                    }
-
-                    // 4. Asignar cada malla a su nivel según su posición Y real
-                    const tempBox = new THREE.Box3();
-                    const centerVec = new THREE.Vector3();
-
-                    mallas.forEach((mesh) => {
-                        mesh.updateWorldMatrix(true, false);
-                        mesh.geometry.computeBoundingBox();
-                        tempBox.copy(mesh.geometry.boundingBox);
-                        tempBox.applyMatrix4(mesh.matrixWorld);
-                        tempBox.getCenter(centerVec);
-
-                        let floorIndex = Math.floor((centerVec.y - minY) / heightPerFloor);
-                        floorIndex = Math.max(0, Math.min(numPisos - 1, floorIndex));
-
-                        mesh.matrixAutoUpdate = false; // Desactiva recálculos innecesarios por frame (anti-lag)
-                        gruposPisos[floorIndex].add(mesh);
-                    });
-
-                    // 5. Poblar el panel lateral con capas limpias (Nivel 1 al 5)
+                    // 3. Crear controles de capa en el panel lateral
                     layersEl.innerHTML = '';
                     const fragment = document.createDocumentFragment();
 
-                    gruposPisos.forEach((grupo) => {
+                    for (let i = 0; i < numPisos; i++) {
                         const layerRow = document.createElement('div');
                         layerRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:12px; color:#cbd5e1;';
                         layerRow.innerHTML = `
-                            <input type="checkbox" checked style="cursor:pointer;">
-                            <span style="font-weight:600;">🏢 ${grupo.name}</span>
+                            <input type="checkbox" checked id="chk-nivel-${i+1}" style="cursor:pointer;">
+                            <label for="chk-nivel-${i+1}" style="cursor:pointer; font-weight:600;">🏢 Nivel ${i + 1}</label>
                         `;
 
                         const checkbox = layerRow.querySelector('input');
                         checkbox.addEventListener('change', (e) => {
-                            grupo.visible = e.target.checked;
+                            const estaVisible = e.target.checked;
+                            // Alternar la visibilidad directa de cada malla del piso correspondiente
+                            nivelesMeshes[i].forEach(mesh => {
+                                mesh.visible = estaVisible;
+                            });
                             needsRender = true;
                         });
 
                         fragment.appendChild(layerRow);
-                    });
+                    }
 
                     layersEl.appendChild(fragment);
 
-                    // 6. Centrar cámara
+                    // 4. Centrar cámara
                     if (!boundingBoxGlobal.isEmpty()) {
                         const size = boundingBoxGlobal.getSize(new THREE.Vector3());
                         const center = boundingBoxGlobal.getCenter(new THREE.Vector3());
@@ -438,7 +428,7 @@
                     }
 
                     needsRender = true;
-                    statusEl.innerText = '🟢 5 Niveles organizados y fluidos';
+                    statusEl.innerText = '🟢 5 Niveles con control activo';
                     yaCargado = true;
                 },
                 (xhr) => {
