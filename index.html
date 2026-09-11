@@ -79,13 +79,24 @@
         .vista { display: none; width: 100%; height: 100%; position: relative; }
         .vista.activa { display: block; }
 
-        /* MAPA GENERAL */
+        /* MAPA GENERAL Y SVG INYECTADO */
         .map-wrapper { width: 100%; height: 100%; background: #020617; overflow: hidden; cursor: grab; position: relative; }
-        .map-content { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-        .campus-img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .svg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-        .hotspot-edificio { fill: rgba(0, 180, 216, 0.25); stroke: #00b4d8; stroke-width: 2; cursor: pointer; transition: all 0.2s; }
-        .hotspot-edificio:hover { fill: rgba(56, 189, 248, 0.5); stroke: #ffffff; }
+        .map-content { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; transform-origin: center center; }
+        .map-content svg { width: 100%; height: 100%; max-height: 100%; display: block; }
+
+        /* ESTILOS INTERACTIVOS PARA LA GEOMETRÍA HUNZA DENTRO DEL SVG */
+        #HUNZA, [id*="HUNZA"], .hotspot-edificio {
+            cursor: pointer !important;
+            transition: all 0.25s ease;
+            pointer-events: all;
+        }
+        #HUNZA:hover, [id*="HUNZA"]:hover, .hotspot-edificio:hover {
+            fill: #00b4d8 !important;
+            stroke: #ffffff !important;
+            stroke-width: 2px !important;
+            filter: drop-shadow(0px 0px 8px #00b4d8);
+            opacity: 0.85;
+        }
 
         /* VISOR 3D */
         .ifc-layout { width: 100%; height: 100%; display: flex; position: relative; }
@@ -184,18 +195,16 @@
             <button id="btn-2d" class="dock-btn" title="Planta 2D" onclick="irAVista('vista-2d')">📐</button>
         </div>
 
-        <!-- ÁREA DE VISUALIZACIÓN CANVA -->
+        <!-- ÁREA DE VISUALIZACIÓN CANVAS -->
         <div class="viewport-container">
             
-            <!-- VISTA 1: PLANO CENTRAL -->
+            <!-- VISTA 1: PLANO CENTRAL SVG -->
             <div id="vista-campus" class="vista activa">
                 <div id="map-wrapper" class="map-wrapper">
                     <div id="map-content" class="map-content">
-                        <img src="plano_uptc.jpg" class="campus-img" alt="Plano UPTC" onerror="this.style.display='none'">
-                        <svg class="svg-overlay" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet">
-                            <polygon points="505,535 555,535 555,565 505,565" class="hotspot-edificio" onclick="cargarEdificio30()"/>
-                            <text x="530" y="552" fill="#ffffff" font-weight="bold" font-size="10" text-anchor="middle" pointer-events="none">30. HUNZA</text>
-                        </svg>
+                        <div id="svg-loading-status" style="color: #64748b; font-size: 13px;">
+                            <span class="loading-spinner"></span> Cargando plano_uptc.svg...
+                        </div>
                     </div>
                 </div>
             </div>
@@ -253,7 +262,7 @@
 
     </div>
 
-    <!-- Script Módulo ES6 para Three.js, GLTFLoader Nativo y Lectura de Capas -->
+    <!-- MÓDULO ES6 THREE.JS -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -293,8 +302,8 @@
             
             // CONFIGURACIÓN DE SUAVIZADO Y VELOCIDAD DE ZOOM
             controls.enableDamping = true;
-            controls.dampingFactor = 0.05; // Movimiento fluido
-            controls.zoomSpeed = 0.35;     // Reduce la sensibilidad brusca del scroll
+            controls.dampingFactor = 0.05;
+            controls.zoomSpeed = 0.35;
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
             scene.add(ambientLight);
@@ -316,7 +325,7 @@
 
             function animate() {
                 requestAnimationFrame(animate);
-                controls.update(); // Necesario para el efecto de damping
+                controls.update();
                 renderer.render(scene, camera);
             }
             animate();
@@ -342,13 +351,11 @@
                     const model = gltf.scene;
                     scene.add(model);
 
-                    // 1. Calcular el tamaño real y centro del objeto
                     const box = new THREE.Box3().setFromObject(model);
                     const center = box.getCenter(new THREE.Vector3());
                     const size = box.getSize(new THREE.Vector3());
                     const maxDim = Math.max(size.x, size.y, size.z) || 50;
 
-                    // 2. Ajuste progresivo del plano de visión (Cámara)
                     camera.near = Math.max(0.1, maxDim / 1000);
                     camera.far = maxDim * 100;
                     camera.position.set(
@@ -358,15 +365,13 @@
                     );
                     camera.updateProjectionMatrix();
 
-                    // 3. Rangos de zoom proporcionales y graduales
                     controls.target.copy(center);
-                    controls.minDistance = maxDim * 0.05; // Zoom gradual de cerca
-                    controls.maxDistance = maxDim * 5;    // Zoom gradual de lejos
+                    controls.minDistance = maxDim * 0.05;
+                    controls.maxDistance = maxDim * 5;
                     controls.update();
 
                     statusEl.innerHTML = '🟢 Modelo GLB Cargado';
 
-                    // 4. Mapeo de capas
                     const objetosPorCapa = new Map();
                     model.traverse((child) => {
                         if (child.isMesh) {
@@ -432,7 +437,7 @@
         window.cargarModeloIFC = cargarModeloGLBReal;
     </script>
 
-    <!-- Script General (Excel, Mapa, Navegación) -->
+    <!-- SCRIPT GENERAL: INYECCIÓN DE SVG, EXCEL Y NAVEGACIÓN -->
     <script>
         let dbHunza = {};
         let datosGeneralesEdificio = {
@@ -450,6 +455,35 @@
 
         const TODAS_HORAS = ["06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"];
         const TODOS_DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+
+        /* INYECCIÓN DINÁMICA DEL PLANO SVG Y EVENTO EN EDIFICIO HUNZA */
+        async function cargarPlanoSVG() {
+            const mapContent = document.getElementById('map-content');
+            try {
+                const response = await fetch('plano_uptc.svg');
+                if (!response.ok) throw new Error('No se pudo encontrar plano_uptc.svg');
+                
+                const svgText = await response.text();
+                mapContent.innerHTML = svgText;
+
+                // Buscar el elemento HUNZA por ID
+                const elHunza = mapContent.querySelector('#HUNZA') || mapContent.querySelector('[id*="HUNZA"]');
+                if (elHunza) {
+                    elHunza.classList.add('hotspot-edificio');
+                    elHunza.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        cargarEdificio30();
+                    });
+                } else {
+                    console.warn("⚠️ Elemento con id='HUNZA' no encontrado dentro del SVG.");
+                }
+            } catch (error) {
+                console.error("❌ Error al cargar SVG:", error);
+                mapContent.innerHTML = `<p style="color:#f87171; font-size:12px; text-align:center; padding:20px;">
+                    ❌ No se pudo cargar <b>plano_uptc.svg</b>.<br>Asegúrate de que el archivo existe en el directorio principal del repositorio.
+                </p>`;
+            }
+        }
 
         function quitarTildes(texto) {
             return String(texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -523,7 +557,7 @@
                 badge.style.background = "#064e3b";
                 badge.style.color = "#34d399";
 
-                debugLog.innerHTML = `<b>Origen:</b> GitHub Repository<br><b>Hoja Horarios:</b> ${sheetHorariosName}`;
+                debugLog.innerHTML = `<b>Origen:</b> Excel Conectado<br><b>Hoja Horarios:</b> ${sheetHorariosName}`;
             } catch (error) {
                 badge.innerText = "❌ Error Excel";
                 inicializarDatosBase();
@@ -802,6 +836,7 @@
         });
 
         window.addEventListener('DOMContentLoaded', () => {
+            cargarPlanoSVG();
             irAVista('vista-campus');
             cargarExcelAutomatico();
         });
