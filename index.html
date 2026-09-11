@@ -244,7 +244,7 @@
         </div>
     </div>
 
-    <!-- MÓDULO THREE.JS OPTIMIZADO: FUSIÓN DE GEOMETRÍA POR PISO + CONTROL DE CAPAS -->
+    <!-- MÓDULO THREE.JS OPTIMIZADO: FUSIÓN DE GEOMETRÍA CON ESTANDARIZACIÓN Y FALLBACK -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -261,7 +261,7 @@
 
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
 
-        // Caché de materiales compartidos para minimizar transiciones en GPU
+        // Caché de materiales compartidos
         const materialCache = new Map();
 
         function getSharedMaterial(colorHex) {
@@ -360,16 +360,15 @@
             const layersEl = document.getElementById('ifc-layers-list');
             if (!init3DViewer()) return;
 
-            statusEl.innerHTML = '<span class="loading-spinner"></span> Agrupando por pisos y optimizando...';
+            statusEl.innerHTML = '<span class="loading-spinner"></span> Procesando pisos...';
 
             gltfLoader.load(
                 URL_GLB,
                 (gltf) => {
                     const model = gltf.scene;
-
-                    // Agrupar las mallas por el nombre del piso/nodo padre
                     const mallasPorPiso = new Map();
 
+                    // 1. Agrupar y estandarizar geometrías por piso
                     model.traverse((child) => {
                         if (child.isMesh && child.geometry) {
                             let nombrePiso = child.parent?.name || child.name || 'Estructura General';
@@ -378,14 +377,23 @@
                                 mallasPorPiso.set(nombrePiso, []);
                             }
 
+                            // Clonar y transformar al espacio global
                             const clonedGeom = child.geometry.clone();
                             child.updateMatrixWorld(true);
                             clonedGeom.applyMatrix4(child.matrixWorld);
 
-                            mallasPorPiso.get(nombrePiso).push({
-                                geometry: clonedGeom,
-                                color: child.material?.color ? child.material.color.getHex() : 0xcccccc
-                            });
+                            // Estandarizar atributos para compatibilidad total en mergeGeometries
+                            const cleanGeom = new THREE.BufferGeometry();
+                            if (clonedGeom.attributes.position) {
+                                cleanGeom.setAttribute('position', clonedGeom.attributes.position);
+                            }
+                            if (clonedGeom.attributes.normal) {
+                                cleanGeom.setAttribute('normal', clonedGeom.attributes.normal);
+                            } else {
+                                cleanGeom.computeVertexNormals();
+                            }
+
+                            mallasPorPiso.get(nombrePiso).push(cleanGeom);
                         }
                     });
 
@@ -393,49 +401,69 @@
                     const fragment = document.createDocumentFragment();
                     const boundingBoxGlobal = new THREE.Box3();
 
-                    // Fusionar las mallas de cada piso en 1 sola malla por nivel (reduce miles de Draw Calls a solo 1 por piso)
-                    mallasPorPiso.forEach((items, nombrePiso) => {
-                        if (items.length === 0) return;
+                    // 2. Procesar cada piso (Fusión con Fallback a Group)
+                    mallasPorPiso.forEach((geoms, nombrePiso) => {
+                        if (geoms.length === 0) return;
 
-                        const geoms = items.map(i => i.geometry);
-                        const mergedGeometry = BufferGeometryUtils.mergeGeometries(geoms, false);
+                        let objetoPiso;
+                        let mergedGeometry = null;
+
+                        // Intentar fusión optimizada
+                        try {
+                            mergedGeometry = BufferGeometryUtils.mergeGeometries(geoms, false);
+                        } catch (err) {
+                            console.warn(`No se pudo fusionar ${nombrePiso}, usando modo Group.`, err);
+                        }
 
                         if (mergedGeometry) {
-                            const materialPiso = getSharedMaterial(items[0].color);
-                            const meshPiso = new THREE.Mesh(mergedGeometry, materialPiso);
-                            meshPiso.name = nombrePiso;
-
-                            scene.add(meshPiso);
-                            boundingBoxGlobal.expandByObject(meshPiso);
-
-                            const layerRow = document.createElement('div');
-                            layerRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:12px; color:#cbd5e1;';
-                            layerRow.innerHTML = `
-                                <input type="checkbox" checked style="cursor:pointer;">
-                                <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">🏢 ${nombrePiso}</span>
-                            `;
-
-                            const checkbox = layerRow.querySelector('input');
-                            checkbox.addEventListener('change', (e) => {
-                                meshPiso.visible = e.target.checked;
-                                needsRender = true;
+                            // Fusión exitosa (1 Draw Call por piso)
+                            const materialPiso = getSharedMaterial(0xb0bec5);
+                            objetoPiso = new THREE.Mesh(mergedGeometry, materialPiso);
+                        } else {
+                            // Fallback seguro: Crear un grupo por piso si la fusión falla
+                            objetoPiso = new THREE.Group();
+                            const mat = getSharedMaterial(0xb0bec5);
+                            geoms.forEach(g => {
+                                const m = new THREE.Mesh(g, mat);
+                                m.matrixAutoUpdate = false;
+                                objetoPiso.add(m);
                             });
-
-                            fragment.appendChild(layerRow);
                         }
+
+                        objetoPiso.name = nombrePiso;
+                        scene.add(objetoPiso);
+                        boundingBoxGlobal.expandByObject(objetoPiso);
+
+                        // Crear control de capa (checkbox)
+                        const layerRow = document.createElement('div');
+                        layerRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:12px; color:#cbd5e1;';
+                        layerRow.innerHTML = `
+                            <input type="checkbox" checked style="cursor:pointer;">
+                            <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">🏢 ${nombrePiso}</span>
+                        `;
+
+                        const checkbox = layerRow.querySelector('input');
+                        checkbox.addEventListener('change', (e) => {
+                            objetoPiso.visible = e.target.checked;
+                            needsRender = true;
+                        });
+
+                        fragment.appendChild(layerRow);
                     });
 
                     layersEl.appendChild(fragment);
 
-                    // Auto-encuadre de la cámara
-                    const size = boundingBoxGlobal.getSize(new THREE.Vector3());
-                    const center = boundingBoxGlobal.getCenter(new THREE.Vector3());
+                    // 3. Ajuste de cámara automático
+                    if (!boundingBoxGlobal.isEmpty()) {
+                        const size = boundingBoxGlobal.getSize(new THREE.Vector3());
+                        const center = boundingBoxGlobal.getCenter(new THREE.Vector3());
 
-                    controls.target.copy(center);
-                    const maxDim = Math.max(size.x, size.y, size.z);
-                    camera.position.set(center.x + maxDim * 1.2, center.y + maxDim * 1.2, center.z + maxDim * 1.2);
-                    camera.updateProjectionMatrix();
-                    controls.update();
+                        controls.target.copy(center);
+                        const maxDim = Math.max(size.x, size.y, size.z);
+                        camera.position.set(center.x + maxDim * 1.5, center.y + maxDim * 1.5, center.z + maxDim * 1.5);
+                        camera.updateProjectionMatrix();
+                        controls.update();
+                    }
 
                     needsRender = true;
                     statusEl.innerText = '🟢 Pisos optimizados y funcionales';
@@ -449,7 +477,7 @@
                 },
                 (error) => {
                     console.error('Error al cargar GLB:', error);
-                    statusEl.innerText = '❌ Error al cargar modelo';
+                    statusEl.innerText = '❌ Error al cargar modelo GLB';
                 }
             );
         }
