@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UPTC - Gemelo Digital & Geoportal Sede Central</title>
 
-    <!-- Librería SheetJS para lectura de Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-    <!-- Import Map para Three.js y GLTFLoader Nativo -->
     <script type="importmap">
     {
       "imports": {
@@ -27,7 +25,6 @@
             height: 100vh; display: flex; flex-direction: column; overflow: hidden;
         }
 
-        /* HEADER ESTILO GEOPORTAL */
         header {
             background: #070f1e; color: white;
             height: 48px; padding: 0 16px; border-bottom: 1px solid #1e293b;
@@ -38,7 +35,6 @@
         .header-title { font-size: 14px; font-weight: 600; letter-spacing: 0.5px; }
         .breadcrumb { font-size: 12px; color: #94a3b8; margin-left: 10px; }
 
-        /* BUSCADOR TIPO GEOPORTAL */
         .search-box {
             display: flex; align-items: center; background: #1e293b; border: 1px solid #334155;
             border-radius: 4px; padding: 4px 8px; width: 280px;
@@ -47,7 +43,6 @@
             background: transparent; border: none; color: white; font-size: 12px; width: 100%; outline: none;
         }
 
-        /* BARRA SUPERIOR DE TIEMPO / CONTROLES */
         .sub-header {
             background: #0f172a; border-bottom: 1px solid #1e293b;
             padding: 6px 16px; display: flex; align-items: center; justify-content: space-between; height: 42px;
@@ -58,10 +53,8 @@
             padding: 4px 8px; font-size: 12px; font-weight: bold; border-radius: 4px; outline: none;
         }
 
-        /* ESTRUCTURA PRINCIPAL DEL GEOPORTAL */
         .app-layout { display: flex; flex: 1; height: calc(100vh - 90px); position: relative; }
 
-        /* BARRA LATERAL IZQUIERDA DE HERRAMIENTAS (DOCK) */
         .left-dock {
             width: 50px; background: #070f1e; border-right: 1px solid #1e293b;
             display: flex; flex-direction: column; align-items: center; padding-top: 10px; gap: 12px; z-index: 10;
@@ -74,74 +67,50 @@
         .dock-btn:hover { background: #1e293b; color: #38bdf8; }
         .dock-btn.active { background: #00b4d8; color: #070f1e; font-weight: bold; }
 
-        /* AREA DE VISUALIZACIÓN PRINCIPAL */
         .viewport-container { flex: 1; position: relative; background: #020617; display: flex; flex-direction: column; }
         .vista { display: none; width: 100%; height: 100%; position: relative; }
         .vista.activa { display: block; }
 
-        /* MAPA GENERAL Y SVG CON FONDO BLANCO */
         .map-wrapper { 
-            width: 100%; 
-            height: 100%; 
-            background: #ffffff; 
-            overflow: hidden; 
-            cursor: grab; 
-            position: relative; 
+            width: 100%; height: 100%; background: #ffffff; 
+            overflow: hidden; cursor: grab; position: relative; 
         }
         .map-content { 
-            width: 100%; 
-            height: 100%; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
+            width: 100%; height: 100%; display: flex; 
+            align-items: center; justify-content: center; 
             transform-origin: center center; 
         }
         .map-content svg { 
-            width: 100%; 
-            height: 100%; 
-            max-height: 100%; 
-            display: block; 
-            background-color: #ffffff; 
+            width: 100%; height: 100%; max-height: 100%; display: block; background-color: #ffffff; 
         }
 
-        /* ESTILOS INTERACTIVOS PARA LA GEOMETRÍA HUNZA DENTRO DEL SVG */
         #HUNZA, [id*="HUNZA"], .hotspot-edificio {
-            cursor: pointer !important;
-            transition: all 0.25s ease;
-            pointer-events: all;
+            cursor: pointer !important; transition: all 0.25s ease; pointer-events: all;
         }
         #HUNZA:hover, [id*="HUNZA"]:hover, .hotspot-edificio:hover {
-            fill: #00b4d8 !important;
-            stroke: #070f1e !important;
-            stroke-width: 2px !important;
-            filter: drop-shadow(0px 0px 8px #00b4d8);
-            opacity: 0.85;
+            fill: #00b4d8 !important; stroke: #070f1e !important;
+            stroke-width: 2px !important; filter: drop-shadow(0px 0px 8px #00b4d8); opacity: 0.85;
         }
 
-        /* VISOR 3D */
         .ifc-layout { width: 100%; height: 100%; display: flex; position: relative; }
-        #ifc-canvas-container { flex: 1; height: 100%; background: #020617; }
+        #ifc-canvas-container { flex: 1; height: 100%; background: #020617; position: relative; }
         
-        /* PANEL DE CAPAS DEL MODELO 3D */
         .ifc-layers-panel {
             width: 260px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px);
             border-left: 1px solid #1e293b; padding: 12px; overflow-y: auto; font-size: 12px;
         }
         .ifc-layers-panel h4 { margin: 0 0 10px 0; color: #38bdf8; border-bottom: 1px solid #334155; padding-bottom: 6px; }
 
-        /* PANEL INFORMATIVO DERECHO */
         .right-info-panel {
             width: 320px; background: #0f172a; border-left: 1px solid #1e293b;
             padding: 16px; overflow-y: auto; font-size: 13px; color: #cbd5e1;
         }
         .right-info-panel h3 { color: #f8fafc; font-size: 15px; margin-top: 0; border-bottom: 2px solid #00b4d8; padding-bottom: 6px; }
 
-        /* PLANTA 2D */
         .salon { stroke: #020617; stroke-width: 2; cursor: pointer; transition: all 0.2s; }
         .salon:hover { filter: brightness(1.2); }
         .texto-svg { font-size: 13px; font-weight: bold; fill: #ffffff; pointer-events: none; }
 
-        /* TABLA DE HORARIOS */
         .tabla-horarios { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
         .tabla-horarios th, .tabla-horarios td { border: 1px solid #334155; padding: 6px; text-align: left; }
         .tabla-horarios th { background-color: #1e293b; color: #38bdf8; }
@@ -157,7 +126,6 @@
 </head>
 <body>
 
-    <!-- HEADER ESTILO GEOPORTAL -->
     <header>
         <div class="header-brand">
             <span class="logo-badge">UPTC SIG</span>
@@ -170,7 +138,6 @@
         </div>
     </header>
 
-    <!-- BARRA SUPERIOR DE CONTROLES DE TIEMPO -->
     <div class="sub-header">
         <div class="time-controls">
             <span>📅 Día:</span>
@@ -205,20 +172,16 @@
         </div>
     </div>
 
-    <!-- LAYOUT PRINCIPAL -->
     <div class="app-layout">
         
-        <!-- DOCK LATERAL DE VISTAS Y HERRAMIENTAS -->
         <div class="left-dock">
             <button id="btn-campus" class="dock-btn active" title="Mapa General" onclick="irAVista('vista-campus')">🌐</button>
             <button id="btn-3d" class="dock-btn" title="Modelo 3D" onclick="irAVista('vista-3d')">🏢</button>
             <button id="btn-2d" class="dock-btn" title="Planta 2D" onclick="irAVista('vista-2d')">📐</button>
         </div>
 
-        <!-- ÁREA DE VISUALIZACIÓN CANVAS -->
         <div class="viewport-container">
             
-            <!-- VISTA 1: PLANO CENTRAL SVG CON FONDO BLANCO -->
             <div id="vista-campus" class="vista activa">
                 <div id="map-wrapper" class="map-wrapper">
                     <div id="map-content" class="map-content">
@@ -229,7 +192,6 @@
                 </div>
             </div>
 
-            <!-- VISTA 2: MODELO 3D REAL OPTIMIZADO -->
             <div id="vista-3d" class="vista">
                 <div class="ifc-layout">
                     <div id="ifc-canvas-container"></div>
@@ -245,14 +207,12 @@
                 </div>
             </div>
 
-            <!-- VISTA 3: PLANTA 2D -->
             <div id="vista-2d" class="vista" style="padding: 20px; background: #020617;">
                 <h3 id="titulo-piso-2d" style="margin-top:0; color:#38bdf8; font-size:16px;">Edificio 30 Aulas Hunza - Planta 2D</h3>
                 <svg viewBox="0 0 500 280" width="100%" height="80%">
                     <rect x="30" y="120" width="440" height="40" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
                     <text x="250" y="145" class="texto-svg" fill="#64748b" text-anchor="middle">CORREDOR PRINCIPAL</text>
 
-                    <!-- Salones -->
                     <rect id="H-101" class="salon" x="30" y="20" width="130" height="100" fill="#22c55e" />
                     <text x="95" y="65" class="texto-svg" text-anchor="middle">Aula A-101</text>
                     <text id="lbl-H-101" x="95" y="85" font-size="11" fill="#ffffff" text-anchor="middle">LIBRE</text>
@@ -269,7 +229,6 @@
 
         </div>
 
-        <!-- PANEL DE INFORMACIÓN FICHA TÉCNICA (DERECHA) -->
         <div class="right-info-panel">
             <h3 id="info-titulo">Información del Espacio</h3>
             <div id="info-contenido">
@@ -282,7 +241,7 @@
 
     </div>
 
-    <!-- MÓDULO ES6 THREE.JS -->
+    <!-- MÓDULO THREE.JS OPTIMIZADO -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -292,10 +251,10 @@
         let gltfLoader = null;
         let is3DInitialized = false;
         let yaCargado = false;
+        let animFrameId = null;
 
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
 
-        // EVALUADOR DE NOMBRES GENÉRICOS DE REVIT / IFC
         function esNombreGenerico(nombre) {
             if (!nombre) return true;
             const clean = nombre.trim().toLowerCase();
@@ -309,32 +268,17 @@
             );
         }
 
-        // EXTRAER CAPAS REALES (DESDE NOMBRE, USERDATA, PADRES O MATERIALES)
         function obtenerNombreCapa(mesh) {
-            if (mesh.name && !esNombreGenerico(mesh.name)) {
-                return limpiarNombre(mesh.name);
-            }
-
+            if (mesh.name && !esNombreGenerico(mesh.name)) return limpiarNombre(mesh.name);
             if (mesh.userData) {
                 if (mesh.userData.category && !esNombreGenerico(mesh.userData.category)) return limpiarNombre(mesh.userData.category);
                 if (mesh.userData.name && !esNombreGenerico(mesh.userData.name)) return limpiarNombre(mesh.userData.name);
             }
-
             let parent = mesh.parent;
             while (parent && parent.type !== 'Scene') {
-                if (parent.name && !esNombreGenerico(parent.name)) {
-                    return limpiarNombre(parent.name);
-                }
+                if (parent.name && !esNombreGenerico(parent.name)) return limpiarNombre(parent.name);
                 parent = parent.parent;
             }
-
-            if (mesh.material) {
-                const mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
-                if (mat && mat.name && !esNombreGenerico(mat.name)) {
-                    return 'Mat: ' + limpiarNombre(mat.name);
-                }
-            }
-
             return 'Elementos Estructurales';
         }
 
@@ -360,24 +304,26 @@
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x020617);
 
-            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 10000);
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 2000);
 
+            // DESACTIVAR ANTI-ALIAS SI EL MODELO ES MUY PESADO PARA MANTENER FPS
             renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
             renderer.setSize(width, height);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-            renderer.shadowMap.enabled = false; // Optimización anti-lag
+            renderer.setPixelRatio(1); // Forzar a 1 para evitar lag en pantallas 2K/4K/Retina
             container.appendChild(renderer.domElement);
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
+            controls.dampingFactor = 0.08;
+            controls.enableZoom = true;
+            controls.zoomSpeed = 1.2;
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.8);
             scene.add(ambientLight);
 
-            const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
-            dirLight1.position.set(100, 200, 100);
-            scene.add(dirLight1);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            dirLight.position.set(100, 200, 100);
+            scene.add(dirLight);
 
             const gridHelper = new THREE.GridHelper(300, 60, 0x00b4d8, 0x1e293b);
             scene.add(gridHelper);
@@ -390,11 +336,14 @@
                 }
             });
 
+            // UN SOLO BUCLE DE RENDIMIENTO FIJO
             function animate() {
-                requestAnimationFrame(animate);
+                animFrameId = requestAnimationFrame(animate);
                 controls.update();
                 renderer.render(scene, camera);
             }
+
+            if (animFrameId) cancelAnimationFrame(animFrameId);
             animate();
 
             gltfLoader = new GLTFLoader();
@@ -410,48 +359,47 @@
 
             if (!init3DViewer()) return;
 
-            statusEl.innerHTML = '<span class="loading-spinner"></span> Procesando modelo 3D...';
+            statusEl.innerHTML = '<span class="loading-spinner"></span> Cargando geometría...';
 
             gltfLoader.load(
                 URL_GLB,
                 (gltf) => {
                     const model = gltf.scene;
 
-                    // 1. CORRECCIÓN DE ZOOM Y RECTIFICACIÓN DE ORIGEN (0,0,0)
+                    // 1. CÁLCULO PRECISO DEL CENTRO
                     const box = new THREE.Box3().setFromObject(model);
                     const center = box.getCenter(new THREE.Vector3());
-                    const size = box.getSize(new THREE.Vector3());
-                    const maxDim = Math.max(size.x, size.y, size.z) || 50;
+                    const sphere = box.getBoundingSphere(new THREE.Sphere());
+                    const radius = sphere.radius || 30;
 
+                    // Centrar modelo en (0,0,0)
                     model.position.sub(center);
                     scene.add(model);
 
-                    // 2. CONFIGURACIÓN DINÁMICA DE CÁMARA
-                    camera.near = maxDim / 1000;
-                    camera.far = maxDim * 100;
-                    camera.position.set(maxDim * 1.2, maxDim * 0.8, maxDim * 1.2);
+                    // 2. AJUSTE CORRECTO DE CÁMARA Y ZOOM
+                    const fovRad = (camera.fov * Math.PI) / 180;
+                    let dist = Math.abs(radius / Math.sin(fovRad / 2)) * 1.2;
+
+                    camera.near = Math.max(0.1, radius / 100);
+                    camera.far = radius * 50;
+                    camera.position.set(dist, dist * 0.7, dist);
                     camera.updateProjectionMatrix();
 
-                    // 3. CONTROLES DE NAVEGACIÓN Y ZOOM
+                    // 3. ENFOQUE TOTAL DE CONTROLES
                     controls.target.set(0, 0, 0);
-                    controls.minDistance = maxDim / 200;
-                    controls.maxDistance = maxDim * 5;
-                    controls.screenSpacePanning = true;
-                    controls.zoomSpeed = 1.2;
+                    controls.minDistance = radius * 0.05;
+                    controls.maxDistance = radius * 10;
                     controls.update();
 
                     statusEl.innerText = '🟢 Modelo Creado y Centrado';
 
-                    // 4. DESGLOSE Y OPTIMIZACIÓN DE RENDIMIENTO
+                    // 4. AGRUPACIÓN DE MESHS PARA EVITAR CONGELAR EL NAVEGADOR
                     const objetosPorCapa = new Map();
 
                     model.traverse((child) => {
                         if (child.isMesh) {
-                            child.matrixAutoUpdate = false; // Elimina el lag de actualización matricial
-                            child.updateMatrix();
-
+                            child.matrixAutoUpdate = true;
                             let nombreCapa = obtenerNombreCapa(child);
-
                             if (!objetosPorCapa.has(nombreCapa)) {
                                 objetosPorCapa.set(nombreCapa, []);
                             }
@@ -459,33 +407,34 @@
                         }
                     });
 
-                    // 5. RENDERIZADO DE CAPAS
+                    // 5. RENDERIZAR CAPAS SIN BLOQUEAR EL HILO DE EJECUCIÓN (FRAGMENT)
                     layersEl.innerHTML = '';
-                    if (objetosPorCapa.size === 0) {
-                        layersEl.innerHTML = '<p style="font-size:11px; color:#64748b;">No se detectaron capas.</p>';
-                    } else {
-                        const capasOrdenadas = Array.from(objetosPorCapa.entries()).sort((a, b) => b[1].length - a[1].length);
+                    const fragment = document.createDocumentFragment();
 
-                        capasOrdenadas.forEach(([nombreCapa, meshes]) => {
-                            const layerRow = document.createElement('div');
-                            layerRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:11px; color:#cbd5e1;';
+                    const capasOrdenadas = Array.from(objetosPorCapa.entries()).sort((a, b) => b[1].length - a[1].length);
 
-                            const checkboxId = `layer-${nombreCapa.replace(/[^a-zA-Z0-9]/g, '-')}`;
-                            layerRow.innerHTML = `
-                                <input type="checkbox" id="${checkboxId}" checked style="cursor:pointer;">
-                                <label for="${checkboxId}" style="cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${nombreCapa}">
-                                    👁️ ${nombreCapa} (${meshes.length})
-                                </label>
-                            `;
-                            layersEl.appendChild(layerRow);
+                    capasOrdenadas.forEach(([nombreCapa, meshes]) => {
+                        const layerRow = document.createElement('div');
+                        layerRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:11px; color:#cbd5e1;';
 
-                            const checkbox = layerRow.querySelector('input');
-                            checkbox.addEventListener('change', (e) => {
-                                const visible = e.target.checked;
-                                meshes.forEach(mesh => { mesh.visible = visible; });
-                            });
+                        const checkboxId = `layer-${nombreCapa.replace(/[^a-zA-Z0-9]/g, '-')}`;
+                        layerRow.innerHTML = `
+                            <input type="checkbox" id="${checkboxId}" checked style="cursor:pointer;">
+                            <label for="${checkboxId}" style="cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${nombreCapa}">
+                                👁️ ${nombreCapa} (${meshes.length})
+                            </label>
+                        `;
+
+                        const checkbox = layerRow.querySelector('input');
+                        checkbox.addEventListener('change', (e) => {
+                            const visible = e.target.checked;
+                            meshes.forEach(mesh => { mesh.visible = visible; });
                         });
-                    }
+
+                        fragment.appendChild(layerRow);
+                    });
+
+                    layersEl.appendChild(fragment);
                     yaCargado = true;
                 },
                 (xhr) => {
@@ -556,7 +505,7 @@
             } catch (error) {
                 console.error("❌ Error al cargar SVG:", error);
                 mapContent.innerHTML = `<p style="color:#f87171; font-size:12px; text-align:center; padding:20px;">
-                    ❌ No se pudo cargar <b>plano_uptc.svg</b>.<br>Asegúrate de que el archivo existe en el directorio principal.
+                    ❌ No se pudo cargar <b>plano_uptc.svg</b>.
                 </p>`;
             }
         }
