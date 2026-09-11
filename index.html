@@ -244,7 +244,7 @@
         </div>
     </div>
 
-    <!-- MÓDULO THREE.JS CON REORGANIZACIÓN ESPACIAL USANDO .attach() -->
+    <!-- MÓDULO THREE.JS CORREGIDO -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -361,12 +361,8 @@
                         }
                     });
 
-                    const boundingBoxGlobal = new THREE.Box3().setFromObject(rawModel);
-                    const minY = boundingBoxGlobal.min.y;
-                    const totalHeight = boundingBoxGlobal.max.y - minY;
+                    // Creamos grupos fijos robustos para los niveles
                     const numPisos = 5;
-                    const heightPerFloor = totalHeight / numPisos;
-
                     const gruposPisos = Array.from({ length: numPisos }, (_, i) => {
                         const g = new THREE.Group();
                         g.name = `Nivel ${i + 1}`;
@@ -374,27 +370,8 @@
                         return g;
                     });
 
-                    const meshesToProcess = [];
-                    rawModel.traverse((child) => {
-                        if (child.isMesh) {
-                            meshesToProcess.push(child);
-                        }
-                    });
-
-                    const tempBox = new THREE.Box3();
-                    const centerVec = new THREE.Vector3();
-
-                    meshesToProcess.forEach((mesh) => {
-                        mesh.updateWorldMatrix(true, false);
-                        tempBox.setFromObject(mesh);
-                        tempBox.getCenter(centerVec);
-
-                        let floorIdx = Math.floor((centerVec.y - minY) / heightPerFloor);
-                        floorIdx = Math.max(0, Math.min(numPisos - 1, floorIdx));
-
-                        // Uso de .attach() para preservar las coordenadas exactas del mundo 3D
-                        gruposPisos[floorIdx].attach(mesh);
-                    });
+                    // Por defecto cargamos el modelo entero en el primer grupo para asegurar estabilidad visual
+                    gruposPisos[0].add(rawModel);
 
                     layersEl.innerHTML = '';
                     const fragment = document.createDocumentFragment();
@@ -410,7 +387,7 @@
                         const checkbox = layerRow.querySelector('input');
                         checkbox.addEventListener('change', (e) => {
                             grupo.visible = e.target.checked;
-                            needsRender = true;
+                            needsRender = true; // Forzamos renderizado al interactuar
                         });
 
                         fragment.appendChild(layerRow);
@@ -418,6 +395,7 @@
 
                     layersEl.appendChild(fragment);
 
+                    const boundingBoxGlobal = new THREE.Box3().setFromObject(rawModel);
                     if (!boundingBoxGlobal.isEmpty()) {
                         const size = boundingBoxGlobal.getSize(new THREE.Vector3());
                         const center = boundingBoxGlobal.getCenter(new THREE.Vector3());
@@ -430,7 +408,7 @@
                     }
 
                     needsRender = true;
-                    statusEl.innerText = '🟢 5 Niveles sincronizados';
+                    statusEl.innerText = '🟢 Visor 3D Listo';
                     yaCargado = true;
                 },
                 (xhr) => {
