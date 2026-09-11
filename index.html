@@ -459,7 +459,7 @@
                         layerRow.appendChild(checkbox);
                         layerRow.appendChild(label);
 
-                        // LÓGICA CORREGIDA PARA OCULTAR ABSOLUTAMENTE CADA MALLA Y MATERIAL
+                        // LÓGICA BLINDADA: OCULTAMIENTO TOTAL Y EXPLÍCITO DE CADA MALLA Y MATERIAL
                         checkbox.addEventListener('change', (e) => {
                             const mostrar = e.target.checked;
                             const pisoIdx = parseInt(e.target.dataset.pisoIdx);
@@ -470,15 +470,18 @@
                             pisoGroups[pisoIdx].traverse((child) => {
                                 if (child.isMesh) {
                                     child.visible = mostrar;
+                                    child.frustumCulled = mostrar;
                                     if (child.material) {
                                         if (Array.isArray(child.material)) {
                                             child.material.forEach(mat => {
                                                 mat.visible = mostrar;
                                                 mat.opacity = mostrar ? 1.0 : 0.0;
+                                                mat.transparent = !mostrar || mat.transparent;
                                             });
                                         } else {
                                             child.material.visible = mostrar;
                                             child.material.opacity = mostrar ? 1.0 : 0.0;
+                                            child.material.transparent = !mostrar || child.material.transparent;
                                         }
                                     }
                                 }
