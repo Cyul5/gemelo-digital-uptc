@@ -244,7 +244,7 @@
         </div>
     </div>
 
-    <!-- SCRIPT THREE.JS CON DEPURACIÓN EN CONSOLA -->
+    <!-- SCRIPT THREE.JS CON OCULTAMIENTO ABSOLUTO DE MALLAS Y MATERIALES -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -459,19 +459,28 @@
                         layerRow.appendChild(checkbox);
                         layerRow.appendChild(label);
 
-                        // AQUÍ ESTÁ EL LOG DE DEPURACIÓN EN CONSOLA
+                        // LÓGICA CORREGIDA PARA OCULTAR ABSOLUTAMENTE CADA MALLA Y MATERIAL
                         checkbox.addEventListener('change', (e) => {
                             const mostrar = e.target.checked;
                             const pisoIdx = parseInt(e.target.dataset.pisoIdx);
                             
-                            console.log(`Nivel ${pisoIdx + 1} cambiado a:`, mostrar, "Piezas asociadas:", pisoGroups[pisoIdx].children.length);
-
                             pisoGroups[pisoIdx].visible = mostrar;
                             boxHelpers[pisoIdx].visible = mostrar;
                             
                             pisoGroups[pisoIdx].traverse((child) => {
                                 if (child.isMesh) {
                                     child.visible = mostrar;
+                                    if (child.material) {
+                                        if (Array.isArray(child.material)) {
+                                            child.material.forEach(mat => {
+                                                mat.visible = mostrar;
+                                                mat.opacity = mostrar ? 1.0 : 0.0;
+                                            });
+                                        } else {
+                                            child.material.visible = mostrar;
+                                            child.material.opacity = mostrar ? 1.0 : 0.0;
+                                        }
+                                    }
                                 }
                             });
 
