@@ -3,295 +3,98 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UPTC - Gemelo Digital & Geoportal Sede Central</title>
-
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
+    <title>Gemelo Digital Sede Central Tunja - Edificio 30 Hunza</title>
+    <!-- Import Maps para Three.js y addons oficiales -->
     <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-      }
-    }
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
     </script>
-
     <style>
-        * { box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
-            margin: 0; padding: 0;
-            background-color: #0b131f; color: #f1f5f9;
-            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+        :root {
+            --bg-main: #0a1120;
+            --bg-panel: #1e293b;
+            --accent: #00b4d8;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
         }
-
-        header {
-            background: #070f1e; color: white;
-            height: 48px; padding: 0 16px; border-bottom: 1px solid #1e293b;
-            display: flex; justify-content: space-between; align-items: center; z-index: 100;
-        }
-        .header-brand { display: flex; align-items: center; gap: 12px; }
-        .logo-badge { background: #00b4d8; color: #070f1e; font-weight: bold; font-size: 11px; padding: 3px 6px; border-radius: 4px; }
-        .header-title { font-size: 14px; font-weight: 600; letter-spacing: 0.5px; }
-        .breadcrumb { font-size: 12px; color: #94a3b8; margin-left: 10px; }
-
-        .search-box {
-            display: flex; align-items: center; background: #1e293b; border: 1px solid #334155;
-            border-radius: 4px; padding: 4px 8px; width: 280px;
-        }
-        .search-box input {
-            background: transparent; border: none; color: white; font-size: 12px; width: 100%; outline: none;
-        }
-
-        .sub-header {
-            background: #0f172a; border-bottom: 1px solid #1e293b;
-            padding: 6px 16px; display: flex; align-items: center; justify-content: space-between; height: 42px;
-        }
-        .time-controls { display: flex; align-items: center; gap: 12px; font-size: 12px; }
-        select.time-select {
-            background: #1e293b; color: #38bdf8; border: 1px solid #334155;
-            padding: 4px 8px; font-size: 12px; font-weight: bold; border-radius: 4px; outline: none;
-        }
-
-        .app-layout { display: flex; flex: 1; height: calc(100vh - 90px); position: relative; }
-
-        .left-dock {
-            width: 50px; background: #070f1e; border-right: 1px solid #1e293b;
-            display: flex; flex-direction: column; align-items: center; padding-top: 10px; gap: 12px; z-index: 10;
-        }
-        .dock-btn {
-            width: 36px; height: 36px; background: transparent; border: 1px solid transparent;
-            color: #94a3b8; border-radius: 6px; cursor: pointer; display: flex;
-            align-items: center; justify-content: center; font-size: 16px; transition: all 0.2s;
-        }
-        .dock-btn:hover { background: #1e293b; color: #38bdf8; }
-        .dock-btn.active { background: #00b4d8; color: #070f1e; font-weight: bold; }
-
-        .viewport-container { flex: 1; position: relative; background: #020617; display: flex; flex-direction: column; }
-        .vista { display: none; width: 100%; height: 100%; position: relative; }
-        .vista.activa { display: block; }
-
-        .map-wrapper { 
-            width: 100%; height: 100%; background: #ffffff; 
-            overflow: hidden; cursor: grab; position: relative; 
-        }
-        .map-content { 
-            width: 100%; height: 100%; display: flex; 
-            align-items: center; justify-content: center; 
-            transform-origin: center center; 
-        }
-        .map-content svg { 
-            width: 100%; height: 100%; max-height: 100%; display: block; background-color: #ffffff; 
-        }
-
-        #HUNZA, [id*="HUNZA"], .hotspot-edificio {
-            cursor: pointer !important; transition: all 0.25s ease; pointer-events: all;
-        }
-        #HUNZA:hover, [id*="HUNZA"]:hover, .hotspot-edificio:hover {
-            fill: #00b4d8 !important; stroke: #070f1e !important;
-            stroke-width: 2px !important; filter: drop-shadow(0px 0px 8px #00b4d8); opacity: 0.85;
-        }
-
-        .ifc-layout { width: 100%; height: 100%; display: flex; position: relative; }
-        #ifc-canvas-container { flex: 1; height: 100%; background: #020617; position: relative; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        #ifc-canvas-container canvas {
-            width: 100% !important;
-            height: 100% !important;
-            display: block;
-            touch-action: none;
-        }
+        /* HEADER */
+        header { height: 60px; background-color: var(--bg-panel); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
+        .header-title { font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 10px; }
+        .header-title span { color: var(--accent); font-size: 12px; background: rgba(0,180,216,0.1); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--accent); }
+        
+        /* CONTENEDOR PRINCIPAL */
+        .main-container { display: flex; flex: 1; height: calc(100vh - 60px); position: relative; }
+        
+        /* ÁREA 3D */
+        #vista-3d { flex: 1; height: 100%; position: relative; display: block; }
+        #vista-3d.activa { display: block; }
+        #ifc-canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+        
+        /* PANEL DERECHO */
+        .sidebar-right { width: 320px; background-color: var(--bg-panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; padding: 15px; overflow-y: auto; z-index: 10; }
+        .panel-section { margin-bottom: 20px; }
+        .panel-section h3 { font-size: 14px; color: var(--accent); margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        /* ESTADO Y BOTONES DE NIVELES */
+        #ifc-status { font-size: 13px; color: var(--text-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .loading-spinner { width: 14px; height: 14px; border: 2px solid var(--text-muted); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        .ifc-layers-panel {
-            width: 280px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px);
-            border-left: 1px solid #1e293b; padding: 12px; overflow-y: auto; font-size: 12px;
-        }
-        .ifc-layers-panel h4 { margin: 0 0 10px 0; color: #38bdf8; border-bottom: 1px solid #334155; padding-bottom: 6px; }
-
-        .right-info-panel {
-            width: 320px; background: #0f172a; border-left: 1px solid #1e293b;
-            padding: 16px; overflow-y: auto; font-size: 13px; color: #cbd5e1;
-        }
-        .right-info-panel h3 { color: #f8fafc; font-size: 15px; margin-top: 0; border-bottom: 2px solid #00b4d8; padding-bottom: 6px; }
-
-        .salon { stroke: #020617; stroke-width: 2; cursor: pointer; transition: all 0.2s; }
-        .salon:hover { filter: brightness(1.2); }
-        .texto-svg { font-size: 13px; font-weight: bold; fill: #ffffff; pointer-events: none; }
-
-        .tabla-horarios { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
-        .tabla-horarios th, .tabla-horarios td { border: 1px solid #334155; padding: 6px; text-align: left; }
-        .tabla-horarios th { background-color: #1e293b; color: #38bdf8; }
-        .fila-actual { background-color: rgba(56, 189, 248, 0.2); font-weight: bold; color: #ffffff; }
-        .st-libre { color: #4ade80; font-weight: bold; }
-        .st-ocupado { color: #f87171; font-weight: bold; }
-
-        .btn-nivel {
-            width: 100%; background: #1e293b; border: 1px solid #334155; color: #cbd5e1;
-            padding: 6px 10px; border-radius: 4px; cursor: pointer; text-align: left;
-            margin-bottom: 6px; font-size: 12px; transition: all 0.2s;
-        }
-        .btn-nivel:hover { background: #334155; color: #38bdf8; border-color: #38bdf8; }
-        .btn-nivel.active { background: #00b4d8; color: #070f1e; font-weight: bold; border-color: #00b4d8; }
-
-        .status-badge { font-size: 11px; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
-        .debug-box { margin-top: 15px; padding: 8px; background: #020617; border: 1px solid #1e293b; border-radius: 4px; font-size: 10px; color: #64748b; }
-        .loading-spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #334155; border-top: 2px solid #00b4d8; border-radius: 50%; animation: spin 0.8s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .btn-nivel { width: 100%; background: #0f172a; color: var(--text-main); border: 1px solid var(--border); padding: 8px 12px; text-align: left; border-radius: 6px; cursor: pointer; margin-bottom: 6px; font-size: 13px; transition: all 0.2s; }
+        .btn-nivel:hover { background: #1e293b; border-color: var(--accent); }
+        .btn-nivel.active { background: rgba(0,180,216,0.2); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+        
+        /* INFO EDIFICIO */
+        .info-card { background: #0f172a; padding: 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 13px; line-height: 1.6; }
+        .info-card p span { color: var(--text-muted); }
     </style>
 </head>
 <body>
 
     <header>
-        <div class="header-brand">
-            <span class="logo-badge">UPTC SIG</span>
-            <span class="header-title">Gemelo Digital Sede Central Tunja</span>
-            <span class="breadcrumb" id="ruta-nav">Sede Central (Plano General)</span>
-        </div>
-        <div class="search-box">
-            <span style="margin-right:6px; color:#64748b;">🔍</span>
-            <input type="text" placeholder="Buscar edificio, aula o docente...">
+        <div class="header-title">
+            UPTC SIG <span>Gemelo Digital Sede Central Tunja</span> Edificio 30 Hunza (Sección 3D BIM)
         </div>
     </header>
 
-    <div class="sub-header">
-        <div class="time-controls">
-            <span>📅 Día:</span>
-            <select id="select-dia" class="time-select" onchange="actualizarEstadoTiempo()">
-                <option value="Lunes" selected>Lunes</option>
-                <option value="Martes">Martes</option>
-                <option value="Miércoles">Miércoles</option>
-                <option value="Jueves">Jueves</option>
-                <option value="Viernes">Viernes</option>
-            </select>
-
-            <span>⏰ Franja:</span>
-            <select id="select-hora" class="time-select" onchange="actualizarEstadoTiempo()">
-                <option value="06:00">06:00 - 07:00</option>
-                <option value="07:00" selected>07:00 - 08:00</option>
-                <option value="08:00">08:00 - 09:00</option>
-                <option value="09:00">09:00 - 10:00</option>
-                <option value="10:00">10:00 - 11:00</option>
-                <option value="11:00">11:00 - 12:00</option>
-                <option value="12:00">12:00 - 13:00</option>
-                <option value="13:00">13:00 - 14:00</option>
-                <option value="14:00">14:00 - 15:00</option>
-                <option value="15:00">15:00 - 16:00</option>
-                <option value="16:00">16:00 - 17:00</option>
-                <option value="17:00">17:00 - 18:00</option>
-                <option value="18:00">18:00 - 19:00</option>
-                <option value="19:00">19:00 - 20:00</option>
-            </select>
-        </div>
-        <div>
-            <span id="excel-status" class="status-badge" style="background:#1e293b; color:#fbbf24;">🔄 Conectando...</span>
-        </div>
-    </div>
-
-    <div class="app-layout">
-        <div class="left-dock">
-            <button id="btn-campus" class="dock-btn active" title="Mapa General" onclick="irAVista('vista-campus')">🌐</button>
-            <button id="btn-3d" class="dock-btn" title="Modelo 3D" onclick="irAVista('vista-3d')">🏢</button>
-            <button id="btn-2d" class="dock-btn" title="Planta 2D" onclick="irAVista('vista-2d')">📐</button>
+    <div class="main-container">
+        <!-- VISOR 3D -->
+        <div id="vista-3d" class="activa">
+            <div id="ifc-canvas-container"></div>
         </div>
 
-        <div class="viewport-container">
-            <div id="vista-campus" class="vista activa">
-                <div id="map-wrapper" class="map-wrapper">
-                    <div id="map-content" class="map-content">
-                        <div id="svg-loading-status" style="color: #64748b; font-size: 13px;">
-                            <span class="loading-spinner"></span> Cargando plano_uptc.svg...
-                        </div>
-                    </div>
+        <!-- PANEL LATERAL -->
+        <div class="sidebar-right">
+            <div class="panel-section">
+                <h3>Corte de Niveles (BIM)</h3>
+                <div id="ifc-status"><span class="loading-spinner"></span> Inicializando visor...</div>
+                <div id="ifc-layers-list">
+                    <!-- Los botones se generan dinámicamente -->
                 </div>
             </div>
 
-            <div id="vista-3d" class="vista">
-                <div class="ifc-layout">
-                    <div id="ifc-canvas-container"></div>
-                    <div class="ifc-layers-panel">
-                        <h4>Corte de Niveles (BIM)</h4>
-                        <div id="ifc-status" style="margin-bottom:8px; font-size:11px; color:#94a3b8;">
-                            <span class="loading-spinner"></span> Esperando activación...
-                        </div>
-                        <div id="ifc-layers-list">
-                            <p style="color:#64748b; font-style:italic;">Cargando visor 3D...</p>
-                        </div>
-                    </div>
+            <div class="panel-section">
+                <h3>Datos del Edificio</h3>
+                <div class="info-card">
+                    <p><strong>Edificio:</strong> Edificio 30 - Aulas Hunza</p>
+                    <p><strong>Código:</strong> 30</p>
+                    <p><strong>Sede:</strong> UPTC - Sede Central Tunja</p>
+                    <p><strong>Uso Principal:</strong> Aulas de Clase y Laboratorios</p>
+                    <p><strong>Nº Pisos:</strong> 5</p>
                 </div>
-            </div>
-
-            <div id="vista-2d" class="vista" style="padding: 20px; background: #020617;">
-                <h3 id="titulo-piso-2d" style="margin-top:0; color:#38bdf8; font-size:16px;">Edificio 30 Aulas Hunza - Planta 2D</h3>
-                <svg viewBox="0 0 500 280" width="100%" height="80%">
-                    <rect x="30" y="120" width="440" height="40" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
-                    <text x="250" y="145" class="texto-svg" fill="#64748b" text-anchor="middle">CORREDOR PRINCIPAL</text>
-
-                    <rect id="H-101" class="salon" x="30" y="20" width="130" height="100" fill="#22c55e" />
-                    <text x="95" y="65" class="texto-svg" text-anchor="middle">Aula A-101</text>
-                    <text id="lbl-H-101" x="95" y="85" font-size="11" fill="#ffffff" text-anchor="middle">LIBRE</text>
-
-                    <rect id="H-102" class="salon" x="185" y="20" width="130" height="100" fill="#22c55e" />
-                    <text x="250" y="65" class="texto-svg" text-anchor="middle">Aula A-102</text>
-                    <text id="lbl-H-102" x="250" y="85" font-size="11" fill="#ffffff" text-anchor="middle">LIBRE</text>
-
-                    <rect id="H-103" class="salon" x="340" y="20" width="130" height="100" fill="#22c55e" />
-                    <text x="405" y="65" class="texto-svg" text-anchor="middle">Lab A-103</text>
-                    <text id="lbl-H-103" x="405" y="85" font-size="11" fill="#ffffff" text-anchor="middle">LIBRE</text>
-                </svg>
-            </div>
-        </div>
-
-        <div class="right-info-panel">
-            <h3 id="info-titulo">Información del Espacio</h3>
-            <div id="info-contenido">
-                <p style="color:#64748b;">Selecciona una zona o aula para consultar su ocupación e información técnica.</p>
-            </div>
-            <div id="debug-info" class="debug-box">
-                <b>Estado de Carga:</b> Inicializando...
             </div>
         </div>
     </div>
 
-    <!-- SCRIPT GENERAL: DECLARACIONES PRIMERO -->
-    <script>
-        const TODAS_HORAS = ["06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"];
-        const TODOS_DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
-
-        let dbHunza = {};
-        let datosGeneralesEdificio = {
-            nombre: "Edificio 30 - Aulas Hunza",
-            codigo: "30",
-            institucion: "UPTC - Sede Central Tunja",
-            uso: "Aulas de Clase y Laboratorios",
-            pisos: "5",
-            area: "Por definir"
-        };
-        let aulaSeleccionada = "H-101";
-        let vistaActual = "vista-campus";
-
-        let zoomScale = 1, panX = 0, panY = 0, isDragging = false, startX = 0, startY = 0;
-
-        function crearEstructuraVaciaEspacio(idSVG, codigoNombre) {
-            let obj = { nombre: `Aula ${codigoNombre}`, aforo: "35", horarios: {} };
-            TODAS_DIAS.forEach(d => {
-                obj.horarios[d] = {};
-                TODAS_HORAS.forEach(h => { obj.horarios[d][h] = { est: "Libre", materia: "Disponible", docente: "" }; });
-            });
-            return obj;
-        }
-
-        function inicializarDatosBase() {
-            dbHunza = {
-                "H-101": crearEstructuraVaciaEspacio("H-101", "A-101"),
-                "H-102": crearEstructuraVaciaEspacio("H-102", "A-102"),
-                "H-103": crearEstructuraVaciaEspacio("H-103", "A-103")
-            };
-        }
-        
-        inicializarDatosBase();
-    </script>
-
-    <!-- SCRIPT THREE.JS CORREGIDO CON PLANO HACIA ARRIBA Y RANGO DE SLIDER EXPANDIDO -->
+    <!-- SCRIPT THREE.JS: AISLAMIENTO DE PISO INDIVIDUAL (DOBLE PLANO DE CORTE) -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -305,7 +108,8 @@
         let animFrameId = null;
         let needsRender = true;
         let modeloGlobal = null;
-        let planoCorteVertical = null;
+        let planoInferior = null;
+        let planoSuperior = null;
         let alturaMinModel = 0, alturaMaxModel = 100;
 
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
@@ -384,10 +188,10 @@
             return true;
         }
 
-        function aplicarCorteAltura(alturaLimite) {
-            if (!planoCorteVertical) return;
-            // Normal (0, 1, 0) con constante negativa oculta todo lo que esté por encima de la altura del slider
-            planoCorteVertical.constant = -alturaLimite;
+        function aislarRangoAltura(alturaInferior, alturaSuperior) {
+            if (!planoInferior || !planoSuperior) return;
+            planoInferior.constant = -alturaInferior;
+            planoSuperior.constant = alturaSuperior;
             needsRender = true;
         }
 
@@ -404,7 +208,6 @@
                 URL_GLB,
                 (gltf) => {
                     modeloGlobal = gltf.scene;
-
                     modeloGlobal.updateMatrixWorld(true);
 
                     const boxTemp = new THREE.Box3().setFromObject(modeloGlobal);
@@ -418,27 +221,26 @@
                     modeloGlobal.updateMatrixWorld(true);
 
                     const boxGlobal = new THREE.Box3().setFromObject(modeloGlobal);
-                    alturaMinModel = boxGlobal.min.y; // 0
-                    alturaMaxModel = boxGlobal.max.y; // Altura real máxima
+                    alturaMinModel = boxGlobal.min.y;
+                    alturaMaxModel = boxGlobal.max.y;
                     const alturaTotal = alturaMaxModel - alturaMinModel;
 
-                    console.log(`📊 [Modelo Centrado en Y=0] MinY: ${alturaMinModel.toFixed(2)}, MaxY: ${alturaMaxModel.toFixed(2)}, Altura Total: ${alturaTotal.toFixed(2)}`);
-
-                    // Plano de corte con normal hacia arriba (0, 1, 0)
-                    planoCorteVertical = new THREE.Plane(new THREE.Vector3(0, 1, 0), -alturaMaxModel - 10);
+                    planoInferior = new THREE.Plane(new THREE.Vector3(0, 1, 0), -alturaMinModel - 10);
+                    planoSuperior = new THREE.Plane(new THREE.Vector3(0, -1, 0), alturaMaxModel + 50);
+                    const arrayPlanosCorte = [planoInferior, planoSuperior];
 
                     modeloGlobal.traverse((child) => {
                         if (child.isMesh) {
                             if (Array.isArray(child.material)) {
                                 child.material.forEach(mat => {
-                                    mat.clippingPlanes = [planoCorteVertical];
+                                    mat.clippingPlanes = arrayPlanosCorte;
                                     mat.clipShadows = true;
                                     mat.side = THREE.DoubleSide;
                                     mat.shadowSide = THREE.DoubleSide;
                                     mat.needsUpdate = true;
                                 });
                             } else if (child.material) {
-                                child.material.clippingPlanes = [planoCorteVertical];
+                                child.material.clippingPlanes = arrayPlanosCorte;
                                 child.material.clipShadows = true;
                                 child.material.side = THREE.DoubleSide;
                                 child.material.shadowSide = THREE.DoubleSide;
@@ -453,13 +255,10 @@
                     
                     const divControles = document.createElement('div');
                     divControles.innerHTML = `
-                        <button class="btn-nivel active" data-altura="max">Ver Edificio Completo</button>
+                        <button class="btn-nivel active" data-tipo="max">Ver Edificio Completo</button>
                         <hr style="border-color:#334155; margin:8px 0;">
-                        <p style="margin:4px 0; color:#94a3b8; font-size:11px;">Corte por Niveles:</p>
+                        <p style="margin:4px 0; color:#94a3b8; font-size:11px;">Aislar Piso Individual:</p>
                         <div id="botones-pisos-container"></div>
-                        <hr style="border-color:#334155; margin:8px 0;">
-                        <label style="color:#38bdf8; display:block; margin-bottom:4px;">Altura de Corte Libre (<span id="val-slider-txt">${alturaMaxModel.toFixed(1)}</span>m):</label>
-                        <input type="range" id="slider-corte" min="${alturaMinModel}" max="${alturaMaxModel + 5}" step="0.2" value="${alturaMaxModel + 5}" style="width:100%; cursor:pointer;">
                     `;
                     layersEl.appendChild(divControles);
 
@@ -468,35 +267,24 @@
                     const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
 
                     nombresPisos.forEach((nombre, idx) => {
-                        const alturaPisoActual = alturaMinModel + ((idx + 1) * pasoPiso);
+                        const basePiso = alturaMinModel + (idx * pasoPiso);
+                        const techoPiso = alturaMinModel + ((idx + 1) * pasoPiso);
+
                         const btn = document.createElement('button');
                         btn.className = 'btn-nivel';
-                        btn.innerText = `🏢 Aislar hasta ${nombre}`;
+                        btn.innerText = `🏢 ${nombre}`;
                         btn.addEventListener('click', () => {
                             document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
                             btn.classList.add('active');
-                            document.getElementById('slider-corte').value = alturaPisoActual;
-                            document.getElementById('val-slider-txt').innerText = alturaPisoActual.toFixed(1);
-                            aplicarCorteAltura(alturaPisoActual);
+                            aislarRangoAltura(basePiso, techoPiso);
                         });
                         containerPisos.appendChild(btn);
                     });
 
-                    divControles.querySelector('[data-altura="max"]').addEventListener('click', function() {
+                    divControles.querySelector('[data-tipo="max"]').addEventListener('click', function() {
                         document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
                         this.classList.add('active');
-                        const valMax = alturaMaxModel + 5;
-                        document.getElementById('slider-corte').value = valMax;
-                        document.getElementById('val-slider-txt').innerText = alturaMaxModel.toFixed(1);
-                        aplicarCorteAltura(valMax);
-                    });
-
-                    const slider = document.getElementById('slider-corte');
-                    slider.addEventListener('input', (e) => {
-                        document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
-                        const val = parseFloat(e.target.value);
-                        document.getElementById('val-slider-txt').innerText = Math.min(val, alturaMaxModel).toFixed(1);
-                        aplicarCorteAltura(val);
+                        aislarRangoAltura(alturaMinModel - 10, alturaMaxModel + 50);
                     });
 
                     if (!boxGlobal.isEmpty()) {
@@ -511,7 +299,7 @@
                     }
 
                     needsRender = true;
-                    statusEl.innerText = '🟢 Visor 3D Listo (Corte Activo)';
+                    statusEl.innerText = '🟢 Visor 3D Listo (Aislamiento por Piso)';
                     yaCargado = true;
                 },
                 (xhr) => {
@@ -541,373 +329,6 @@
         }
 
         window.cargarModeloIFC = cargarModeloGLBReal;
-    </script>
-
-    <!-- SCRIPT GENERAL: LOGICA, EXCEL Y SVG -->
-    <script>
-        async function cargarPlanoSVG() {
-            const mapContent = document.getElementById('map-content');
-            try {
-                const response = await fetch('plano_uptc.svg');
-                if (!response.ok) throw new Error('No se pudo encontrar plano_uptc.svg');
-                
-                const svgText = await response.text();
-                mapContent.innerHTML = svgText;
-
-                const elHunza = mapContent.querySelector('#HUNZA') || mapContent.querySelector('[id*="HUNZA"]');
-                if (elHunza) {
-                    elHunza.classList.add('hotspot-edificio');
-                    elHunza.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        cargarEdificio30();
-                    });
-                }
-            } catch (error) {
-                console.error("❌ Error al cargar SVG:", error);
-                mapContent.innerHTML = `<p style="color:#f87171; font-size:12px; text-align:center; padding:20px;">
-                    ❌ No se pudo cargar <b>plano_uptc.svg</b>.
-                </p>`;
-            }
-        }
-
-        function quitarTildes(texto) {
-            return String(texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-        }
-
-        function descombinarCeldas(sheet) {
-            if (!sheet || !sheet['!merges'] || !Array.isArray(sheet['!merges'])) return;
-            sheet['!merges'].forEach(range => {
-                try {
-                    if (!range.s || !range.e) return;
-                    let cellRefInicio = XLSX.utils.encode_cell({ r: range.s.r, c: range.s.c });
-                    let cellInicio = sheet[cellRefInicio];
-                    if (!cellInicio || !cellInicio.v) return;
-
-                    for (let R = range.s.r; R <= range.e.r; ++R) {
-                        for (let C = range.s.c; C <= range.e.c; ++C) {
-                            let cellRef = XLSX.utils.encode_cell({ r: R, c: C });
-                            if (!sheet[cellRef]) {
-                                sheet[cellRef] = { t: cellInicio.t || "s", v: cellInicio.v };
-                                if (cellInicio.w) sheet[cellRef].w = cellInicio.w;
-                            }
-                        }
-                    }
-                } catch (e) {}
-            });
-        }
-
-        async function cargarExcelAutomatico() {
-            const badge = document.getElementById('excel-status');
-            const debugLog = document.getElementById('debug-info');
-            const archivos = [
-                'Plantilla_Levantamiento_Edificio_2.xlsx',
-                'https://raw.githubusercontent.com/Cyul5/gemelo-digital-uptc/main/Plantilla_Levantamiento_Edificio_2.xlsx'
-            ];
-            let arrayBuffer = null;
-
-            for (let fuente of archivos) {
-                try {
-                    const res = await fetch(fuente);
-                    if (res.ok) { arrayBuffer = await res.arrayBuffer(); break; }
-                } catch (e) {}
-            }
-
-            if (!arrayBuffer) {
-                badge.innerText = "⚠️ Modo Demo";
-                badge.style.background = "#1e293b";
-                badge.style.color = "#fbbf24";
-                inicializarDatosBase();
-                return;
-            }
-
-            try {
-                const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
-                let sheetGeneralesName = workbook.SheetNames.find(n => quitarTildes(n).includes("general") || quitarTildes(n).includes("datos"));
-                
-                if (sheetGeneralesName) {
-                    const sheetGen = workbook.Sheets[sheetGeneralesName];
-                    descombinarCeldas(sheetGen);
-                    procesarDatosGenerales(XLSX.utils.sheet_to_json(sheetGen, { header: 1, raw: false }));
-                }
-
-                let sheetHorariosName = workbook.SheetNames.find(n => 
-                    quitarTildes(n).includes("horario") || quitarTildes(n).includes("uso") || quitarTildes(n).includes("hunza")
-                ) || workbook.SheetNames[0];
-                
-                const sheetHor = workbook.Sheets[sheetHorariosName];
-                descombinarCeldas(sheetHor);
-                procesarMatrizExcel(XLSX.utils.sheet_to_json(sheetHor, { header: 1, raw: false }));
-
-                badge.innerText = "🟢 Excel Conectado";
-                badge.style.background = "#064e3b";
-                badge.style.color = "#34d399";
-
-                debugLog.innerHTML = `<b>Origen:</b> Excel Conectado<br><b>Hoja Horarios:</b> ${sheetHorariosName}`;
-            } catch (error) {
-                badge.innerText = "❌ Error Excel";
-                inicializarDatosBase();
-            }
-        }
-
-        function procesarDatosGenerales(matrix) {
-            if (!matrix || matrix.length === 0) return;
-            matrix.forEach(row => {
-                if (!row || row.length < 2) return;
-                let campo = quitarTildes(row[0] || row[1] || "");
-                let valor = String(row[1] || row[2] || "").trim();
-                if (!valor) return;
-
-                if (campo.includes("nombre del edificio")) datosGeneralesEdificio.nombre = valor;
-                else if (campo.includes("codigo") || campo.includes("identificador")) datosGeneralesEdificio.codigo = valor;
-                else if (campo.includes("institucion") || campo.includes("campus")) datosGeneralesEdificio.institucion = valor;
-                else if (campo.includes("uso principal")) datosGeneralesEdificio.uso = valor;
-                else if (campo.includes("numero de pisos")) datosGeneralesEdificio.pisos = valor;
-                else if (campo.includes("area total")) datosGeneralesEdificio.area = valor;
-            });
-        }
-
-        function mostrarInformacionGeneralEdificio() {
-            document.getElementById('info-titulo').innerText = "🏢 Datos del Edificio";
-            document.getElementById('info-contenido').innerHTML = `
-                <div style="line-height:1.8; font-size:12px;">
-                    <p><b>Edificio:</b> ${datosGeneralesEdificio.nombre}</p>
-                    <p><b>Código:</b> ${datosGeneralesEdificio.codigo}</p>
-                    <p><b>Sede:</b> ${datosGeneralesEdificio.institucion}</p>
-                    <p><b>Uso Principal:</b> ${datosGeneralesEdificio.uso}</p>
-                    <p><b>Nº Pisos:</b> ${datosGeneralesEdificio.pisos}</p>
-                    <p><b>Área Construida:</b> ${datosGeneralesEdificio.area}</p>
-                </div>
-            `;
-        }
-
-        function desgloseHorasRango(horaTexto) {
-            let matches = String(horaTexto || "").match(/\d{1,2}/g);
-            if (!matches || matches.length === 0) return ["07:00"];
-
-            let hInicio = parseInt(matches[0], 10);
-            let hFin = matches.length > 1 ? parseInt(matches[1], 10) : hInicio + 1;
-            if (hInicio < 6) hInicio += 12;
-            if (hFin <= hInicio && hFin <= 11) hFin += 12;
-
-            let franjas = [];
-            for (let h = hInicio; h < hFin; h++) {
-                let formatted = (h < 10 ? '0' : '') + h + ':00';
-                if (TODAS_HORAS.includes(formatted)) franjas.push(formatted);
-            }
-            return franjas.length ? franjas : [(hInicio < 10 ? '0' : '') + hInicio + ':00'];
-        }
-
-        function procesarMatrizExcel(matrix) {
-            inicializarDatosBase();
-            if (!matrix || matrix.length === 0) return;
-
-            let headerIdx = matrix.findIndex(r => {
-                let str = quitarTildes(r.join(" "));
-                return str.includes("lunes") || str.includes("martes") || str.includes("horas");
-            });
-            if (headerIdx === -1) headerIdx = 0;
-
-            const headers = matrix[headerIdx].map(h => quitarTildes(h));
-            let colCode = headers.findIndex(h => h.includes("cod") || h.includes("espacio") || h.includes("aula"));
-            let colHora = headers.findIndex(h => h.includes("hora") || h.includes("franja"));
-            let colMateria = headers.findIndex(h => h.includes("materia") || h.includes("actividad"));
-            let colDocente = headers.findIndex(h => h.includes("docente") || h.includes("responsable"));
-            let colAforo = headers.findIndex(h => h.includes("aforo") || h.includes("capacidad"));
-
-            const colDiasMatriz = {
-                "Lunes": headers.findIndex(h => h.includes("lunes")),
-                "Martes": headers.findIndex(h => h.includes("martes")),
-                "Miércoles": headers.findIndex(h => h.includes("miercoles")),
-                "Jueves": headers.findIndex(h => h.includes("jueves")),
-                "Viernes": headers.findIndex(h => h.includes("viernes"))
-            };
-
-            let ultimoCod = "101";
-
-            for (let r = headerIdx + 1; r < matrix.length; r++) {
-                const row = matrix[r];
-                if (!row || row.length === 0) continue;
-
-                let codRaw = String(row[colCode !== -1 ? colCode : 1] || "").trim();
-                if (codRaw) ultimoCod = codRaw;
-
-                let numPuro = ultimoCod.replace(/\D/g, "");
-                let idSVG = numPuro ? `H-${numPuro}` : `H-${ultimoCod}`;
-
-                if (!dbHunza[idSVG]) dbHunza[idSVG] = crearEstructuraVaciaEspacio(idSVG, ultimoCod);
-                if (colAforo !== -1 && row[colAforo]) dbHunza[idSVG].aforo = String(row[colAforo]).trim();
-
-                let horaRaw = String(row[colHora !== -1 ? colHora : 2] || "").trim();
-                if (!horaRaw) continue;
-
-                let franjasHorarias = desgloseHorasRango(horaRaw);
-                let matGen = (colMateria !== -1 && row[colMateria]) ? String(row[colMateria]).trim() : "";
-                let docGen = (colDocente !== -1 && row[colDocente]) ? String(row[colDocente]).trim() : "";
-
-                TODAS_DIAS.forEach(dia => {
-                    let cIdx = colDiasMatriz[dia];
-                    let valDia = (cIdx !== -1 && row[cIdx]) ? String(row[cIdx]).trim() : "";
-                    let materiaAsignada = "", esOcupado = false;
-
-                    if (valDia && valDia !== "-" && quitarTildes(valDia) !== "libre" && quitarTildes(valDia) !== "disponible") {
-                        esOcupado = true;
-                        materiaAsignada = (valDia.toLowerCase() === "x" || valDia.toLowerCase() === "si") ? (matGen || "Clase Asignada") : valDia;
-                    } else if (matGen && !valDia && Object.values(colDiasMatriz).every(idx => idx === -1 || !row[idx])) {
-                        esOcupado = true;
-                        materiaAsignada = matGen;
-                    }
-
-                    if (esOcupado && materiaAsignada) {
-                        franjasHorarias.forEach(fh => {
-                            if (dbHunza[idSVG].horarios[dia]) {
-                                dbHunza[idSVG].horarios[dia][fh] = { est: "Ocupado", materia: materiaAsignada, docente: docGen };
-                            }
-                        });
-                    }
-                });
-            }
-        }
-
-        function buscarDatosAula(idElemento) {
-            if (dbHunza[idElemento]) return dbHunza[idElemento];
-            let numPuro = String(idElemento).replace(/\D/g, "");
-            for (let key in dbHunza) {
-                if (String(key).replace(/\D/g, "") === numPuro) return dbHunza[key];
-            }
-            return null;
-        }
-
-        function obtenerInfoHorario(data, diaSel, horaSel) {
-            return (data && data.horarios && data.horarios[diaSel] && data.horarios[diaSel][horaSel]) 
-                ? data.horarios[diaSel][horaSel] 
-                : { est: "Libre", materia: "Disponible", docente: "" };
-        }
-
-        function actualizarEstadoTiempo() {
-            const horaSel = document.getElementById('select-hora').value;
-            const diaSel = document.getElementById('select-dia').value;
-
-            document.querySelectorAll('.salon').forEach(el => {
-                let id = el.getAttribute('id');
-                let data = buscarDatosAula(id);
-                let lbl = document.getElementById(`lbl-${id}`);
-                let infoH = obtenerInfoHorario(data, diaSel, horaSel);
-
-                el.style.fill = infoH.est === "Libre" ? "#22c55e" : "#ef4444";
-                if (lbl) lbl.innerText = infoH.est === "Libre" ? "LIBRE" : "CLASE";
-            });
-
-            if (vistaActual === 'vista-2d' && aulaSeleccionada) mostrarFichaExcel(aulaSeleccionada);
-        }
-
-        function mostrarFichaExcel(id) {
-            aulaSeleccionada = id;
-            const horaSel = document.getElementById('select-hora').value;
-            const diaSel = document.getElementById('select-dia').value;
-            const data = buscarDatosAula(id) || { nombre: `Aula ${id}`, aforo: "35", horarios: {} };
-            const infoH = obtenerInfoHorario(data, diaSel, horaSel);
-
-            let tablaHTML = `<table class="tabla-horarios"><thead><tr><th>Hora</th><th>Est</th><th>Materia</th></tr></thead><tbody>`;
-            TODAS_HORAS.forEach(h => {
-                const row = obtenerInfoHorario(data, diaSel, h);
-                tablaHTML += `<tr ${h === horaSel ? 'class="fila-actual"' : ''}><td>${h}</td><td class="${row.est === 'Libre' ? 'st-libre':'st-ocupado'}">${row.est}</td><td>${row.materia}</td></tr>`;
-            });
-            tablaHTML += `</tbody></table>`;
-
-            document.getElementById('info-titulo').innerText = data.nombre;
-            document.getElementById('info-contenido').innerHTML = `
-                <p><b>Aforo:</b> ${data.aforo} Personas</p>
-                <p><b>Día:</b> ${diaSel}</p>
-                <hr style="border-color:#334155;">
-                <b>Estado:</b> <span class="${infoH.est === 'Libre' ? 'st-libre':'st-ocupado'}">${infoH.est}</span><br>
-                <b>Detalle:</b> ${infoH.materia} ${infoH.docente ? '('+infoH.docente+')' : ''}
-                <h4 style="margin-top:12px; margin-bottom:5px; color:#38bdf8;">Programación ${diaSel}:</h4>
-                ${tablaHTML}
-            `;
-        }
-
-        function resetZoom() {
-            zoomScale = 1; panX = 0; panY = 0;
-            aplicarTransformMapa();
-        }
-
-        function aplicarTransformMapa() {
-            const mc = document.getElementById('map-content');
-            if (mc) mc.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomScale})`;
-        }
-
-        window.irAVista = function(idVista) {
-            vistaActual = idVista;
-            document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
-            document.getElementById(idVista).classList.add('activa');
-
-            document.getElementById('btn-campus').classList.remove('active');
-            document.getElementById('btn-3d').classList.remove('active');
-            document.getElementById('btn-2d').classList.remove('active');
-
-            const rutaNav = document.getElementById('ruta-nav');
-
-            if (idVista === 'vista-campus') {
-                document.getElementById('btn-campus').classList.add('active');
-                rutaNav.innerText = "Sede Central (Plano General)";
-                resetZoom();
-                mostrarInformacionGeneralEdificio();
-            } else if (idVista === 'vista-3d') {
-                document.getElementById('btn-3d').classList.add('active');
-                rutaNav.innerText = "Edificio 30 Hunza (Sección 3D BIM)";
-                if (window.cargarModeloIFC) {
-                    window.cargarModeloIFC();
-                }
-            } else if (idVista === 'vista-2d') {
-                document.getElementById('btn-2d').classList.add('active');
-                rutaNav.innerText = "Edificio 30 Hunza (Planta 2D)";
-                actualizarEstadoTiempo();
-            }
-        };
-
-        window.cargarEdificio30 = function() { irAVista('vista-3d'); };
-
-        const mapWrapper = document.getElementById('map-wrapper');
-        if (mapWrapper) {
-            mapWrapper.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                const delta = e.deltaY < 0 ? 0.2 : -0.2;
-                zoomScale = Math.min(Math.max(1, zoomScale + delta), 4);
-                if (zoomScale === 1) { panX = 0; panY = 0; }
-                aplicarTransformMapa();
-            });
-
-            mapWrapper.addEventListener('mousedown', (e) => {
-                if (zoomScale > 1) {
-                    isDragging = true;
-                    startX = e.clientX - panX;
-                    startY = e.clientY - panY;
-                    mapWrapper.style.cursor = 'grabbing';
-                }
-            });
-        }
-
-        window.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            panX = e.clientX - startX;
-            panY = e.clientY - startY;
-            aplicarTransformMapa();
-        });
-
-        window.addEventListener('mouseup', () => {
-            isDragging = false;
-            if (mapWrapper) mapWrapper.style.cursor = 'grab';
-        });
-
-        document.querySelectorAll('.salon').forEach(s => {
-            s.addEventListener('click', function() { mostrarFichaExcel(this.getAttribute('id')); });
-        });
-
-        window.addEventListener('DOMContentLoaded', () => {
-            cargarPlanoSVG();
-            irAVista('vista-campus');
-            cargarExcelAutomatico();
-        });
     </script>
 </body>
 </html>
