@@ -20,12 +20,12 @@
 
     <style>
         :root {
-            --bg-dark: #ffffff; /* CAMBIADO A BLANCO */
+            --bg-dark: #ffffff;
             --bg-header: #070d19;
             --bg-panel: #0b1324;
             --bg-card: #111c33;
             --accent: #00b4d8;
-            --border: #e2e8f0; /* Ajustado para mejor contraste en fondo blanco */
+            --border: #e2e8f0;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --green: #10b981;
@@ -75,7 +75,7 @@
         .content-area { 
             flex: 1; 
             position: relative; 
-            background: #ffffff; /* CAMBIADO A BLANCO */
+            background: #ffffff;
             overflow: hidden; 
         }
 
@@ -90,7 +90,7 @@
             visibility: hidden;
             z-index: 1;
             transition: opacity 0.15s ease-in-out;
-            background-color: #ffffff; /* CAMBIADO A BLANCO */
+            background-color: #ffffff;
         }
 
         .vista.activa { 
@@ -117,7 +117,7 @@
             padding: 15px; 
             color: #0f172a; 
             box-sizing: border-box;
-            background-color: #ffffff; /* CAMBIADO A BLANCO */
+            background-color: #ffffff;
         }
 
         .container-svg-2d { 
@@ -127,7 +127,7 @@
             display: flex; 
             align-items: center; 
             justify-content: center; 
-            background: #ffffff; /* CAMBIADO A BLANCO */
+            background: #ffffff;
             border: 1px solid var(--border); 
             border-radius: 8px; 
             overflow: hidden; 
@@ -139,7 +139,7 @@
             height: 100%; 
             border: none; 
             object-fit: contain;
-            background-color: #ffffff; /* CAMBIADO A BLANCO */
+            background-color: #ffffff;
         }
 
         /* PANEL DERECHO DE DATOS */
@@ -192,7 +192,6 @@
             <div class="filter-group">
                 <span>⏰ Franja:</span>
                 <select id="select-franja" class="filter-select" onchange="actualizarEstadoAulas2D()">
-                    <!-- Se llena dinámicamente -->
                 </select>
             </div>
         </div>
@@ -227,12 +226,12 @@
                 <div id="ifc-canvas-container"></div>
             </div>
 
-            <!-- VISTA 3: PLANTA 2D -->
+            <!-- VISTA 3: PLANTA 2D DINÁMICA -->
             <div id="vista-2d" class="vista">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <div>
                         <h2 id="titulo-vista-2d" style="color: #0284c7; font-size: 16px;">Planta 2D - Piso 1</h2>
-                        <p style="color: #64748b; font-size: 12px;">Haz clic en un aula (A-101 a A-106) para consultar el horario activo en Excel.</p>
+                        <p style="color: #64748b; font-size: 12px;">Haz clic en un aula para consultar el horario activo en Excel.</p>
                     </div>
                     <button class="btn-regresar" style="display:inline-block; margin-bottom: 0;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
                 </div>
@@ -286,11 +285,20 @@
         </div>
     </div>
 
-    <!-- MOTOR LECTOR DE EXCEL MATRIX -->
+    <!-- MOTOR LECTOR DE EXCEL MATRIX Y RUTEO DINÁMICO DE PISOS -->
     <script>
         let registrosHorariosExcel = [];
         let pisoActual2D = "Piso 1";
         let aulaSeleccionadaActual = null;
+
+        // MAPEO DE PISOS CON SUS ARCHIVOS SVG CORRESPONDIENTES EN TU REPOSITORIO
+        const MAPA_ARCHIVOS_PISOS = {
+            "Piso 1": "PLANTA_1_HUNZA.svg",
+            "Piso 2": "PLANTA_2_HUNZA.svg",
+            "Piso 3": "PLANTA_3_HUNZA.svg",
+            "Piso 4": "PLANTA_4_HUNZA.svg",
+            "Piso 5 / Cubierta": "PLANTA_5_HUNZA.svg"
+        };
 
         function inicializarFranjasHorarias() {
             const selectFranja = document.getElementById('select-franja');
@@ -317,10 +325,7 @@
                 const workbook = XLSX.read(arrayBuffer, { type: 'array' });
 
                 const sheet = workbook.Sheets["Horarios de Uso"];
-                if (!sheet) {
-                    console.error("No se encontró la hoja 'Horarios de Uso'");
-                    return;
-                }
+                if (!sheet) return;
 
                 const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
                 
@@ -453,6 +458,7 @@
             } else if (idVista === 'vista-2d') {
                 btnVolver.style.display = 'block';
                 seccionCortes.style.display = 'none';
+                document.getElementById('titulo-vista-2d').innerText = `Planta 2D - ${pisoActual2D}`;
                 breadcrumb.innerText = `Edificio 30 Hunza (${pisoActual2D})`;
                 actualizarEstadoAulas2D();
             } else {
@@ -463,8 +469,18 @@
             }
         }
 
+        // CAMBIO DINÁMICO DE PISO Y ARCHIVO SVG CORRESPONDIENTE
         window.irAVista2DPiso = function(nombrePiso) {
             pisoActual2D = nombrePiso || "Piso 1";
+            
+            // Obtener archivo SVG correspondiente al piso seleccionado (o fallback a Planta 1)
+            const archivoSVG = MAPA_ARCHIVOS_PISOS[pisoActual2D] || "PLANTA_1_HUNZA.svg";
+
+            const svgObject = document.getElementById('svg-2d-object');
+            if (svgObject && svgObject.getAttribute('data') !== archivoSVG) {
+                svgObject.setAttribute('data', archivoSVG);
+            }
+
             document.getElementById('titulo-vista-2d').innerText = `Planta 2D - ${pisoActual2D}`;
             irAVista('vista-2d');
         }
@@ -479,33 +495,32 @@
             const diaSeleccionado = document.getElementById('select-dia').value;
             const franjaSeleccionada = document.getElementById('select-franja').value;
 
-            const listaAulas = ["A-101", "A-102", "A-103", "A-104", "A-105", "A-106"];
+            // Busca todos los elementos con IDs de aulas (A-101 a A-509)
+            const elementosAulas = svgDoc.querySelectorAll('[id^="A-"], [id^="a-"]');
 
-            listaAulas.forEach(codigoAula => {
-                const elAula = svgDoc.getElementById(codigoAula) || svgDoc.querySelector(`[id="${codigoAula}"]`);
-                if (elAula) {
-                    elAula.style.cursor = 'pointer';
-                    elAula.style.transition = 'all 0.3s';
+            elementosAulas.forEach(elAula => {
+                const codigoAula = elAula.id.toUpperCase();
+                elAula.style.cursor = 'pointer';
+                elAula.style.transition = 'all 0.3s';
 
-                    const infoHorario = consultarHorarioAula(codigoAula, diaSeleccionado, franjaSeleccionada);
+                const infoHorario = consultarHorarioAula(codigoAula, diaSeleccionado, franjaSeleccionada);
 
-                    if (infoHorario.estado === "Ocupado") {
-                        elAula.style.fill = 'rgba(239, 68, 68, 0.45)';
-                        elAula.style.stroke = '#ef4444';
-                        elAula.style.strokeWidth = '2px';
-                    } else {
-                        elAula.style.fill = 'rgba(16, 185, 129, 0.25)';
-                        elAula.style.stroke = '#10b981';
-                        elAula.style.strokeWidth = '1px';
-                    }
-
-                    elAula.onclick = (e) => {
-                        e.stopPropagation();
-                        aulaSeleccionadaActual = codigoAula;
-                        const infoAlMomento = consultarHorarioAula(codigoAula, document.getElementById('select-dia').value, document.getElementById('select-franja').value);
-                        mostrarDetalleAulaPanel(codigoAula, infoAlMomento);
-                    };
+                if (infoHorario.estado === "Ocupado") {
+                    elAula.style.fill = 'rgba(239, 68, 68, 0.45)';
+                    elAula.style.stroke = '#ef4444';
+                    elAula.style.strokeWidth = '2px';
+                } else {
+                    elAula.style.fill = 'rgba(16, 185, 129, 0.25)';
+                    elAula.style.stroke = '#10b981';
+                    elAula.style.strokeWidth = '1px';
                 }
+
+                elAula.onclick = (e) => {
+                    e.stopPropagation();
+                    aulaSeleccionadaActual = codigoAula;
+                    const infoAlMomento = consultarHorarioAula(codigoAula, document.getElementById('select-dia').value, document.getElementById('select-franja').value);
+                    mostrarDetalleAulaPanel(codigoAula, infoAlMomento);
+                };
             });
 
             if (aulaSeleccionadaActual) {
@@ -622,7 +637,7 @@
         });
     </script>
 
-    <!-- THREE.JS ENGINE CON FONDO BLANCO -->
+    <!-- THREE.JS ENGINE -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -657,7 +672,7 @@
             container.innerHTML = '';
 
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xffffff); // CAMBIADO A BLANCO
+            scene.background = new THREE.Color(0xffffff);
 
             camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 2000);
 
@@ -683,7 +698,6 @@
             dirLight.position.set(100, 200, 100);
             scene.add(dirLight);
 
-            // Grid helper ajustado para visualización óptima sobre fondo blanco
             const gridHelper = new THREE.GridHelper(300, 60, 0x00b4d8, 0xcbd5e1);
             gridHelper.position.y = -0.01;
             scene.add(gridHelper);
