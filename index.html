@@ -382,15 +382,13 @@
                 estados.push(chk ? chk.checked : true);
             }
 
-            // Recorrer los meshes principales hijos del modelo
             modeloGlobal.traverse((child) => {
                 if (child.isMesh) {
                     const pos = new THREE.Vector3();
                     child.getWorldPosition(pos);
                     const y = pos.y;
 
-                    // Encontrar a qué rango de piso pertenece esta malla
-                    let pisoEncontrado = 4; // Por defecto cubierta/piso 5
+                    let pisoEncontrado = 4;
                     for (let i = 0; i < rangosPisos.length; i++) {
                         if (y >= rangosPisos[i].min && y <= rangosPisos[i].max) {
                             pisoEncontrado = i;
@@ -421,7 +419,6 @@
                     scene.add(modeloGlobal);
                     modeloGlobal.updateMatrixWorld(true);
 
-                    // Analizar las coordenadas exactas de la geometría en el eje Y
                     const boxGlobal = new THREE.Box3().setFromObject(modeloGlobal);
                     const minY = boxGlobal.min.y;
                     const maxY = boxGlobal.max.y;
@@ -429,13 +426,12 @@
 
                     console.log(`📊 [Diagnóstico 3D] Min Y: ${minY.toFixed(2)}, Max Y: ${maxY.toFixed(2)}, Altura Total: ${alturaTotal.toFixed(2)}`);
 
-                    // Dividir el edificio estrictamente en 5 rangos proporcionales a su altura real detectada
                     const paso = alturaTotal / 5;
                     rangosPisos = [];
                     for (let i = 0; i < 5; i++) {
                         rangosPisos.push({
                             min: minY + (i * paso),
-                            max: minY + ((i + 1) * paso) + 0.001 // Pequeño margen superior
+                            max: minY + ((i + 1) * paso) + 0.001
                         });
                     }
 
@@ -831,7 +827,7 @@
                     window.cargarModeloIFC();
                 }
             } else if (idVista === 'vista-2d') {
-                document.getElementById('btn-2d'].classList.add('active');
+                document.getElementById('btn-2d').classList.add('active');
                 rutaNav.innerText = "Edificio 30 Hunza (Planta 2D)";
                 actualizarEstadoTiempo();
             }
