@@ -291,7 +291,7 @@
         inicializarDatosBase();
     </script>
 
-    <!-- SCRIPT THREE.JS CORREGIDO CON CENTRADO EN ORIGEN (0,0) Y BASE EN Y=0 -->
+    <!-- SCRIPT THREE.JS CORREGIDO CON PLANO HACIA ARRIBA Y RANGO DE SLIDER EXPANDIDO -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -386,7 +386,8 @@
 
         function aplicarCorteAltura(alturaLimite) {
             if (!planoCorteVertical) return;
-            planoCorteVertical.constant = alturaLimite;
+            // Normal (0, 1, 0) con constante negativa oculta todo lo que esté por encima de la altura del slider
+            planoCorteVertical.constant = -alturaLimite;
             needsRender = true;
         }
 
@@ -404,34 +405,28 @@
                 (gltf) => {
                     modeloGlobal = gltf.scene;
 
-                    // 1. Forzar actualización de matrices globales antes de medir
                     modeloGlobal.updateMatrixWorld(true);
 
-                    // 2. Calcular límites exactos considerando todos los hijos anidados
                     const boxTemp = new THREE.Box3().setFromObject(modeloGlobal);
                     const minY = boxTemp.min.y;
                     const center = boxTemp.getCenter(new THREE.Vector3());
-                    const size = boxTemp.getSize(new THREE.Vector3());
 
-                    // 3. Trasladar la geometría al centro absoluto de la grilla (X=0, Z=0) y base en Y=0
                     modeloGlobal.position.x -= center.x;
                     modeloGlobal.position.z -= center.z;
                     modeloGlobal.position.y -= minY; 
 
                     modeloGlobal.updateMatrixWorld(true);
 
-                    // Recalcular la caja delimitadora final perfectamente ajustada
                     const boxGlobal = new THREE.Box3().setFromObject(modeloGlobal);
                     alturaMinModel = boxGlobal.min.y; // 0
-                    alturaMaxModel = boxGlobal.max.y; // Altura real del edificio
+                    alturaMaxModel = boxGlobal.max.y; // Altura real máxima
                     const alturaTotal = alturaMaxModel - alturaMinModel;
 
                     console.log(`📊 [Modelo Centrado en Y=0] MinY: ${alturaMinModel.toFixed(2)}, MaxY: ${alturaMaxModel.toFixed(2)}, Altura Total: ${alturaTotal.toFixed(2)}`);
 
-                    // 4. Crear plano de corte apuntando hacia abajo
-                    planoCorteVertical = new THREE.Plane(new THREE.Vector3(0, -1, 0), alturaMaxModel + 10);
+                    // Plano de corte con normal hacia arriba (0, 1, 0)
+                    planoCorteVertical = new THREE.Plane(new THREE.Vector3(0, 1, 0), -alturaMaxModel - 10);
 
-                    // Aplicar plano y doble cara a los materiales
                     modeloGlobal.traverse((child) => {
                         if (child.isMesh) {
                             if (Array.isArray(child.material)) {
@@ -454,7 +449,6 @@
 
                     scene.add(modeloGlobal);
 
-                    // Configurar controles y slider basados en alturas reales
                     layersEl.innerHTML = '';
                     
                     const divControles = document.createElement('div');
@@ -465,11 +459,10 @@
                         <div id="botones-pisos-container"></div>
                         <hr style="border-color:#334155; margin:8px 0;">
                         <label style="color:#38bdf8; display:block; margin-bottom:4px;">Altura de Corte Libre (<span id="val-slider-txt">${alturaMaxModel.toFixed(1)}</span>m):</label>
-                        <input type="range" id="slider-corte" min="${alturaMinModel}" max="${alturaMaxModel}" step="0.2" value="${alturaMaxModel}" style="width:100%; cursor:pointer;">
+                        <input type="range" id="slider-corte" min="${alturaMinModel}" max="${alturaMaxModel + 5}" step="0.2" value="${alturaMaxModel + 5}" style="width:100%; cursor:pointer;">
                     `;
                     layersEl.appendChild(divControles);
 
-                    // Generar 5 botones proporcionales a los pisos reales
                     const containerPisos = divControles.querySelector('#botones-pisos-container');
                     const pasoPiso = alturaTotal / 5;
                     const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
@@ -489,7 +482,6 @@
                         containerPisos.appendChild(btn);
                     });
 
-                    // Botón ver completo
                     divControles.querySelector('[data-altura="max"]').addEventListener('click', function() {
                         document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
                         this.classList.add('active');
@@ -499,16 +491,14 @@
                         aplicarCorteAltura(valMax);
                     });
 
-                    // Evento slider libre
                     const slider = document.getElementById('slider-corte');
                     slider.addEventListener('input', (e) => {
                         document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
                         const val = parseFloat(e.target.value);
-                        document.getElementById('val-slider-txt').innerText = val.toFixed(1);
+                        document.getElementById('val-slider-txt').innerText = Math.min(val, alturaMaxModel).toFixed(1);
                         aplicarCorteAltura(val);
                     });
 
-                    // Enfocar cámara correctamente al centro del edificio normalizado
                     if (!boxGlobal.isEmpty()) {
                         const newCenter = boxGlobal.getCenter(new THREE.Vector3());
                         const sizeWorld = boxGlobal.getSize(new THREE.Vector3());
