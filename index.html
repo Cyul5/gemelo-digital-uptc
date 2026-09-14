@@ -283,7 +283,7 @@
         inicializarDatosBase();
     </script>
 
-    <!-- SCRIPT THREE.JS CORREGIDO CON FILTRADO GEOMÉTRICO POR COORDENADA Y -->
+    <!-- SCRIPT THREE.JS CON DIAGNÓSTICO DE ALTURAS Y SEPARACIÓN ABSOLUTA -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -297,8 +297,7 @@
         let animFrameId = null;
         let needsRender = true;
         let modeloGlobal = null;
-        let minYGlobal = 0;
-        let maxYGlobal = 0;
+        let rangosPisos = [];
 
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
 
@@ -374,32 +373,32 @@
             return true;
         }
 
-        function actualizarVisibilidadNiveles(alturasPisos) {
-            if (!modeloGlobal) return;
+        function actualizarVisibilidadNivelesDirecto() {
+            if (!modeloGlobal || rangosPisos.length === 0) return;
 
             const estados = [];
-            let numPisos = alturasPisos.length;
-            for (let i = 0; i < numPisos; i++) {
+            for (let i = 0; i < 5; i++) {
                 const chk = document.getElementById(`chk-piso-${i+1}`);
                 estados.push(chk ? chk.checked : true);
             }
 
+            // Recorrer los meshes principales hijos del modelo
             modeloGlobal.traverse((child) => {
                 if (child.isMesh) {
-                    const box = new THREE.Box3().setFromObject(child);
-                    if (!box.isEmpty()) {
-                        const centroY = (box.min.y + box.max.y) / 2;
-                        
-                        let pisoAsignado = numPisos - 1;
-                        for (let i = 0; i < numPisos; i++) {
-                            if (centroY <= alturasPisos[i]) {
-                                pisoAsignado = i;
-                                break;
-                            }
-                        }
+                    const pos = new THREE.Vector3();
+                    child.getWorldPosition(pos);
+                    const y = pos.y;
 
-                        child.visible = estados[pisoAsignado];
+                    // Encontrar a qué rango de piso pertenece esta malla
+                    let pisoEncontrado = 4; // Por defecto cubierta/piso 5
+                    for (let i = 0; i < rangosPisos.length; i++) {
+                        if (y >= rangosPisos[i].min && y <= rangosPisos[i].max) {
+                            pisoEncontrado = i;
+                            break;
+                        }
                     }
+
+                    child.visible = estados[pisoEncontrado];
                 }
             });
 
@@ -422,24 +421,29 @@
                     scene.add(modeloGlobal);
                     modeloGlobal.updateMatrixWorld(true);
 
-                    const boundingBoxGlobal = new THREE.Box3().setFromObject(modeloGlobal);
-                    minYGlobal = boundingBoxGlobal.min.y;
-                    maxYGlobal = boundingBoxGlobal.max.y;
-                    const alturaTotal = maxYGlobal - minYGlobal;
-                    const numPisos = 5;
-                    const alturaPiso = alturaTotal / numPisos;
+                    // Analizar las coordenadas exactas de la geometría en el eje Y
+                    const boxGlobal = new THREE.Box3().setFromObject(modeloGlobal);
+                    const minY = boxGlobal.min.y;
+                    const maxY = boxGlobal.max.y;
+                    const alturaTotal = maxY - minY;
 
-                    const alturasPisos = [];
-                    for (let i = 0; i < numPisos; i++) {
-                        alturasPisos.push(minYGlobal + ((i + 1) * alturaPiso));
+                    console.log(`📊 [Diagnóstico 3D] Min Y: ${minY.toFixed(2)}, Max Y: ${maxY.toFixed(2)}, Altura Total: ${alturaTotal.toFixed(2)}`);
+
+                    // Dividir el edificio estrictamente en 5 rangos proporcionales a su altura real detectada
+                    const paso = alturaTotal / 5;
+                    rangosPisos = [];
+                    for (let i = 0; i < 5; i++) {
+                        rangosPisos.push({
+                            min: minY + (i * paso),
+                            max: minY + ((i + 1) * paso) + 0.001 // Pequeño margen superior
+                        });
                     }
 
                     layersEl.innerHTML = '';
                     const fragment = document.createDocumentFragment();
-
                     const nombresNiveles = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
 
-                    for (let i = 0; i < numPisos; i++) {
+                    for (let i = 0; i < 5; i++) {
                         const layerRow = document.createElement('div');
                         layerRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:12px; color:#cbd5e1;';
                         
@@ -453,13 +457,13 @@
                         label.htmlFor = `chk-piso-${i+1}`;
                         label.style.cursor = 'pointer';
                         label.style.fontWeight = '600';
-                        label.textContent = `🏢 ${nombresNiveles[i] || ('Nivel ' + (i+1))}`;
+                        label.textContent = `🏢 ${nombresNiveles[i]}`;
                         
                         layerRow.appendChild(checkbox);
                         layerRow.appendChild(label);
 
                         checkbox.addEventListener('change', () => {
-                            actualizarVisibilidadNiveles(alturasPisos);
+                            actualizarVisibilidadNivelesDirecto();
                         });
 
                         fragment.appendChild(layerRow);
@@ -467,9 +471,9 @@
 
                     layersEl.appendChild(fragment);
 
-                    if (!boundingBoxGlobal.isEmpty()) {
-                        const size = boundingBoxGlobal.getSize(new THREE.Vector3());
-                        const center = boundingBoxGlobal.getCenter(new THREE.Vector3());
+                    if (!boxGlobal.isEmpty()) {
+                        const size = boxGlobal.getSize(new THREE.Vector3());
+                        const center = boxGlobal.getCenter(new THREE.Vector3());
 
                         controls.target.copy(center);
                         const maxDim = Math.max(size.x, size.y, size.z);
@@ -827,7 +831,7 @@
                     window.cargarModeloIFC();
                 }
             } else if (idVista === 'vista-2d') {
-                document.getElementById('btn-2d').classList.add('active');
+                document.getElementById('btn-2d'].classList.add('active');
                 rutaNav.innerText = "Edificio 30 Hunza (Planta 2D)";
                 actualizarEstadoTiempo();
             }
