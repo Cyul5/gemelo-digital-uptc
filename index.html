@@ -291,7 +291,7 @@
         inicializarDatosBase();
     </script>
 
-    <!-- SCRIPT THREE.JS CON PLANOS DE CORTE DINÁMICOS (CLIPPING PLANES) -->
+    <!-- SCRIPT THREE.JS CON PLANOS DE CORTE DINÁMICOS Y NORMALIZACIÓN A Y=0 -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -387,7 +387,6 @@
 
         function aplicarCorteAltura(alturaLimite) {
             if (!planoCorteVertical) return;
-            // El plano corta todo lo que esté POR ENCIMA de la altura especificada
             planoCorteVertical.constant = alturaLimite;
             needsRender = true;
         }
@@ -406,43 +405,48 @@
                 (gltf) => {
                     modeloGlobal = gltf.scene;
                     
-                    // Crear un plano de corte orientado hacia abajo (normal 0, -1, 0)
-                    planoCorteVertical = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
+                    // 1. Centrar la base del modelo exactamente en Y = 0
+                    const boxTemp = new THREE.Box3().setFromObject(modeloGlobal);
+                    const minYOriginal = boxTemp.min.y;
+                    modeloGlobal.position.y -= minYOriginal; 
 
-                    // Aplicar el plano de corte a cada material del modelo GLB cargado
+                    modeloGlobal.updateMatrixWorld(true);
+
+                    // Recalcular caja delimitadora con la base en el origen
+                    const boxGlobal = new THREE.Box3().setFromObject(modeloGlobal);
+                    alturaMinModel = boxGlobal.min.y; 
+                    alturaMaxModel = boxGlobal.max.y; 
+                    const alturaTotal = alturaMaxModel - alturaMinModel;
+
+                    console.log(`📊 [Clipping Corregido] Base Y: ${alturaMinModel.toFixed(2)}, Tope Y: ${alturaMaxModel.toFixed(2)}, Altura Total: ${alturaTotal.toFixed(2)}`);
+
+                    // 2. Crear plano de corte apuntando hacia abajo
+                    planoCorteVertical = new THREE.Plane(new THREE.Vector3(0, -1, 0), alturaMaxModel + 10);
+
+                    // Aplicar el plano de corte y doble cara a los materiales
                     modeloGlobal.traverse((child) => {
                         if (child.isMesh) {
                             if (Array.isArray(child.material)) {
                                 child.material.forEach(mat => {
                                     mat.clippingPlanes = [planoCorteVertical];
                                     mat.clipShadows = true;
-                                    mat.side = THREE.DoubleSide;
+                                    mat.side = THREE.DoubleSide; 
+                                    mat.shadowSide = THREE.DoubleSide;
                                     mat.needsUpdate = true;
                                 });
                             } else if (child.material) {
                                 child.material.clippingPlanes = [planoCorteVertical];
                                 child.material.clipShadows = true;
                                 child.material.side = THREE.DoubleSide;
+                                child.material.shadowSide = THREE.DoubleSide;
                                 child.material.needsUpdate = true;
                             }
                         }
                     });
 
                     scene.add(modeloGlobal);
-                    modeloGlobal.updateMatrixWorld(true);
 
-                    // Calcular dimensiones reales del edificio
-                    const boxGlobal = new THREE.Box3().setFromObject(modeloGlobal);
-                    alturaMinModel = boxGlobal.min.y;
-                    alturaMaxModel = boxGlobal.max.y;
-                    const alturaTotal = alturaMaxModel - alturaMinModel;
-
-                    console.log(`📊 [Clipping] Min Y: ${alturaMinModel.toFixed(2)}, Max Y: ${alturaMaxModel.toFixed(2)}, Altura Total: ${alturaTotal.toFixed(2)}`);
-
-                    // Establecer inicialmente el corte hasta el tope superior para ver todo el edificio
-                    aplicarCorteAltura(alturaMaxModel + 10);
-
-                    // Crear controles interactivos en el panel lateral (botones por piso + deslizador libre)
+                    // Configurar controles y slider basados en alturas reales normalizadas (0 a Max)
                     layersEl.innerHTML = '';
                     
                     const divControles = document.createElement('div');
@@ -452,12 +456,12 @@
                         <p style="margin:4px 0; color:#94a3b8; font-size:11px;">Corte por Niveles:</p>
                         <div id="botones-pisos-container"></div>
                         <hr style="border-color:#334155; margin:8px 0;">
-                        <label style="color:#38bdf8; display:block; margin-bottom:4px;">Altura de Corte Libre:</label>
-                        <input type="range" id="slider-corte" min="${alturaMinModel}" max="${alturaMaxModel}" step="0.1" value="${alturaMaxModel}" style="width:100%; cursor:pointer;">
+                        <label style="color:#38bdf8; display:block; margin-bottom:4px;">Altura de Corte Libre (<span id="val-slider-txt">${alturaMaxModel.toFixed(1)}</span>m):</label>
+                        <input type="range" id="slider-corte" min="${alturaMinModel}" max="${alturaMaxModel}" step="0.2" value="${alturaMaxModel}" style="width:100%; cursor:pointer;">
                     `;
                     layersEl.appendChild(divControles);
 
-                    // Generar dinámicamente 5 botones de corte equivalentes a los pisos
+                    // Generar 5 botones proporcionales a los pisos reales
                     const containerPisos = divControles.querySelector('#botones-pisos-container');
                     const pasoPiso = alturaTotal / 5;
                     const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
@@ -471,33 +475,39 @@
                             document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
                             btn.classList.add('active');
                             document.getElementById('slider-corte').value = alturaPisoActual;
+                            document.getElementById('val-slider-txt').innerText = alturaPisoActual.toFixed(1);
                             aplicarCorteAltura(alturaPisoActual);
                         });
                         containerPisos.appendChild(btn);
                     });
 
-                    // Botón para ver completo
+                    // Botón ver completo
                     divControles.querySelector('[data-altura="max"]').addEventListener('click', function() {
                         document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
                         this.classList.add('active');
-                        document.getElementById('slider-corte').value = alturaMaxModel + 10;
-                        aplicarCorteAltura(alturaMaxModel + 10);
+                        const valMax = alturaMaxModel + 5;
+                        document.getElementById('slider-corte').value = valMax;
+                        document.getElementById('val-slider-txt').innerText = alturaMaxModel.toFixed(1);
+                        aplicarCorteAltura(valMax);
                     });
 
-                    // Evento del Slider de altura libre
+                    // Evento slider libre
                     const slider = document.getElementById('slider-corte');
                     slider.addEventListener('input', (e) => {
                         document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
-                        aplicarCorteAltura(parseFloat(e.target.value));
+                        const val = parseFloat(e.target.value);
+                        document.getElementById('val-slider-txt').innerText = val.toFixed(1);
+                        aplicarCorteAltura(val);
                     });
 
+                    // Enfocar cámara correctamente al centro del edificio normalizado
                     if (!boxGlobal.isEmpty()) {
                         const size = boxGlobal.getSize(new THREE.Vector3());
                         const center = boxGlobal.getCenter(new THREE.Vector3());
 
                         controls.target.copy(center);
                         const maxDim = Math.max(size.x, size.y, size.z);
-                        camera.position.set(center.x + maxDim * 1.3, center.y + maxDim * 1.3, center.z + maxDim * 1.3);
+                        camera.position.set(center.x + maxDim * 1.2, center.y + maxDim * 1.0, center.z + maxDim * 1.2);
                         camera.updateProjectionMatrix();
                         controls.update();
                     }
