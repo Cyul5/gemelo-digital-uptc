@@ -33,10 +33,14 @@
         /* CONTENEDOR PRINCIPAL */
         .main-container { display: flex; flex: 1; height: calc(100vh - 60px); position: relative; }
         
-        /* ÁREA 3D */
-        #vista-3d { flex: 1; height: 100%; position: relative; display: block; }
-        #vista-3d.activa { display: block; }
-        #ifc-canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+        /* VISTAS */
+        .vista { display: none; width: 100%; height: 100%; position: relative; }
+        .vista.activa { display: block; }
+        #vista-3d { flex: 1; height: 100%; position: relative; }
+        #ifc-canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; cursor: pointer; }
+        
+        /* VISTA 2D SIMPLE DE EJEMPLO */
+        #vista-2d { padding: 30px; background: #020617; }
         
         /* PANEL DERECHO */
         .sidebar-right { width: 320px; background-color: var(--bg-panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; padding: 15px; overflow-y: auto; z-index: 10; }
@@ -61,14 +65,21 @@
 
     <header>
         <div class="header-title">
-            UPTC SIG <span>Gemelo Digital Sede Central Tunja</span> Edificio 30 Hunza (Sección 3D BIM)
+            UPTC SIG <span>Gemelo Digital Sede Central Tunja</span> Edificio 30 Hunza
         </div>
     </header>
 
     <div class="main-container">
-        <!-- VISOR 3D -->
-        <div id="vista-3d" class="activa">
+        <!-- VISTA 3D -->
+        <div id="vista-3d" class="vista activa">
             <div id="ifc-canvas-container"></div>
+        </div>
+
+        <!-- VISTA 2D (A donde redirige al hacer clic en un piso) -->
+        <div id="vista-2d" class="vista">
+            <h2 id="titulo-vista-2d" style="color: var(--accent); margin-bottom: 15px;">Planta 2D - Nivel</h2>
+            <p style="color: var(--text-muted); margin-bottom: 20px;">Visualizando distribución de aulas y espacios correspondientes al nivel seleccionado.</p>
+            <button class="btn-nivel" style="width: 200px;" onclick="irAVista3D()">⬅ Volver al Modelo 3D</button>
         </div>
 
         <!-- PANEL LATERAL -->
@@ -76,9 +87,7 @@
             <div class="panel-section">
                 <h3>Corte de Niveles (BIM)</h3>
                 <div id="ifc-status"><span class="loading-spinner"></span> Inicializando visor...</div>
-                <div id="ifc-layers-list">
-                    <!-- Los botones se generan dinámicamente -->
-                </div>
+                <div id="ifc-layers-list"></div>
             </div>
 
             <div class="panel-section">
@@ -94,7 +103,24 @@
         </div>
     </div>
 
-    <!-- SCRIPT THREE.JS: AISLAMIENTO DE PISO INDIVIDUAL (DOBLE PLANO DE CORTE) -->
+    <!-- SCRIPT GENERAL Y DE NAVEGACIÓN -->
+    <script>
+        function irAVista(idVista) {
+            document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
+            document.getElementById(idVista).classList.add('activa');
+        }
+
+        window.irAVista3D = function() {
+            irAVista('vista-3d');
+        }
+
+        window.irAVista2DPiso = function(nombrePiso) {
+            document.getElementById('titulo-vista-2d').innerText = `Planta 2D - ${nombrePiso}`;
+            irAVista('vista-2d');
+        }
+    </script>
+
+    <!-- SCRIPT THREE.JS: RAYCASTER Y DOBLE PLANO DE CORTE -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -111,6 +137,7 @@
         let planoInferior = null;
         let planoSuperior = null;
         let alturaMinModel = 0, alturaMaxModel = 100;
+        let pasoPisoGlobal = 20;
 
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
 
@@ -156,6 +183,45 @@
             const gridHelper = new THREE.GridHelper(300, 60, 0x00b4d8, 0x1e293b);
             gridHelper.position.y = -0.01;
             scene.add(gridHelper);
+
+            // DETECCIÓN DE CLIC EN EL MODELO 3D (RAYCASTER)
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+            let pointerDownPos = { x: 0, y: 0 };
+
+            container.addEventListener('pointerdown', (e) => {
+                pointerDownPos.x = e.clientX;
+                pointerDownPos.y = e.clientY;
+            });
+
+            container.addEventListener('pointerup', (e) => {
+                // Verificar que no haya sido un arrastre de cámara (orbit)
+                const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+                if (dist > 5) return; 
+
+                const rect = container.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                if (!modeloGlobal) return;
+
+                const intersects = raycaster.intersectObject(modeloGlobal, true);
+                if (intersects.length > 0) {
+                    const puntoIntersec = intersects[0].point;
+                    // Calcular a qué altura (piso) corresponde el clic relativo a la base del modelo
+                    const alturaRelativa = puntoIntersec.y - alturaMinModel;
+                    let indicePiso = Math.floor(alturaRelativa / pasoPisoGlobal);
+                    
+                    const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
+                    indicePiso = Math.max(0, Math.min(indicePiso, nombresPisos.length - 1));
+
+                    // Redirigir a la vista 2D del piso detectado
+                    if (window.irAVista2DPiso) {
+                        window.irAVista2DPiso(nombresPisos[indicePiso]);
+                    }
+                }
+            });
 
             window.addEventListener('resize', () => {
                 if (container && container.clientWidth > 0) {
@@ -224,6 +290,7 @@
                     alturaMinModel = boxGlobal.min.y;
                     alturaMaxModel = boxGlobal.max.y;
                     const alturaTotal = alturaMaxModel - alturaMinModel;
+                    pasoPisoGlobal = alturaTotal / 5;
 
                     planoInferior = new THREE.Plane(new THREE.Vector3(0, 1, 0), -alturaMinModel - 10);
                     planoSuperior = new THREE.Plane(new THREE.Vector3(0, -1, 0), alturaMaxModel + 50);
@@ -263,12 +330,11 @@
                     layersEl.appendChild(divControles);
 
                     const containerPisos = divControles.querySelector('#botones-pisos-container');
-                    const pasoPiso = alturaTotal / 5;
                     const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
 
                     nombresPisos.forEach((nombre, idx) => {
-                        const basePiso = alturaMinModel + (idx * pasoPiso);
-                        const techoPiso = alturaMinModel + ((idx + 1) * pasoPiso);
+                        const basePiso = alturaMinModel + (idx * pasoPisoGlobal);
+                        const techoPiso = alturaMinModel + ((idx + 1) * pasoPisoGlobal);
 
                         const btn = document.createElement('button');
                         btn.className = 'btn-nivel';
@@ -299,7 +365,7 @@
                     }
 
                     needsRender = true;
-                    statusEl.innerText = '🟢 Visor 3D Listo (Aislamiento por Piso)';
+                    statusEl.innerText = '🟢 Visor 3D Listo (Haz clic en un piso)';
                     yaCargado = true;
                 },
                 (xhr) => {
