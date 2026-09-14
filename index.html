@@ -52,7 +52,8 @@
         .tag { background: #0284c7; color: #fff; font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: 600; }
         .sub-title { color: var(--text-muted); font-size: 13px; }
 
-        .header-center { display: flex; align-items: center; gap: 12px; }
+        /* FILTROS HEADER (SE OCULTAN DE MANERA PREDETERMINADA) */
+        .header-center { display: none; align-items: center; gap: 12px; }
         .filter-group { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
         .filter-select { background: #0f172a; border: 1px solid #1e293b; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; }
 
@@ -177,7 +178,8 @@
             <span class="sub-title" id="breadcrumb">Sede Central (Plano General)</span>
         </div>
 
-        <div class="header-center">
+        <!-- FILTROS (Solo visibles en Planta 2D) -->
+        <div class="header-center" id="header-filtros-horario">
             <div class="filter-group">
                 <span>🗓 Día:</span>
                 <select id="select-dia" class="filter-select" onchange="actualizarEstadoAulas2D()">
@@ -291,7 +293,6 @@
         let pisoActual2D = "Piso 1";
         let aulaSeleccionadaActual = null;
 
-        // MAPEO DE PISOS CON SUS ARCHIVOS SVG CORRESPONDIENTES EN TU REPOSITORIO
         const MAPA_ARCHIVOS_PISOS = {
             "Piso 1": "PLANTA_1_HUNZA.svg",
             "Piso 2": "PLANTA_2_HUNZA.svg",
@@ -448,32 +449,34 @@
             const btnVolver = document.getElementById('btn-volver-mapa');
             const seccionCortes = document.getElementById('seccion-cortes-3d');
             const breadcrumb = document.getElementById('breadcrumb');
+            const headerFiltros = document.getElementById('header-filtros-horario');
 
             if (idVista === 'vista-3d') {
                 btnVolver.style.display = 'block';
                 seccionCortes.style.display = 'block';
+                headerFiltros.style.display = 'none'; // Ocultar filtros en 3D
                 breadcrumb.innerText = 'Edificio 30 Hunza (Modelo 3D)';
                 restablecerPanelEdificio();
                 if (window.cargarModeloIFC) window.cargarModeloIFC();
             } else if (idVista === 'vista-2d') {
                 btnVolver.style.display = 'block';
                 seccionCortes.style.display = 'none';
+                headerFiltros.style.display = 'flex'; // Mostrar filtros sólo en 2D
                 document.getElementById('titulo-vista-2d').innerText = `Planta 2D - ${pisoActual2D}`;
                 breadcrumb.innerText = `Edificio 30 Hunza (${pisoActual2D})`;
                 actualizarEstadoAulas2D();
             } else {
                 btnVolver.style.display = 'none';
                 seccionCortes.style.display = 'none';
+                headerFiltros.style.display = 'none'; // Ocultar filtros en Mapa General
                 breadcrumb.innerText = 'Sede Central (Plano General)';
                 restablecerPanelEdificio();
             }
         }
 
-        // CAMBIO DINÁMICO DE PISO Y ARCHIVO SVG CORRESPONDIENTE
         window.irAVista2DPiso = function(nombrePiso) {
             pisoActual2D = nombrePiso || "Piso 1";
             
-            // Obtener archivo SVG correspondiente al piso seleccionado (o fallback a Planta 1)
             const archivoSVG = MAPA_ARCHIVOS_PISOS[pisoActual2D] || "PLANTA_1_HUNZA.svg";
 
             const svgObject = document.getElementById('svg-2d-object');
@@ -495,7 +498,6 @@
             const diaSeleccionado = document.getElementById('select-dia').value;
             const franjaSeleccionada = document.getElementById('select-franja').value;
 
-            // Busca todos los elementos con IDs de aulas (A-101 a A-509)
             const elementosAulas = svgDoc.querySelectorAll('[id^="A-"], [id^="a-"]');
 
             elementosAulas.forEach(elAula => {
