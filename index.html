@@ -20,12 +20,12 @@
 
     <style>
         :root {
-            --bg-dark: #030712;
+            --bg-dark: #ffffff; /* CAMBIADO A BLANCO */
             --bg-header: #070d19;
             --bg-panel: #0b1324;
             --bg-card: #111c33;
             --accent: #00b4d8;
-            --border: #1e293b;
+            --border: #e2e8f0; /* Ajustado para mejor contraste en fondo blanco */
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --green: #10b981;
@@ -33,18 +33,19 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
-        body { background-color: var(--bg-dark); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        body { background-color: var(--bg-dark); color: #0f172a; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
         /* HEADER */
         header { 
             height: 50px; 
             background-color: var(--bg-header); 
-            border-bottom: 1px solid var(--border); 
+            border-bottom: 1px solid #1e293b; 
             display: flex; 
             align-items: center; 
             justify-content: space-between; 
             padding: 0 16px; 
             z-index: 100;
+            color: var(--text-main);
         }
         .header-left { display: flex; align-items: center; gap: 12px; font-size: 14px; }
         .brand { font-weight: 800; font-size: 15px; letter-spacing: 0.5px; }
@@ -53,11 +54,11 @@
 
         .header-center { display: flex; align-items: center; gap: 12px; }
         .filter-group { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
-        .filter-select { background: #0f172a; border: 1px solid var(--border); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; }
+        .filter-select { background: #0f172a; border: 1px solid #1e293b; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; }
 
         .header-right { display: flex; align-items: center; gap: 16px; }
         .search-box { position: relative; }
-        .search-box input { background: #0f172a; border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px 5px 28px; color: #fff; font-size: 12px; width: 220px; }
+        .search-box input { background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 5px 10px 5px 28px; color: #fff; font-size: 12px; width: 220px; }
         .search-box::before { content: "🔍"; position: absolute; left: 8px; top: 4px; font-size: 11px; opacity: 0.6; }
         .excel-status { font-size: 11px; color: var(--green); display: flex; align-items: center; gap: 6px; font-weight: 500; }
         .dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; display: inline-block; }
@@ -66,15 +67,15 @@
         .app-body { display: flex; flex: 1; height: calc(100vh - 50px); position: relative; }
 
         /* BARRA NAVEGACIÓN IZQUIERDA */
-        .sidebar-left { width: 48px; background-color: var(--bg-header); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding-top: 10px; gap: 15px; z-index: 50; }
+        .sidebar-left { width: 48px; background-color: var(--bg-header); border-right: 1px solid #1e293b; display: flex; flex-direction: column; align-items: center; padding-top: 10px; gap: 15px; z-index: 50; }
         .nav-btn { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; border: none; background: transparent; transition: 0.2s; }
         .nav-btn:hover, .nav-btn.active { background: #0284c7; color: #fff; }
 
-        /* CONTENEDOR DE VISTAS CON MANEJO DE SUPERPOSICIÓN */
+        /* CONTENEDOR DE VISTAS CON FONDO BLANCO */
         .content-area { 
             flex: 1; 
             position: relative; 
-            background: var(--bg-dark); 
+            background: #ffffff; /* CAMBIADO A BLANCO */
             overflow: hidden; 
         }
 
@@ -89,6 +90,7 @@
             visibility: hidden;
             z-index: 1;
             transition: opacity 0.15s ease-in-out;
+            background-color: #ffffff; /* CAMBIADO A BLANCO */
         }
 
         .vista.activa { 
@@ -99,12 +101,12 @@
         }
 
         /* VISTA MAPA SVG GENERAL */
-        #vista-mapa { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
-        #svg-object { width: 100%; height: 100%; border: none; }
+        #vista-mapa { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; background-color: #ffffff; }
+        #svg-object { width: 100%; height: 100%; border: none; background-color: #ffffff; }
 
         /* VISTA 3D */
-        #vista-3d { width: 100%; height: 100%; }
-        #ifc-canvas-container { width: 100%; height: 100%; }
+        #vista-3d { width: 100%; height: 100%; background-color: #ffffff; }
+        #ifc-canvas-container { width: 100%; height: 100%; background-color: #ffffff; }
 
         /* VISTA PLANTA 2D */
         #vista-2d { 
@@ -113,8 +115,9 @@
             width: 100%; 
             height: 100%; 
             padding: 15px; 
-            color: white; 
+            color: #0f172a; 
             box-sizing: border-box;
+            background-color: #ffffff; /* CAMBIADO A BLANCO */
         }
 
         .container-svg-2d { 
@@ -124,7 +127,7 @@
             display: flex; 
             align-items: center; 
             justify-content: center; 
-            background: #070d19; 
+            background: #ffffff; /* CAMBIADO A BLANCO */
             border: 1px solid var(--border); 
             border-radius: 8px; 
             overflow: hidden; 
@@ -136,11 +139,12 @@
             height: 100%; 
             border: none; 
             object-fit: contain;
+            background-color: #ffffff; /* CAMBIADO A BLANCO */
         }
 
         /* PANEL DERECHO DE DATOS */
-        .sidebar-right { width: 340px; background-color: var(--bg-panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; padding: 18px; z-index: 50; overflow-y: auto; }
-        .panel-title { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 8px; text-transform: uppercase; }
+        .sidebar-right { width: 340px; background-color: var(--bg-panel); border-left: 1px solid #1e293b; display: flex; flex-direction: column; padding: 18px; z-index: 50; overflow-y: auto; color: var(--text-main); }
+        .panel-title { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; text-transform: uppercase; }
         
         .info-group { margin-bottom: 12px; font-size: 13px; }
         .info-label { color: var(--text-muted); font-size: 12px; margin-bottom: 2px; }
@@ -150,12 +154,12 @@
         .badge-ocupado { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
         .badge-libre { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
 
-        .excel-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-top: 20px; font-size: 11px; color: var(--text-muted); }
+        .excel-box { background: var(--bg-card); border: 1px solid #1e293b; border-radius: 6px; padding: 10px; margin-top: 20px; font-size: 11px; color: var(--text-muted); }
 
         .btn-regresar { background: #0284c7; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; margin-bottom: 15px; display: none; }
         
         /* BOTONES PISOS 3D */
-        .btn-nivel { width: 100%; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border); padding: 8px 12px; text-align: left; border-radius: 6px; cursor: pointer; margin-bottom: 6px; font-size: 12px; transition: all 0.2s; }
+        .btn-nivel { width: 100%; background: var(--bg-card); color: var(--text-main); border: 1px solid #1e293b; padding: 8px 12px; text-align: left; border-radius: 6px; cursor: pointer; margin-bottom: 6px; font-size: 12px; transition: all 0.2s; }
         .btn-nivel:hover { background: #1e293b; border-color: var(--accent); }
         .btn-nivel.active { background: rgba(0,180,216,0.2); border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
@@ -188,7 +192,7 @@
             <div class="filter-group">
                 <span>⏰ Franja:</span>
                 <select id="select-franja" class="filter-select" onchange="actualizarEstadoAulas2D()">
-                    <!-- Se llena dinámicamente con horas en formato 07:00 - 08:00 -->
+                    <!-- Se llena dinámicamente -->
                 </select>
             </div>
         </div>
@@ -227,8 +231,8 @@
             <div id="vista-2d" class="vista">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <div>
-                        <h2 id="titulo-vista-2d" style="color: var(--accent); font-size: 16px;">Planta 2D - Piso 1</h2>
-                        <p style="color: var(--text-muted); font-size: 12px;">Haz clic en un aula (A-101 a A-106) para consultar el horario activo en Excel.</p>
+                        <h2 id="titulo-vista-2d" style="color: #0284c7; font-size: 16px;">Planta 2D - Piso 1</h2>
+                        <p style="color: #64748b; font-size: 12px;">Haz clic en un aula (A-101 a A-106) para consultar el horario activo en Excel.</p>
                     </div>
                     <button class="btn-regresar" style="display:inline-block; margin-bottom: 0;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
                 </div>
@@ -282,22 +286,19 @@
         </div>
     </div>
 
-    <!-- MOTOR LECTOR DE EXCEL MATRIX (Plantilla_Levantamiento_Edificio_2.xlsx) -->
+    <!-- MOTOR LECTOR DE EXCEL MATRIX -->
     <script>
-        let registrosHorariosExcel = []; // Guarda las celdas procesadas
+        let registrosHorariosExcel = [];
         let pisoActual2D = "Piso 1";
-        let aulaSeleccionadaActual = null; // Rastrea el aula seleccionada activa en el panel
+        let aulaSeleccionadaActual = null;
 
-        // 1. GENERAR FRANJAS HORARIAS EN FORMATO LIMPIO (07:00 - 08:00)
         function inicializarFranjasHorarias() {
             const selectFranja = document.getElementById('select-franja');
             selectFranja.innerHTML = '';
             for (let h = 7; h < 23; h++) {
                 const opt = document.createElement('option');
-                // Valor interno que coincide con la clave en Excel ("7 - 8")
                 opt.value = `${h} - ${h + 1}`; 
                 
-                // Texto legible visual ("07:00 - 08:00")
                 const inicio = h < 10 ? `0${h}:00` : `${h}:00`;
                 const fin = (h + 1) < 10 ? `0${h + 1}:00` : `${h + 1}:00`;
                 opt.innerText = `${inicio} - ${fin}`;
@@ -306,7 +307,6 @@
             }
         }
 
-        // 2. PARSER ASÍNCRONO DEL ARCHIVO EXCEL MATRICIAL CON CELDAS COMBINADAS
         async function cargarExcelRealRepo() {
             const statusTag = document.getElementById('excel-status-tag');
             try {
@@ -322,10 +322,8 @@
                     return;
                 }
 
-                // Convertir la hoja a una matriz 2D (filas x columnas)
                 const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
                 
-                // Mapear celdas combinadas (merges) de Excel para rellenar datos faltantes
                 const merges = sheet['!merges'] || [];
                 merges.forEach(range => {
                     const firstVal = matrix[range.s.r] ? matrix[range.s.r][range.s.c] : "";
@@ -336,9 +334,8 @@
                     }
                 });
 
-                // Detectar Fila de Encabezados (Días) y Fila de Datos
-                let colEspacio = 1; // Columna B (Código de espacio)
-                let colHoras = 2;   // Columna C (Horas)
+                let colEspacio = 1;
+                let colHoras = 2;
                 let headerRowIdx = -1;
                 let diasHeaders = {};
 
@@ -364,7 +361,6 @@
                     }
                 }
 
-                // Recorrer la matriz y extraer registros estructurados
                 registrosHorariosExcel = [];
                 let espacioActual = "";
 
@@ -380,10 +376,8 @@
                     const valHoraRaw = String(row[colHoras] || "").trim();
                     if (!valHoraRaw || !espacioActual) continue;
 
-                    // Normalizar formato de hora
                     const horaLimpia = valHoraRaw.replace(/\s+/g, '');
 
-                    // Iterar por cada columna de día
                     Object.keys(diasHeaders).forEach(colIdx => {
                         const nombreDia = diasHeaders[colIdx];
                         const contenidoCelda = String(row[colIdx] || "").trim();
@@ -408,7 +402,6 @@
             }
         }
 
-        // 3. CONSULTA EN TIEMPO REAL CON MATCH EXACTO DE FRANJA
         function consultarHorarioAula(aula, dia, franjaSeleccionada) {
             const franjaBuscada = franjaSeleccionada.replace(/\s+/g, '');
 
@@ -476,7 +469,6 @@
             irAVista('vista-2d');
         }
 
-        // 4. ACTUALIZACIÓN REACTIVA DE PLANO 2D Y PANEL LATERAL
         function actualizarEstadoAulas2D() {
             const svg2d = document.getElementById('svg-2d-object');
             if (!svg2d) return;
@@ -516,7 +508,6 @@
                 }
             });
 
-            // Si hay un aula activa en pantalla, refrescar su información al cambiar día u hora
             if (aulaSeleccionadaActual) {
                 const infoActualizada = consultarHorarioAula(aulaSeleccionadaActual, diaSeleccionado, franjaSeleccionada);
                 mostrarDetalleAulaPanel(aulaSeleccionadaActual, infoActualizada);
@@ -582,7 +573,6 @@
             `;
         }
 
-        // EVENTOS DE CARGA DEL DOM
         window.addEventListener('load', () => {
             inicializarFranjasHorarias();
             cargarExcelRealRepo();
@@ -632,7 +622,7 @@
         });
     </script>
 
-    <!-- THREE.JS ENGINE -->
+    <!-- THREE.JS ENGINE CON FONDO BLANCO -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -667,7 +657,7 @@
             container.innerHTML = '';
 
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x030712);
+            scene.background = new THREE.Color(0xffffff); // CAMBIADO A BLANCO
 
             camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 2000);
 
@@ -693,7 +683,8 @@
             dirLight.position.set(100, 200, 100);
             scene.add(dirLight);
 
-            const gridHelper = new THREE.GridHelper(300, 60, 0x00b4d8, 0x1e293b);
+            // Grid helper ajustado para visualización óptima sobre fondo blanco
+            const gridHelper = new THREE.GridHelper(300, 60, 0x00b4d8, 0xcbd5e1);
             gridHelper.position.y = -0.01;
             scene.add(gridHelper);
 
@@ -887,7 +878,7 @@
                     const divControles = document.createElement('div');
                     divControles.innerHTML = `
                         <button class="btn-nivel active" data-tipo="max">Ver Edificio Completo</button>
-                        <hr style="border-color:var(--border); margin:8px 0;">
+                        <hr style="border-color:#1e293b; margin:8px 0;">
                         <p style="margin:4px 0; color:var(--text-muted); font-size:11px;">Aislar Piso:</p>
                         <div id="botones-pisos-container"></div>
                     `;
