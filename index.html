@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UPTC SIG - Gemelo Digital Sede Central Tunja</title>
+    
+    <!-- LECTURA REAL DE EXCEL (SheetJS) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
     <!-- Import Maps para Three.js -->
     <script type="importmap">
         {
@@ -13,6 +17,7 @@
             }
         }
     </script>
+
     <style>
         :root {
             --bg-dark: #030712;
@@ -65,7 +70,7 @@
         .nav-btn { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; border: none; background: transparent; transition: 0.2s; }
         .nav-btn:hover, .nav-btn.active { background: #0284c7; color: #fff; }
 
-        /* CONTENEDOR DE VISTAS */
+        /* CONTENEDOR DE VISTAS CON MANEJO DE SUPERPOSICIÓN */
         .content-area { 
             flex: 1; 
             position: relative; 
@@ -139,7 +144,7 @@
         
         .info-group { margin-bottom: 12px; font-size: 13px; }
         .info-label { color: var(--text-muted); font-size: 12px; margin-bottom: 2px; }
-        .info-val { font-weight: 600; color: #f1f5f9; }
+        .info-val { font-weight: 600; color: #f1f5f9; white-space: pre-line; }
 
         .badge-estado { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
         .badge-ocupado { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
@@ -183,7 +188,7 @@
             <div class="filter-group">
                 <span>⏰ Franja:</span>
                 <select id="select-franja" class="filter-select" onchange="actualizarEstadoAulas2D()">
-                    <!-- Se genera dinámicamente de 06:00 a 23:00 -->
+                    <!-- Se llena dinámicamente de 7-8 a 22-23 -->
                 </select>
             </div>
         </div>
@@ -192,8 +197,8 @@
             <div class="search-box">
                 <input type="text" placeholder="Buscar edificio, aula o docente...">
             </div>
-            <div class="excel-status">
-                <span class="dot"></span> Excel Conectado
+            <div class="excel-status" id="excel-status-tag">
+                <span class="dot" style="background:#eab308;"></span> Leyendo Excel...
             </div>
         </div>
     </header>
@@ -271,69 +276,153 @@
             </div>
 
             <div class="excel-box">
-                <div><strong>Origen:</strong> Excel Conectado</div>
-                <div><strong>Hoja Horarios:</strong> Horarios de Uso</div>
+                <div><strong>Archivo:</strong> Plantilla_Levantamiento_Edificio_2.xlsx</div>
+                <div><strong>Hoja:</strong> Horarios de Uso</div>
             </div>
         </div>
     </div>
 
-    <!-- CÁLCULO Y GESTIÓN DE HORARIOS EXCEL -->
+    <!-- MOTOR LECTOR DE EXCEL MATRIX (Plantilla_Levantamiento_Edificio_2.xlsx) -->
     <script>
-        // GENERADOR DE FRANJAS HORARIAS HASTA LAS 23:00 HRS
+        let registrosHorariosExcel = []; // Guarda las celdas procesadas
+        let pisoActual2D = "Piso 1";
+
         function inicializarFranjasHorarias() {
             const selectFranja = document.getElementById('select-franja');
             selectFranja.innerHTML = '';
-            for (let h = 6; h < 23; h++) {
-                const inicio = h < 10 ? `0${h}:00` : `${h}:00`;
-                const fin = (h + 1) < 10 ? `0${h + 1}:00` : `${h + 1}:00`;
-                const option = document.createElement('option');
-                option.value = `${inicio} - ${fin}`;
-                option.innerText = `${inicio} - ${fin}`;
-                selectFranja.appendChild(option);
+            for (let h = 7; h < 23; h++) {
+                const opt = document.createElement('option');
+                opt.value = `${h} - ${h + 1}`;
+                opt.innerText = `${h < 10 ? '0'+h : h}:00 - ${h+1 < 10 ? '0'+(h+1) : h+1}:00 (${h} - ${h+1})`;
+                selectFranja.appendChild(opt);
             }
         }
 
-        // ASIGNATURAS Y DOCENTES REALISTAS DE LA BASE DE DATOS EXCEL
-        const CATALOGO_CLASES = [
-            { asignatura: "Cálculo Diferencial", docente: "Ing. Carlos Mendoza" },
-            { asignatura: "Física Mecánica", docente: "Dra. María Ramos" },
-            { asignatura: "Álgebra Lineal", docente: "Lic. Pedro Gómez" },
-            { asignatura: "Programación SIG", docente: "Ing. Diana Torres" },
-            { asignatura: "Topografía I", docente: "Ing. Roberto Silva" },
-            { asignatura: "Geometría Descriptiva", docente: "Arq. Luisa Parra" },
-            { asignatura: "Bases de Datos Espaciales", docente: "Ing. Hernando Ruiz" },
-            { asignatura: "Sistemas de Información Geográfica", docente: "Ing. Clara López" }
-        ];
+        // PARSER ASÍNCRONO DEL ARCHIVO EXCEL MATRICIAL CON CELDAS COMBINADAS
+        async function cargarExcelRealRepo() {
+            const statusTag = document.getElementById('excel-status-tag');
+            try {
+                const response = await fetch('Plantilla_Levantamiento_Edificio_2.xlsx');
+                if (!response.ok) throw new Error("No se pudo cargar el archivo Excel.");
 
-        // RETORNA DATOS REALES DE EXCEL DINÁMICAMENTE PARA CUALQUIER DÍA Y FRANJA
-        function obtenerDatoExcel(dia, franja, aula) {
-            // Algoritmo determinista para generar disponibilidad constante por día/hora
-            const seed = (dia.length * 7 + parseInt(franja.split(':')[0]) * 13 + parseInt(aula.replace("A-", "")) * 3) % 10;
-            
-            // Un 60% de probabilidad de estar ocupado
-            if (seed > 3) {
-                const claseIdx = (seed + parseInt(aula.replace("A-", ""))) % CATALOGO_CLASES.length;
-                return {
-                    dia: dia,
-                    franja: franja,
-                    aula: aula,
-                    asignatura: CATALOGO_CLASES[claseIdx].asignatura,
-                    docente: CATALOGO_CLASES[claseIdx].docente,
-                    estado: "Ocupado"
-                };
-            } else {
-                return {
-                    dia: dia,
-                    franja: franja,
-                    aula: aula,
-                    asignatura: "",
-                    docente: "",
-                    estado: "Libre"
-                };
+                const arrayBuffer = await response.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+                const sheet = workbook.Sheets["Horarios de Uso"];
+                if (!sheet) {
+                    console.error("No se encontró la hoja 'Horarios de Uso'");
+                    return;
+                }
+
+                // Convertir la hoja a una matriz 2D (filas x columnas)
+                const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+                
+                // Mapear celdas combinadas (merges) de Excel para rellenar datos faltantes
+                const merges = sheet['!merges'] || [];
+                merges.forEach(range => {
+                    const firstVal = matrix[range.s.r] ? matrix[range.s.r][range.s.c] : "";
+                    for (let r = range.s.r; r <= range.e.r; r++) {
+                        for (let c = range.s.c; c <= range.e.c; c++) {
+                            if (matrix[r]) matrix[r][c] = firstVal;
+                        }
+                    }
+                });
+
+                // Detectar Fila de Encabezados (Días) y Fila de Datos
+                let colEspacio = 1; // Columna B por defecto (Código de espacio)
+                let colHoras = 2;   // Columna C por defecto (Horas)
+                let headerRowIdx = -1;
+                let diasHeaders = {};
+
+                for (let r = 0; r < Math.min(15, matrix.length); r++) {
+                    const row = matrix[r];
+                    for (let c = 0; c < row.length; c++) {
+                        const val = String(row[c]).trim().toLowerCase();
+                        if (val.includes("lunes")) {
+                            headerRowIdx = r;
+                            break;
+                        }
+                    }
+                    if (headerRowIdx !== -1) break;
+                }
+
+                if (headerRowIdx !== -1) {
+                    const hRow = matrix[headerRowIdx];
+                    for (let c = 0; c < hRow.length; c++) {
+                        const cellVal = String(hRow[c]).trim();
+                        if (["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"].includes(cellVal)) {
+                            diasHeaders[c] = cellVal;
+                        }
+                    }
+                }
+
+                // Recorrer la matriz y extraer registros estructurados
+                registrosHorariosExcel = [];
+                let espacioActual = "";
+
+                for (let r = headerRowIdx + 1; r < matrix.length; r++) {
+                    const row = matrix[r];
+                    if (!row) continue;
+
+                    const valEspacio = String(row[colEspacio] || "").trim();
+                    if (valEspacio && valEspacio.toUpperCase().startsWith("A-")) {
+                        espacioActual = valEspacio.toUpperCase();
+                    }
+
+                    const valHoraRaw = String(row[colHoras] || "").trim();
+                    if (!valHoraRaw || !espacioActual) continue;
+
+                    // Normalizar hora "7 - 8" o "07:00 - 08:00"
+                    const horaLimpia = valHoraRaw.replace(/\s+/g, '');
+
+                    // Iterar por cada columna de día
+                    Object.keys(diasHeaders).forEach(colIdx => {
+                        const nombreDia = diasHeaders[colIdx];
+                        const contenidoCelda = String(row[colIdx] || "").trim();
+
+                        if (contenidoCelda !== "") {
+                            registrosHorariosExcel.push({
+                                aula: espacioActual,
+                                hora: horaLimpia,
+                                dia: nombreDia,
+                                detalle: contenidoCelda
+                            });
+                        }
+                    });
+                }
+
+                statusTag.innerHTML = `<span class="dot"></span> Excel Conectado`;
+                actualizarEstadoAulas2D();
+
+            } catch (err) {
+                console.error("Error leyendo Excel:", err);
+                statusTag.innerHTML = `<span class="dot" style="background:#ef4444;"></span> Error al leer Excel`;
             }
         }
 
-        let pisoActual2D = "Piso 1";
+        // BÚSQUEDA EN TIEMPO REAL
+        function consultarHorarioAula(aula, dia, franjaSeleccionada) {
+            const franjaLimpia = franjaSeleccionada.replace(/\s+/g, '');
+
+            const encontrado = registrosHorariosExcel.find(r => 
+                r.aula.toUpperCase() === aula.toUpperCase() &&
+                r.dia.toLowerCase() === dia.toLowerCase() &&
+                (r.hora === franjaLimpia || r.hora.includes(franjaLimpia))
+            );
+
+            if (encontrado) {
+                return {
+                    estado: "Ocupado",
+                    detalle: encontrado.detalle,
+                    franja: franjaSeleccionada
+                };
+            }
+            return {
+                estado: "Libre",
+                detalle: "",
+                franja: franjaSeleccionada
+            };
+        }
 
         function irAVista(idVista) {
             document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
@@ -374,7 +463,6 @@
             irAVista('vista-2d');
         }
 
-        // ACTUALIZA PLANO 2D CON DATOS DE EXCEL
         function actualizarEstadoAulas2D() {
             const svg2d = document.getElementById('svg-2d-object');
             if (!svg2d) return;
@@ -393,10 +481,8 @@
                     elAula.style.cursor = 'pointer';
                     elAula.style.transition = 'all 0.3s';
 
-                    // Consulta dinámica en Excel
-                    const infoHorario = obtenerDatoExcel(diaSeleccionado, franjaSeleccionada, codigoAula);
+                    const infoHorario = consultarHorarioAula(codigoAula, diaSeleccionado, franjaSeleccionada);
 
-                    // Pinta según estado en Excel
                     if (infoHorario.estado === "Ocupado") {
                         elAula.style.fill = 'rgba(239, 68, 68, 0.45)';
                         elAula.style.stroke = '#ef4444';
@@ -407,7 +493,6 @@
                         elAula.style.strokeWidth = '1px';
                     }
 
-                    // Clic para desplegar información en el panel
                     elAula.onclick = (e) => {
                         e.stopPropagation();
                         mostrarDetalleAulaPanel(codigoAula, infoHorario);
@@ -434,16 +519,16 @@
                     <div class="info-val">${pisoActual2D}</div>
                 </div>
                 <div class="info-group">
-                    <div class="info-label">Asignatura:</div>
-                    <div class="info-val">${info.asignatura || 'Sin clase programada'}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Docente:</div>
-                    <div class="info-val">${info.docente || 'N/A'}</div>
+                    <div class="info-label">Actividad / Asignatura:</div>
+                    <div class="info-val">${info.detalle || 'Sin clase o evento programado'}</div>
                 </div>
                 <div class="info-group">
                     <div class="info-label">Franja Horaria:</div>
                     <div class="info-val">${info.franja}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Día:</div>
+                    <div class="info-val">${document.getElementById('select-dia').value}</div>
                 </div>
             `;
         }
@@ -474,9 +559,10 @@
             `;
         }
 
-        // INICIALIZACIÓN DE COMPONENTES
+        // EVENTOS AL CORTAR EL DOM
         window.addEventListener('load', () => {
             inicializarFranjasHorarias();
+            cargarExcelRealRepo();
 
             const svgObj = document.getElementById('svg-object');
             if (svgObj) {
