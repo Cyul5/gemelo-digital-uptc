@@ -24,6 +24,7 @@
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --green: #10b981;
+            --red: #ef4444;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
@@ -47,7 +48,7 @@
 
         .header-center { display: flex; align-items: center; gap: 12px; }
         .filter-group { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
-        .filter-select { background: #0f172a; border: 1px solid var(--border); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        .filter-select { background: #0f172a; border: 1px solid var(--border); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; }
 
         .header-right { display: flex; align-items: center; gap: 16px; }
         .search-box { position: relative; }
@@ -69,7 +70,7 @@
         .vista { display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
         .vista.activa { display: block; }
 
-        /* VISTA MAPA SVG */
+        /* VISTA MAPA SVG GENERAL */
         #vista-mapa { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
         #svg-object { width: 100%; height: 100%; border: none; }
 
@@ -78,7 +79,9 @@
         #ifc-canvas-container { width: 100%; height: 100%; }
 
         /* VISTA PLANTA 2D */
-        #vista-2d { padding: 40px; color: white; }
+        #vista-2d { display: flex; flex-direction: column; width: 100%; height: 100%; padding: 15px; color: white; }
+        .container-svg-2d { flex: 1; width: 100%; height: calc(100% - 50px); display: flex; align-items: center; justify-content: center; background: #070d19; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+        #svg-2d-object { width: 100%; height: 100%; border: none; }
 
         /* PANEL DERECHO DE DATOS */
         .sidebar-right { width: 340px; background-color: var(--bg-panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; padding: 18px; z-index: 50; overflow-y: auto; }
@@ -87,6 +90,10 @@
         .info-group { margin-bottom: 12px; font-size: 13px; }
         .info-label { color: var(--text-muted); font-size: 12px; margin-bottom: 2px; }
         .info-val { font-weight: 600; color: #f1f5f9; }
+
+        .badge-estado { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+        .badge-ocupado { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
+        .badge-libre { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
 
         .excel-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-top: 20px; font-size: 11px; color: var(--text-muted); }
 
@@ -114,11 +121,21 @@
         <div class="header-center">
             <div class="filter-group">
                 <span>🗓 Día:</span>
-                <select class="filter-select"><option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option></select>
+                <select id="select-dia" class="filter-select" onchange="actualizarEstadoAulas2D()">
+                    <option value="Lunes">Lunes</option>
+                    <option value="Martes">Martes</option>
+                    <option value="Miércoles">Miércoles</option>
+                    <option value="Jueves">Jueves</option>
+                    <option value="Viernes">Viernes</option>
+                </select>
             </div>
             <div class="filter-group">
                 <span>⏰ Franja:</span>
-                <select class="filter-select"><option>07:00 - 08:00</option><option>08:00 - 09:00</option><option>09:00 - 10:00</option></select>
+                <select id="select-franja" class="filter-select" onchange="actualizarEstadoAulas2D()">
+                    <option value="07:00 - 08:00">07:00 - 08:00</option>
+                    <option value="08:00 - 09:00">08:00 - 09:00</option>
+                    <option value="09:00 - 10:00">09:00 - 10:00</option>
+                </select>
             </div>
         </div>
 
@@ -154,9 +171,16 @@
 
             <!-- VISTA 3: PLANTA 2D -->
             <div id="vista-2d" class="vista">
-                <button class="btn-regresar" style="display:inline-block;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
-                <h2 id="titulo-vista-2d" style="color: var(--accent); margin-top:10px;">Planta 2D - Nivel</h2>
-                <p style="color: var(--text-muted); font-size: 13px; margin-top: 5px;">Distribución detallada de espacios y aulas.</p>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div>
+                        <h2 id="titulo-vista-2d" style="color: var(--accent); font-size: 16px;">Planta 2D - Piso 1</h2>
+                        <p style="color: var(--text-muted); font-size: 12px;">Haz clic en un aula (A-101 a A-106) para consultar el horario activo en Excel.</p>
+                    </div>
+                    <button class="btn-regresar" style="display:inline-block; margin-bottom: 0;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
+                </div>
+                <div class="container-svg-2d">
+                    <object id="svg-2d-object" type="image/svg+xml" data="PLANTA_1_HUNZA.svg"></object>
+                </div>
             </div>
         </div>
 
@@ -164,31 +188,30 @@
         <div class="sidebar-right">
             <button id="btn-volver-mapa" class="btn-regresar" onclick="irAVista('vista-mapa')">🗺️ Volver al Mapa General</button>
 
-            <div class="panel-title">📊 Datos del Edificio</div>
+            <div class="panel-title" id="panel-derecho-titulo">📊 Datos del Edificio</div>
 
-            <div class="info-group">
-                <div class="info-label">Edificio:</div>
-                <div class="info-val">Edificio 30 - Aulas Hunza</div>
-            </div>
-            <div class="info-group">
-                <div class="info-label">Código:</div>
-                <div class="info-val">30</div>
-            </div>
-            <div class="info-group">
-                <div class="info-label">Sede:</div>
-                <div class="info-val">UPTC - Sede Central Tunja</div>
-            </div>
-            <div class="info-group">
-                <div class="info-label">Uso Principal:</div>
-                <div class="info-val">Aulas de Clase y Laboratorios</div>
-            </div>
-            <div class="info-group">
-                <div class="info-label">Nº Pisos:</div>
-                <div class="info-val">5</div>
-            </div>
-            <div class="info-group">
-                <div class="info-label">Área Construida:</div>
-                <div class="info-val">Por definir</div>
+            <!-- CONTENIDO DINÁMICO DEL PANEL DERECHO -->
+            <div id="panel-contenido">
+                <div class="info-group">
+                    <div class="info-label">Edificio:</div>
+                    <div class="info-val" id="info-edificio">Edificio 30 - Aulas Hunza</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Código:</div>
+                    <div class="info-val">30</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Sede:</div>
+                    <div class="info-val">UPTC - Sede Central Tunja</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Uso Principal:</div>
+                    <div class="info-val">Aulas de Clase y Laboratorios</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Nº Pisos:</div>
+                    <div class="info-val">5</div>
+                </div>
             </div>
 
             <!-- SECCIÓN CORTES BIM (SOLO VISIBLE EN 3D) -->
@@ -205,8 +228,28 @@
         </div>
     </div>
 
-    <!-- SCRIPT NAVEGACIÓN Y CONEXIÓN CON POLÍGONO HUNZA -->
+    <!-- BASE DE DATOS DE EJEMPLO DE EXCEL -->
     <script>
+        const BASE_DATOS_EXCEL = [
+            // Lunes 07:00 - 08:00
+            { dia: "Lunes", franja: "07:00 - 08:00", aula: "A-101", asignatura: "Cálculo Diferencial", docente: "Ing. Carlos Mendoza", estado: "Ocupado" },
+            { dia: "Lunes", franja: "07:00 - 08:00", aula: "A-102", asignatura: "Física Mecánica", docente: "Dra. María Ramos", estado: "Ocupado" },
+            { dia: "Lunes", franja: "07:00 - 08:00", aula: "A-103", asignatura: "", docente: "", estado: "Libre" },
+            { dia: "Lunes", franja: "07:00 - 08:00", aula: "A-104", asignatura: "Álgebra Lineal", docente: "Lic. Pedro Gómez", estado: "Ocupado" },
+            { dia: "Lunes", franja: "07:00 - 08:00", aula: "A-105", asignatura: "", docente: "", estado: "Libre" },
+            { dia: "Lunes", franja: "07:00 - 08:00", aula: "A-106", asignatura: "Programación SIG", docente: "Ing. Diana Torres", estado: "Ocupado" },
+
+            // Lunes 08:00 - 09:00
+            { dia: "Lunes", franja: "08:00 - 09:00", aula: "A-101", asignatura: "Cálculo Diferencial", docente: "Ing. Carlos Mendoza", estado: "Ocupado" },
+            { dia: "Lunes", franja: "08:00 - 09:00", aula: "A-102", asignatura: "", docente: "", estado: "Libre" },
+            { dia: "Lunes", franja: "08:00 - 09:00", aula: "A-103", asignatura: "Topografía I", docente: "Ing. Roberto Silva", estado: "Ocupado" },
+            { dia: "Lunes", franja: "08:00 - 09:00", aula: "A-104", asignatura: "", docente: "", estado: "Libre" },
+            { dia: "Lunes", franja: "08:00 - 09:00", aula: "A-105", asignatura: "Geometría Descriptiva", docente: "Arq. Luisa Parra", estado: "Ocupado" },
+            { dia: "Lunes", franja: "08:00 - 09:00", aula: "A-106", asignatura: "Programación SIG", docente: "Ing. Diana Torres", estado: "Ocupado" }
+        ];
+
+        let pisoActual2D = "Piso 1";
+
         function irAVista(idVista) {
             document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -225,78 +268,152 @@
                 btnVolver.style.display = 'block';
                 seccionCortes.style.display = 'block';
                 breadcrumb.innerText = 'Edificio 30 Hunza (Modelo 3D)';
+                restablecerPanelEdificio();
                 if (window.cargarModeloIFC) window.cargarModeloIFC();
             } else if (idVista === 'vista-2d') {
-                btnVolver.style.display = 'none';
+                btnVolver.style.display = 'block';
                 seccionCortes.style.display = 'none';
+                breadcrumb.innerText = `Edificio 30 Hunza (${pisoActual2D})`;
+                actualizarEstadoAulas2D();
             } else {
                 btnVolver.style.display = 'none';
                 seccionCortes.style.display = 'none';
                 breadcrumb.innerText = 'Sede Central (Plano General)';
+                restablecerPanelEdificio();
             }
         }
 
         window.irAVista2DPiso = function(nombrePiso) {
+            pisoActual2D = nombrePiso;
             document.getElementById('titulo-vista-2d').innerText = `Planta 2D - ${nombrePiso}`;
             irAVista('vista-2d');
         }
 
-        // LÓGICA DE DETECCIÓN DEL ID HUNZA EN EL SVG
-        function VincularPoligonoHunza() {
-            const svgObj = document.getElementById('svg-object');
-            if (!svgObj) return;
+        // LÓGICA DE DETECCIÓN E INTEGRACIÓN 2D CON EXCEL
+        function actualizarEstadoAulas2D() {
+            const svg2d = document.getElementById('svg-2d-object');
+            if (!svg2d) return;
 
-            const conectar = () => {
-                const svgDoc = svgObj.contentDocument;
-                if (!svgDoc) return;
+            const svgDoc = svg2d.contentDocument;
+            if (!svgDoc) return;
 
-                // Buscar el elemento con ID HUNZA (soporta combinaciones de mayúsculas/minúsculas)
-                const elementoHunza = svgDoc.getElementById('HUNZA') || 
-                                      svgDoc.getElementById('hunza') || 
-                                      svgDoc.querySelector('#HUNZA') ||
-                                      svgDoc.querySelector('[id="HUNZA"]') ||
-                                      svgDoc.querySelector('[id*="HUNZA" i]');
-                
-                if (elementoHunza) {
-                    elementoHunza.style.cursor = 'pointer';
-                    elementoHunza.style.transition = 'opacity 0.2s, filter 0.2s';
+            const diaSeleccionado = document.getElementById('select-dia').value;
+            const franjaSeleccionada = document.getElementById('select-franja').value;
 
-                    // Efecto hover
-                    elementoHunza.addEventListener('mouseenter', () => {
-                        elementoHunza.style.opacity = '0.7';
-                        elementoHunza.style.filter = 'drop-shadow(0px 0px 8px #00b4d8)';
-                    });
-                    elementoHunza.addEventListener('mouseleave', () => {
-                        elementoHunza.style.opacity = '1';
-                        elementoHunza.style.filter = 'none';
-                    });
+            const listaAulas = ["A-101", "A-102", "A-103", "A-104", "A-105", "A-106"];
 
-                    // Evento Clic
-                    elementoHunza.addEventListener('click', (e) => {
+            listaAulas.forEach(codigoAula => {
+                const elAula = svgDoc.getElementById(codigoAula) || svgDoc.querySelector(`[id="${codigoAula}"]`);
+                if (elAula) {
+                    elAula.style.cursor = 'pointer';
+                    elAula.style.transition = 'all 0.3s';
+
+                    // Consulta en Excel
+                    const infoHorario = BASE_DATOS_EXCEL.find(d => 
+                        d.dia === diaSeleccionado && 
+                        d.franja === franjaSeleccionada && 
+                        d.aula === codigoAula
+                    ) || { estado: "Libre", asignatura: "", docente: "" };
+
+                    // Color de estado
+                    if (infoHorario.estado === "Ocupado") {
+                        elAula.style.fill = 'rgba(239, 68, 68, 0.4)';
+                        elAula.style.stroke = '#ef4444';
+                        elAula.style.strokeWidth = '2px';
+                    } else {
+                        elAula.style.fill = 'rgba(16, 185, 129, 0.2)';
+                        elAula.style.stroke = '#10b981';
+                        elAula.style.strokeWidth = '1px';
+                    }
+
+                    // Eventos Clic e inspección
+                    elAula.onclick = (e) => {
                         e.stopPropagation();
-                        irAVista('vista-3d');
-                    });
-
-                    console.log("✅ Polígono HUNZA detectado y conectado correctamente.");
-                } else {
-                    console.warn("⚠️ No se encontró la etiqueta ID='HUNZA' explícita. Permitiendo clic global como respaldo.");
-                    svgDoc.addEventListener('click', (e) => {
-                        // Verifica si el clic cayó dentro de cualquier elemento que se llame HUNZA
-                        const objetivo = e.target.closest('#HUNZA, #hunza, [id*="HUNZA" i]');
-                        if (objetivo) {
-                            irAVista('vista-3d');
-                        }
-                    });
+                        mostrarDetalleAulaPanel(codigoAula, infoHorario);
+                    };
                 }
-            };
-
-            svgObj.addEventListener('load', conectar);
-            if (svgObj.contentDocument && svgObj.contentDocument.readyState === 'complete') {
-                conectar();
-            }
+            });
         }
 
-        window.addEventListener('load', VincularPoligonoHunza);
+        function mostrarDetalleAulaPanel(codigoAula, info) {
+            const panelTitulo = document.getElementById('panel-derecho-titulo');
+            const panelContenido = document.getElementById('panel-contenido');
+
+            panelTitulo.innerHTML = `📌 Aula ${codigoAula}`;
+
+            const badgeClase = info.estado === "Ocupado" ? "badge-ocupado" : "badge-libre";
+
+            panelContenido.innerHTML = `
+                <div class="info-group">
+                    <div class="info-label">Estado Actual:</div>
+                    <div class="info-val"><span class="badge-estado ${badgeClase}">${info.estado}</span></div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Planta:</div>
+                    <div class="info-val">${pisoActual2D}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Asignatura:</div>
+                    <div class="info-val">${info.asignatura || 'Sin clase programada'}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Docente:</div>
+                    <div class="info-val">${info.docente || 'N/A'}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Franja Horaria:</div>
+                    <div class="info-val">${document.getElementById('select-franja').value}</div>
+                </div>
+            `;
+        }
+
+        function restablecerPanelEdificio() {
+            document.getElementById('panel-derecho-titulo').innerHTML = `📊 Datos del Edificio`;
+            document.getElementById('panel-contenido').innerHTML = `
+                <div class="info-group">
+                    <div class="info-label">Edificio:</div>
+                    <div class="info-val">Edificio 30 - Aulas Hunza</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Código:</div>
+                    <div class="info-val">30</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Sede:</div>
+                    <div class="info-val">UPTC - Sede Central Tunja</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Uso Principal:</div>
+                    <div class="info-val">Aulas de Clase y Laboratorios</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Nº Pisos:</div>
+                    <div class="info-val">5</div>
+                </div>
+            `;
+        }
+
+        // VINCULACIÓN SVG GENERAL
+        window.addEventListener('load', () => {
+            const svgObj = document.getElementById('svg-object');
+            if (svgObj) {
+                svgObj.addEventListener('load', () => {
+                    const svgDoc = svgObj.contentDocument;
+                    if (svgDoc) {
+                        const elHunza = svgDoc.getElementById('HUNZA') || svgDoc.querySelector('[id*="HUNZA" i]');
+                        if (elHunza) {
+                            elHunza.style.cursor = 'pointer';
+                            elHunza.addEventListener('click', () => irAVista('vista-3d'));
+                        }
+                    }
+                });
+            }
+
+            const svg2dObj = document.getElementById('svg-2d-object');
+            if (svg2dObj) {
+                svg2dObj.addEventListener('load', actualizarEstadoAulas2D);
+            }
+        });
     </script>
 
     <!-- THREE.JS ENGINE -->
