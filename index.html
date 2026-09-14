@@ -52,11 +52,6 @@
         .tag { background: #0284c7; color: #fff; font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: 600; }
         .sub-title { color: var(--text-muted); font-size: 13px; }
 
-        /* FILTROS HEADER */
-        .header-center { display: none; align-items: center; gap: 12px; }
-        .filter-group { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
-        .filter-select { background: #0f172a; border: 1px solid #1e293b; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; }
-
         .header-right { display: flex; align-items: center; gap: 16px; }
         .search-box { position: relative; }
         .search-box input { background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 5px 10px 5px 28px; color: #fff; font-size: 12px; width: 220px; }
@@ -168,6 +163,35 @@
             transform: translateX(0);
         }
 
+        /* CONTENEDOR FILTROS EN BARRA LATERAL DERECHA */
+        .panel-filtros-container {
+            background: var(--bg-card);
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .filter-group { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            font-size: 12px; 
+            color: var(--text-muted); 
+        }
+        .filter-select { 
+            background: #0f172a; 
+            border: 1px solid #1e293b; 
+            color: #fff; 
+            padding: 5px 8px; 
+            border-radius: 4px; 
+            font-size: 12px; 
+            cursor: pointer; 
+            width: 160px;
+        }
+
         .panel-title { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; text-transform: uppercase; }
         
         .info-group { margin-bottom: 12px; font-size: 13px; }
@@ -180,7 +204,7 @@
 
         .excel-box { background: var(--bg-card); border: 1px solid #1e293b; border-radius: 6px; padding: 10px; margin-top: 20px; font-size: 11px; color: var(--text-muted); }
 
-        .btn-regresar { background: #0284c7; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; margin-bottom: 15px; display: none; }
+        .btn-regresar { background: #0284c7; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; margin-bottom: 15px; display: none; width: 100%; text-align: center; }
         
         .btn-nivel { width: 100%; background: var(--bg-card); color: var(--text-main); border: 1px solid #1e293b; padding: 8px 12px; text-align: left; border-radius: 6px; cursor: pointer; margin-bottom: 6px; font-size: 12px; transition: all 0.2s; }
         .btn-nivel:hover { background: #1e293b; border-color: var(--accent); }
@@ -198,26 +222,6 @@
             <span class="brand">UPTC SIG</span>
             <span class="tag">Gestor de Información</span>
             <span class="sub-title" id="breadcrumb">Sede Central (Plano General)</span>
-        </div>
-
-        <!-- FILTROS -->
-        <div class="header-center" id="header-filtros-horario">
-            <div class="filter-group">
-                <span>🗓 Día:</span>
-                <select id="select-dia" class="filter-select" onchange="actualizarEstadoAulas2D()">
-                    <option value="Lunes">Lunes</option>
-                    <option value="Martes">Martes</option>
-                    <option value="Miércoles">Miércoles</option>
-                    <option value="Jueves">Jueves</option>
-                    <option value="Viernes">Viernes</option>
-                    <option value="Sábado">Sábado</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <span>⏰ Franja:</span>
-                <select id="select-franja" class="filter-select" onchange="actualizarEstadoAulas2D()">
-                </select>
-            </div>
         </div>
 
         <div class="header-right">
@@ -257,7 +261,7 @@
                         <h2 id="titulo-vista-2d" style="color: #0284c7; font-size: 16px;">Planta 2D - Piso 1</h2>
                         <p style="color: #64748b; font-size: 12px;">Haz clic en un aula para consultar el horario activo en Excel.</p>
                     </div>
-                    <button class="btn-regresar" style="display:inline-block; margin-bottom: 0;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
+                    <button class="btn-regresar" style="display:inline-block; margin-bottom: 0; width: auto;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
                 </div>
                 <div class="container-svg-2d" id="svg-2d-wrapper">
                     <object id="svg-2d-object" type="image/svg+xml" data="PLANTA_1_HUNZA.svg"></object>
@@ -268,6 +272,26 @@
         <!-- PANEL DERECHO DE DATOS -->
         <div class="sidebar-right" id="sidebar-derecha">
             <button id="btn-volver-mapa" class="btn-regresar" onclick="irAVista('vista-mapa')">🗺️ Volver al Mapa General</button>
+
+            <!-- CONTENEDOR FILTROS DÍA Y FRANJA (AHORA ENCIMA DEL NOMBRE DEL SALÓN) -->
+            <div class="panel-filtros-container" id="panel-filtros-horario">
+                <div class="filter-group">
+                    <span>🗓️ Día:</span>
+                    <select id="select-dia" class="filter-select" onchange="actualizarEstadoAulas2D()">
+                        <option value="Lunes">Lunes</option>
+                        <option value="Martes">Martes</option>
+                        <option value="Miércoles">Miércoles</option>
+                        <option value="Jueves">Jueves</option>
+                        <option value="Viernes">Viernes</option>
+                        <option value="Sábado">Sábado</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <span>⏰ Franja:</span>
+                    <select id="select-franja" class="filter-select" onchange="actualizarEstadoAulas2D()">
+                    </select>
+                </div>
+            </div>
 
             <div class="panel-title" id="panel-derecho-titulo">📊 Datos del Edificio</div>
 
@@ -473,14 +497,14 @@
             const btnVolver = document.getElementById('btn-volver-mapa');
             const seccionCortes = document.getElementById('seccion-cortes-3d');
             const breadcrumb = document.getElementById('breadcrumb');
-            const headerFiltros = document.getElementById('header-filtros-horario');
+            const panelFiltros = document.getElementById('panel-filtros-horario');
             const sidebarDerecha = document.getElementById('sidebar-derecha');
 
             if (idVista === 'vista-3d') {
                 sidebarDerecha.classList.add('visible');
                 btnVolver.style.display = 'block';
                 seccionCortes.style.display = 'block';
-                headerFiltros.style.display = 'none';
+                panelFiltros.style.display = 'none';
                 breadcrumb.innerText = 'Edificio 30 Hunza (Modelo 3D)';
                 restablecerPanelEdificio();
                 if (window.cargarModeloIFC) window.cargarModeloIFC();
@@ -488,7 +512,7 @@
                 sidebarDerecha.classList.add('visible');
                 btnVolver.style.display = 'block';
                 seccionCortes.style.display = 'none';
-                headerFiltros.style.display = 'flex';
+                panelFiltros.style.display = 'flex';
                 document.getElementById('titulo-vista-2d').innerText = `Planta 2D - ${pisoActual2D}`;
                 breadcrumb.innerText = `Edificio 30 Hunza (${pisoActual2D})`;
                 actualizarEstadoAulas2D();
@@ -496,7 +520,7 @@
                 sidebarDerecha.classList.remove('visible');
                 btnVolver.style.display = 'none';
                 seccionCortes.style.display = 'none';
-                headerFiltros.style.display = 'none';
+                panelFiltros.style.display = 'none';
                 breadcrumb.innerText = 'Sede Central (Plano General)';
                 restablecerPanelEdificio();
             }
@@ -508,7 +532,6 @@
             
             const wrapper = document.getElementById('svg-2d-wrapper');
             if (wrapper) {
-                // Se reemplaza el objeto por uno completamente nuevo para forzar la recarga del archivo SVG
                 wrapper.innerHTML = `<object id="svg-2d-object" type="image/svg+xml" data="${archivoSVG}"></object>`;
                 const nuevoSvgObj = document.getElementById('svg-2d-object');
                 nuevoSvgObj.addEventListener('load', actualizarEstadoAulas2D);
