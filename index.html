@@ -72,7 +72,7 @@
         .nav-btn { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; border: none; background: transparent; transition: 0.2s; }
         .nav-btn:hover, .nav-btn.active { background: #0284c7; color: #fff; }
 
-        /* CONTENEDOR DE VISTAS CON FONDO BLANCO */
+        /* CONTENEDOR DE VISTAS */
         .content-area { 
             flex: 1; 
             position: relative; 
@@ -259,7 +259,7 @@
                     </div>
                     <button class="btn-regresar" style="display:inline-block; margin-bottom: 0;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
                 </div>
-                <div class="container-svg-2d">
+                <div class="container-svg-2d" id="svg-2d-wrapper">
                     <object id="svg-2d-object" type="image/svg+xml" data="PLANTA_1_HUNZA.svg"></object>
                 </div>
             </div>
@@ -504,12 +504,14 @@
 
         window.irAVista2DPiso = function(nombrePiso) {
             pisoActual2D = nombrePiso || "Piso 1";
-            
             const archivoSVG = MAPA_ARCHIVOS_PISOS[pisoActual2D] || "PLANTA_1_HUNZA.svg";
-            const svgObject = document.getElementById('svg-2d-object');
             
-            if (svgObject) {
-                svgObject.setAttribute('data', archivoSVG);
+            const wrapper = document.getElementById('svg-2d-wrapper');
+            if (wrapper) {
+                // Se reemplaza el objeto por uno completamente nuevo para forzar la recarga del archivo SVG
+                wrapper.innerHTML = `<object id="svg-2d-object" type="image/svg+xml" data="${archivoSVG}"></object>`;
+                const nuevoSvgObj = document.getElementById('svg-2d-object');
+                nuevoSvgObj.addEventListener('load', actualizarEstadoAulas2D);
             }
 
             document.getElementById('titulo-vista-2d').innerText = `Planta 2D - ${pisoActual2D}`;
