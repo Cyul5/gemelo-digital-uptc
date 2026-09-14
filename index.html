@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemelo Digital Sede Central Tunja - Edificio 30 Hunza</title>
-    <!-- Import Maps para Three.js y addons oficiales -->
+    <title>UPTC SIG - Gemelo Digital Sede Central Tunja</title>
+    <!-- Import Maps para Three.js -->
     <script type="importmap">
         {
             "imports": {
@@ -15,125 +15,221 @@
     </script>
     <style>
         :root {
-            --bg-main: #0a1120;
-            --bg-panel: #1e293b;
+            --bg-dark: #030712;
+            --bg-header: #070d19;
+            --bg-panel: #0b1324;
+            --bg-card: #111c33;
             --accent: #00b4d8;
+            --border: #1e293b;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
-            --border: #334155;
+            --green: #10b981;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: var(--bg-main); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        
-        /* HEADER */
-        header { height: 60px; background-color: var(--bg-panel); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
-        .header-title { font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 10px; }
-        .header-title span { color: var(--accent); font-size: 12px; background: rgba(0,180,216,0.1); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--accent); }
-        
-        /* CONTENEDOR PRINCIPAL */
-        .main-container { display: flex; flex: 1; height: calc(100vh - 60px); position: relative; }
-        
-        /* VISTAS */
-        .vista { display: none; width: 100%; height: 100%; position: relative; }
-        .vista.activa { display: block; }
-        
-        /* VISTA 1: MAPA GENERAL CON SVG */
-        #vista-mapa { width: 100%; height: 100%; background: #0a1120; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        #contenedor-svg { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-        #contenedor-svg object, #contenedor-svg embed { width: 100%; height: 100%; border: none; }
-        
-        /* VISTA 2: 3D */
-        #vista-3d { flex: 1; height: 100%; position: relative; }
-        #ifc-canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; cursor: default; }
-        
-        /* VISTA 3: 2D PLANO */
-        #vista-2d { padding: 30px; background: #020617; }
-        
-        /* PANEL DERECHO */
-        .sidebar-right { width: 320px; background-color: var(--bg-panel); border-left: 1px solid var(--border); display: none; flex-direction: column; padding: 15px; overflow-y: auto; z-index: 10; }
-        .panel-section { margin-bottom: 20px; }
-        .panel-section h3 { font-size: 14px; color: var(--accent); margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
-        
-        /* ESTADO Y BOTONES */
-        #ifc-status { font-size: 13px; color: var(--text-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
-        .loading-spinner { width: 14px; height: 14px; border: 2px solid var(--text-muted); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
-        @keyframes spin { to { transform: rotate(360deg); } }
 
-        .btn-nivel { width: 100%; background: #0f172a; color: var(--text-main); border: 1px solid var(--border); padding: 8px 12px; text-align: left; border-radius: 6px; cursor: pointer; margin-bottom: 6px; font-size: 13px; transition: all 0.2s; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* HEADER */
+        header { 
+            height: 50px; 
+            background-color: var(--bg-header); 
+            border-bottom: 1px solid var(--border); 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 0 16px; 
+            z-index: 100;
+        }
+        .header-left { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+        .brand { font-weight: 800; font-size: 15px; letter-spacing: 0.5px; }
+        .tag { background: #0284c7; color: #fff; font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: 600; }
+        .sub-title { color: var(--text-muted); font-size: 13px; }
+
+        .header-center { display: flex; align-items: center; gap: 12px; }
+        .filter-group { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+        .filter-select { background: #0f172a; border: 1px solid var(--border); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+
+        .header-right { display: flex; align-items: center; gap: 16px; }
+        .search-box { position: relative; }
+        .search-box input { background: #0f172a; border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px 5px 28px; color: #fff; font-size: 12px; width: 220px; }
+        .search-box::before { content: "🔍"; position: absolute; left: 8px; top: 4px; font-size: 11px; opacity: 0.6; }
+        .excel-status { font-size: 11px; color: var(--green); display: flex; align-items: center; gap: 6px; font-weight: 500; }
+        .dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; display: inline-block; }
+
+        /* LAYOUT PRINCIPAL */
+        .app-body { display: flex; flex: 1; height: calc(100vh - 50px); position: relative; }
+
+        /* BARRA NAVEGACIÓN IZQUIERDA */
+        .sidebar-left { width: 48px; background-color: var(--bg-header); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding-top: 10px; gap: 15px; z-index: 50; }
+        .nav-btn { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; border: none; background: transparent; transition: 0.2s; }
+        .nav-btn:hover, .nav-btn.active { background: #0284c7; color: #fff; }
+
+        /* CONTENEDOR DE VISTAS */
+        .content-area { flex: 1; position: relative; background: var(--bg-dark); overflow: hidden; }
+        .vista { display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+        .vista.activa { display: block; }
+
+        /* VISTA MAPA SVG */
+        #vista-mapa { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+        #svg-object { width: 100%; height: 100%; border: none; }
+
+        /* VISTA 3D */
+        #vista-3d { width: 100%; height: 100%; }
+        #ifc-canvas-container { width: 100%; height: 100%; }
+
+        /* VISTA PLANTA 2D */
+        #vista-2d { padding: 40px; color: white; }
+
+        /* PANEL DERECHO DE DATOS */
+        .sidebar-right { width: 340px; background-color: var(--bg-panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; padding: 18px; z-index: 50; overflow-y: auto; }
+        .panel-title { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 8px; text-transform: uppercase; }
+        
+        .info-group { margin-bottom: 12px; font-size: 13px; }
+        .info-label { color: var(--text-muted); font-size: 12px; margin-bottom: 2px; }
+        .info-val { font-weight: 600; color: #f1f5f9; }
+
+        .excel-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-top: 20px; font-size: 11px; color: var(--text-muted); }
+
+        .btn-regresar { background: #0284c7; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; margin-bottom: 15px; display: none; }
+        
+        /* BOTONES PISOS 3D */
+        .btn-nivel { width: 100%; background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border); padding: 8px 12px; text-align: left; border-radius: 6px; cursor: pointer; margin-bottom: 6px; font-size: 12px; transition: all 0.2s; }
         .btn-nivel:hover { background: #1e293b; border-color: var(--accent); }
         .btn-nivel.active { background: rgba(0,180,216,0.2); border-color: var(--accent); color: var(--accent); font-weight: 600; }
-        
-        .info-card { background: #0f172a; padding: 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 13px; line-height: 1.6; }
-        .info-card p span { color: var(--text-muted); }
+
+        .loading-spinner { width: 12px; height: 12px; border: 2px solid var(--text-muted); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
+    <!-- HEADER TOP -->
     <header>
-        <div class="header-title">
-            UPTC SIG <span>Gemelo Digital Sede Central Tunja</span> Edificio 30 Hunza
+        <div class="header-left">
+            <span class="brand">UPTC SIG</span>
+            <span class="tag">Gemelo Digital Sede Central Tunja</span>
+            <span class="sub-title" id="breadcrumb">Sede Central (Plano General)</span>
         </div>
-        <button class="btn-nivel" style="width: auto; padding: 6px 12px; margin: 0;" onclick="irAVista('vista-mapa')">🗺️ Mapa General</button>
-    </header>
 
-    <div class="main-container">
-        <!-- VISTA 1: MAPA GENERAL (CARGA plano_uptc.svg) -->
-        <div id="vista-mapa" class="vista activa">
-            <div id="contenedor-svg">
-                <object id="svg-object" type="image/svg+xml" data="plano_uptc.svg"></object>
+        <div class="header-center">
+            <div class="filter-group">
+                <span>🗓 Día:</span>
+                <select class="filter-select"><option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option></select>
+            </div>
+            <div class="filter-group">
+                <span>⏰ Franja:</span>
+                <select class="filter-select"><option>07:00 - 08:00</option><option>08:00 - 09:00</option><option>09:00 - 10:00</option></select>
             </div>
         </div>
 
-        <!-- VISTA 2: MODELO 3D -->
-        <div id="vista-3d" class="vista">
-            <div id="ifc-canvas-container"></div>
+        <div class="header-right">
+            <div class="search-box">
+                <input type="text" placeholder="Buscar edificio, aula o docente...">
+            </div>
+            <div class="excel-status">
+                <span class="dot"></span> Excel Conectado
+            </div>
+        </div>
+    </header>
+
+    <div class="app-body">
+        <!-- BARRA IZQUIERDA -->
+        <div class="sidebar-left">
+            <button class="nav-btn active" title="Plano General" onclick="irAVista('vista-mapa')">🌐</button>
+            <button class="nav-btn" title="Modelo 3D" onclick="irAVista('vista-3d')">🏢</button>
+            <button class="nav-btn" title="Planos 2D" onclick="irAVista('vista-2d')">📐</button>
         </div>
 
-        <!-- VISTA 3: PLANTA 2D -->
-        <div id="vista-2d" class="vista">
-            <h2 id="titulo-vista-2d" style="color: var(--accent); margin-bottom: 15px;">Planta 2D - Nivel</h2>
-            <p style="color: var(--text-muted); margin-bottom: 20px;">Visualizando distribución de aulas y espacios correspondientes al nivel seleccionado.</p>
-            <button class="btn-nivel" style="width: 200px;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
+        <!-- AREA CENTRAL -->
+        <div class="content-area">
+            <!-- VISTA 1: MAPA GENERAL SVG -->
+            <div id="vista-mapa" class="vista activa">
+                <object id="svg-object" type="image/svg+xml" data="plano_uptc.svg"></object>
+            </div>
+
+            <!-- VISTA 2: MODELO 3D -->
+            <div id="vista-3d" class="vista">
+                <div id="ifc-canvas-container"></div>
+            </div>
+
+            <!-- VISTA 3: PLANTA 2D -->
+            <div id="vista-2d" class="vista">
+                <button class="btn-regresar" style="display:inline-block;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
+                <h2 id="titulo-vista-2d" style="color: var(--accent); margin-top:10px;">Planta 2D - Nivel</h2>
+                <p style="color: var(--text-muted); font-size: 13px; margin-top: 5px;">Distribución detallada de espacios y aulas.</p>
+            </div>
         </div>
 
-        <!-- PANEL LATERAL -->
-        <div class="sidebar-right" id="panel-lateral-derecho">
-            <div class="panel-section">
-                <h3>Corte de Niveles (BIM)</h3>
-                <div id="ifc-status"><span class="loading-spinner"></span> Inicializando visor...</div>
+        <!-- PANEL DERECHO DE DATOS -->
+        <div class="sidebar-right">
+            <button id="btn-volver-mapa" class="btn-regresar" onclick="irAVista('vista-mapa')">🗺️ Volver al Mapa General</button>
+
+            <div class="panel-title">📊 Datos del Edificio</div>
+
+            <div class="info-group">
+                <div class="info-label">Edificio:</div>
+                <div class="info-val">Edificio 30 - Aulas Hunza</div>
+            </div>
+            <div class="info-group">
+                <div class="info-label">Código:</div>
+                <div class="info-val">30</div>
+            </div>
+            <div class="info-group">
+                <div class="info-label">Sede:</div>
+                <div class="info-val">UPTC - Sede Central Tunja</div>
+            </div>
+            <div class="info-group">
+                <div class="info-label">Uso Principal:</div>
+                <div class="info-val">Aulas de Clase y Laboratorios</div>
+            </div>
+            <div class="info-group">
+                <div class="info-label">Nº Pisos:</div>
+                <div class="info-val">5</div>
+            </div>
+            <div class="info-group">
+                <div class="info-label">Área Construida:</div>
+                <div class="info-val">Por definir</div>
+            </div>
+
+            <!-- SECCIÓN CORTES BIM (SOLO VISIBLE EN 3D) -->
+            <div id="seccion-cortes-3d" style="display:none; margin-top: 15px;">
+                <div class="panel-title">✂️ Niveles (Modelo 3D)</div>
+                <div id="ifc-status" style="font-size:12px; color:var(--text-muted); margin-bottom:10px;"><span class="loading-spinner"></span> Esperando modelo 3D...</div>
                 <div id="ifc-layers-list"></div>
             </div>
 
-            <div class="panel-section">
-                <h3>Datos del Edificio</h3>
-                <div class="info-card">
-                    <p><strong>Edificio:</strong> Edificio 30 - Aulas Hunza</p>
-                    <p><strong>Código:</strong> 30</p>
-                    <p><strong>Sede:</strong> UPTC - Sede Central Tunja</p>
-                    <p><strong>Uso Principal:</strong> Aulas de Clase y Laboratorios</p>
-                    <p><strong>Nº Pisos:</strong> 5</p>
-                </div>
+            <div class="excel-box">
+                <div><strong>Origen:</strong> Excel Conectado</div>
+                <div><strong>Hoja Horarios:</strong> Horarios de Uso</div>
             </div>
         </div>
     </div>
 
-    <!-- NAVEGACIÓN Y CONFIGURACIÓN DEL SVG -->
+    <!-- SCRIPT NAVEGACIÓN SVG & VISTAS -->
     <script>
         function irAVista(idVista) {
             document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            
             document.getElementById(idVista).classList.add('activa');
 
-            const panel = document.getElementById('panel-lateral-derecho');
-            if (idVista === 'vista-3d') {
-                panel.style.display = 'flex';
-                window.dispatchEvent(new Event('resize'));
-            } else {
-                panel.style.display = 'none';
-            }
-        }
+            const btnVolver = document.getElementById('btn-volver-mapa');
+            const seccionCortes = document.getElementById('seccion-cortes-3d');
+            const breadcrumb = document.getElementById('breadcrumb');
 
-        window.irAVista3D = function() {
-            irAVista('vista-3d');
+            if (idVista === 'vista-3d') {
+                btnVolver.style.display = 'block';
+                seccionCortes.style.display = 'block';
+                breadcrumb.innerText = 'Edificio 30 Hunza (Modelo 3D)';
+                if (window.cargarModeloIFC) window.cargarModeloIFC();
+            } else if (idVista === 'vista-2d') {
+                btnVolver.style.display = 'none';
+                seccionCortes.style.display = 'none';
+            } else {
+                btnVolver.style.display = 'none';
+                seccionCortes.style.display = 'none';
+                breadcrumb.innerText = 'Sede Central (Plano General)';
+            }
         }
 
         window.irAVista2DPiso = function(nombrePiso) {
@@ -141,19 +237,18 @@
             irAVista('vista-2d');
         }
 
-        // Configuración para detectar el clic en el polígono del Edificio HUNZA dentro de plano_uptc.svg
+        // Intercepción del clic sobre el SVG `plano_uptc.svg`
         window.addEventListener('load', () => {
             const svgObj = document.getElementById('svg-object');
             if (svgObj) {
                 svgObj.addEventListener('load', () => {
                     const svgDoc = svgObj.contentDocument;
                     if (svgDoc) {
-                        // Busca por ID "HUNZA", "hunza", "edificio30" o clases asociadas
                         const elementoHunza = svgDoc.getElementById('HUNZA') || 
                                               svgDoc.getElementById('hunza') || 
                                               svgDoc.getElementById('Edificio_30') ||
-                                              svgDoc.querySelector('[id*="hunza" i]') ||
-                                              svgDoc.querySelector('[id*="HUNZA"]');
+                                              svgDoc.querySelector('[id*="30"]') ||
+                                              svgDoc.querySelector('[id*="hunza" i]');
                         
                         if (elementoHunza) {
                             elementoHunza.style.cursor = 'pointer';
@@ -161,7 +256,7 @@
                                 irAVista('vista-3d');
                             });
                         } else {
-                            // Si el polígono no tiene ID explícito, hace todo el SVG interactivo como respaldo
+                            // Si no encuentra la etiqueta exacta, permite hacer clic en el SVG completo
                             svgDoc.addEventListener('click', () => {
                                 irAVista('vista-3d');
                             });
@@ -172,7 +267,7 @@
         });
     </script>
 
-    <!-- SCRIPT THREE.JS COMPLETO -->
+    <!-- THREE.JS ENGINE -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -186,8 +281,7 @@
         let animFrameId = null;
         let needsRender = true;
         let modeloGlobal = null;
-        let planoInferior = null;
-        let planoSuperior = null;
+        let planoInferior = null, planoSuperior = null;
         let alturaMinModel = 0, alturaMaxModel = 100;
         let pasoPisoGlobal = 20;
 
@@ -200,7 +294,7 @@
             if (is3DInitialized) return true;
 
             const container = document.getElementById('ifc-canvas-container');
-            if (!container || container.clientWidth === 0 || container.clientHeight === 0) return false;
+            if (!container || container.clientWidth === 0) return false;
 
             const width = container.clientWidth;
             const height = container.clientHeight;
@@ -208,26 +302,21 @@
             container.innerHTML = '';
 
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0a1120);
+            scene.background = new THREE.Color(0x030712);
 
             camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 2000);
 
-            renderer = new THREE.WebGLRenderer({ 
-                antialias: true, 
-                powerPreference: "high-performance" 
-            });
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
             renderer.setSize(width, height);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
             renderer.outputColorSpace = THREE.SRGBColorSpace;
-            
             renderer.localClippingEnabled = true;
+
             container.appendChild(renderer.domElement);
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.08;
-            controls.minDistance = 2;
-            controls.maxDistance = 800;
             controls.zoomSpeed = 0.5;
 
             controls.addEventListener('change', () => { needsRender = true; });
@@ -235,9 +324,9 @@
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
             scene.add(ambientLight);
 
-            const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.0);
-            dirLight1.position.set(100, 200, 100);
-            scene.add(dirLight1);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            dirLight.position.set(100, 200, 100);
+            scene.add(dirLight);
 
             const gridHelper = new THREE.GridHelper(300, 60, 0x00b4d8, 0x1e293b);
             gridHelper.position.y = -0.01;
@@ -248,8 +337,7 @@
             let pointerDownPos = { x: 0, y: 0 };
 
             container.addEventListener('pointerdown', (e) => {
-                pointerDownPos.x = e.clientX;
-                pointerDownPos.y = e.clientY;
+                pointerDownPos = { x: e.clientX, y: e.clientY };
             });
 
             container.addEventListener('pointermove', (e) => {
@@ -261,8 +349,8 @@
                 if (!modeloGlobal) return;
 
                 const intersects = raycaster.intersectObject(modeloGlobal, true);
-                
                 let nuevoPisoHover = -1;
+
                 if (intersects.length > 0) {
                     container.style.cursor = 'pointer';
                     const puntoIntersec = intersects[0].point;
@@ -334,7 +422,6 @@
                     camera.aspect = container.clientWidth / container.clientHeight;
                     camera.updateProjectionMatrix();
                     renderer.setSize(container.clientWidth, container.clientHeight);
-                    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
                     needsRender = true;
                 }
             });
@@ -369,10 +456,10 @@
 
         function cargarModeloGLBReal() {
             if (yaCargado) return;
+            if (!init3DViewer()) return;
 
             const statusEl = document.getElementById('ifc-status');
             const layersEl = document.getElementById('ifc-layers-list');
-            if (!init3DViewer()) return;
 
             statusEl.innerHTML = '<span class="loading-spinner"></span> Cargando modelo 3D...';
 
@@ -388,7 +475,7 @@
 
                     modeloGlobal.position.x -= center.x;
                     modeloGlobal.position.z -= center.z;
-                    modeloGlobal.position.y -= minY; 
+                    modeloGlobal.position.y -= minY;
 
                     modeloGlobal.updateMatrixWorld(true);
 
@@ -411,14 +498,12 @@
                                     mat.clippingPlanes = arrayPlanosCorte;
                                     mat.clipShadows = true;
                                     mat.side = THREE.DoubleSide;
-                                    mat.shadowSide = THREE.DoubleSide;
                                     mat.needsUpdate = true;
                                 });
                             } else if (child.material) {
                                 child.material.clippingPlanes = arrayPlanosCorte;
                                 child.material.clipShadows = true;
                                 child.material.side = THREE.DoubleSide;
-                                child.material.shadowSide = THREE.DoubleSide;
                                 child.material.needsUpdate = true;
                             }
 
@@ -437,8 +522,8 @@
                     const divControles = document.createElement('div');
                     divControles.innerHTML = `
                         <button class="btn-nivel active" data-tipo="max">Ver Edificio Completo</button>
-                        <hr style="border-color:#334155; margin:8px 0;">
-                        <p style="margin:4px 0; color:#94a3b8; font-size:11px;">Aislar Piso Individual:</p>
+                        <hr style="border-color:var(--border); margin:8px 0;">
+                        <p style="margin:4px 0; color:var(--text-muted); font-size:11px;">Aislar Piso:</p>
                         <div id="botones-pisos-container"></div>
                     `;
                     layersEl.appendChild(divControles);
@@ -470,7 +555,6 @@
                     if (!boxGlobal.isEmpty()) {
                         const newCenter = boxGlobal.getCenter(new THREE.Vector3());
                         const sizeWorld = boxGlobal.getSize(new THREE.Vector3());
-
                         controls.target.copy(newCenter);
                         const maxDim = Math.max(sizeWorld.x, sizeWorld.y, sizeWorld.z);
                         camera.position.set(newCenter.x + maxDim * 1.2, newCenter.y + maxDim * 0.8, newCenter.z + maxDim * 1.2);
@@ -479,7 +563,7 @@
                     }
 
                     needsRender = true;
-                    statusEl.innerText = '🟢 Visor 3D Listo';
+                    statusEl.innerText = '🟢 Modelo 3D Cargado';
                     yaCargado = true;
                 },
                 (xhr) => {
@@ -490,22 +574,9 @@
                 },
                 (error) => {
                     console.error('❌ Error al cargar GLB:', error);
-                    statusEl.innerText = '❌ Error al cargar modelo GLB';
+                    statusEl.innerText = '❌ Error al cargar archivo GLB';
                 }
             );
-        }
-
-        const container = document.getElementById('ifc-canvas-container');
-        if (container) {
-            const observer = new ResizeObserver(() => {
-                if (container.clientWidth > 0 && container.clientHeight > 0) {
-                    if (!is3DInitialized) init3DViewer();
-                    if (document.getElementById('vista-3d').classList.contains('activa')) {
-                        cargarModeloGLBReal();
-                    }
-                }
-            });
-            observer.observe(container);
         }
 
         window.cargarModeloIFC = cargarModeloGLBReal;
