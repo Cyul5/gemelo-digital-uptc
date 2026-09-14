@@ -120,7 +120,7 @@
         }
     </script>
 
-    <!-- SCRIPT THREE.JS CORREGIDO PARA EVITAR QUE DESAPAREZCA AL HACER ZOOM -->
+    <!-- SCRIPT THREE.JS CORREGIDO (ZOOM SUAVE, HOVER Y CORTE) -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -158,7 +158,6 @@
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x0a1120);
 
-            // Ajustamos el near clipping de la cámara a 0.1 para permitir hacer zoom de cerca sin que desaparezca la geometría
             camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 2000);
 
             renderer = new THREE.WebGLRenderer({ 
@@ -175,9 +174,12 @@
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.08;
-            // Aseguramos un límite de cercanía (minDistance) para evitar que la cámara atraviese los planos de corte
             controls.minDistance = 2;
             controls.maxDistance = 800;
+            
+            // 🎛️ Control de velocidad de zoom suave y equilibrado
+            controls.zoomSpeed = 0.5;
+
             controls.addEventListener('change', () => { needsRender = true; });
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
