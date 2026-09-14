@@ -283,7 +283,7 @@
         inicializarDatosBase();
     </script>
 
-    <!-- SCRIPT THREE.JS CON ALTURAS DE REVIT Y PLANO DE CORTE -->
+    <!-- SCRIPT THREE.JS CORREGIDO CON FILTRADO GEOMÉTRICO POR COORDENADA Y -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -296,19 +296,11 @@
         let yaCargado = false;
         let animFrameId = null;
         let needsRender = true;
-        let globalClippingPlane = null;
+        let modeloGlobal = null;
+        let minYGlobal = 0;
+        let maxYGlobal = 0;
 
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
-
-        // Niveles limpios con las alturas métricas exactas basadas en tus cotas de Revit
-        const NIVELES_REVIT = [
-            { nombre: "Piso 1", altura: 5.00 },
-            { nombre: "Piso 2", altura: 8.50 },
-            { nombre: "Piso 3", altura: 12.00 },
-            { nombre: "Piso 4", altura: 15.50 },
-            { nombre: "Piso 5", altura: 15.50 },
-            { nombre: "Cubierta", altura: 19.50 }
-        ];
 
         function init3DViewer() {
             if (is3DInitialized) return true;
@@ -328,8 +320,7 @@
 
             renderer = new THREE.WebGLRenderer({ 
                 antialias: false, 
-                powerPreference: "high-performance",
-                localClippingEnabled: true 
+                powerPreference: "high-performance" 
             });
             renderer.setSize(width, height);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
@@ -383,6 +374,38 @@
             return true;
         }
 
+        function actualizarVisibilidadNiveles(alturasPisos) {
+            if (!modeloGlobal) return;
+
+            const estados = [];
+            let numPisos = alturasPisos.length;
+            for (let i = 0; i < numPisos; i++) {
+                const chk = document.getElementById(`chk-piso-${i+1}`);
+                estados.push(chk ? chk.checked : true);
+            }
+
+            modeloGlobal.traverse((child) => {
+                if (child.isMesh) {
+                    const box = new THREE.Box3().setFromObject(child);
+                    if (!box.isEmpty()) {
+                        const centroY = (box.min.y + box.max.y) / 2;
+                        
+                        let pisoAsignado = numPisos - 1;
+                        for (let i = 0; i < numPisos; i++) {
+                            if (centroY <= alturasPisos[i]) {
+                                pisoAsignado = i;
+                                break;
+                            }
+                        }
+
+                        child.visible = estados[pisoAsignado];
+                    }
+                }
+            });
+
+            needsRender = true;
+        }
+
         function cargarModeloGLBReal() {
             if (yaCargado) return;
 
@@ -395,28 +418,28 @@
             gltfLoader.load(
                 URL_GLB,
                 (gltf) => {
-                    const model = gltf.scene;
-                    scene.add(model);
-                    model.updateMatrixWorld(true);
+                    modeloGlobal = gltf.scene;
+                    scene.add(modeloGlobal);
+                    modeloGlobal.updateMatrixWorld(true);
 
-                    // Inicializar el plano de corte en la altura máxima de la cubierta (19.50m)
-                    globalClippingPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 19.50);
+                    const boundingBoxGlobal = new THREE.Box3().setFromObject(modeloGlobal);
+                    minYGlobal = boundingBoxGlobal.min.y;
+                    maxYGlobal = boundingBoxGlobal.max.y;
+                    const alturaTotal = maxYGlobal - minYGlobal;
+                    const numPisos = 5;
+                    const alturaPiso = alturaTotal / numPisos;
 
-                    model.traverse((child) => {
-                        if (child.isMesh && child.material) {
-                            const mats = Array.isArray(child.material) ? child.material : [child.material];
-                            mats.forEach(m => {
-                                m.side = THREE.DoubleSide;
-                                m.clippingPlanes = [globalClippingPlane];
-                                m.clipShadows = true;
-                            });
-                        }
-                    });
+                    const alturasPisos = [];
+                    for (let i = 0; i < numPisos; i++) {
+                        alturasPisos.push(minYGlobal + ((i + 1) * alturaPiso));
+                    }
 
                     layersEl.innerHTML = '';
                     const fragment = document.createDocumentFragment();
 
-                    NIVELES_REVIT.forEach((niv, i) => {
+                    const nombresNiveles = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
+
+                    for (let i = 0; i < numPisos; i++) {
                         const layerRow = document.createElement('div');
                         layerRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:12px; color:#cbd5e1;';
                         
@@ -430,34 +453,20 @@
                         label.htmlFor = `chk-piso-${i+1}`;
                         label.style.cursor = 'pointer';
                         label.style.fontWeight = '600';
-                        label.textContent = `🏢 ${niv.nombre}`;
+                        label.textContent = `🏢 ${nombresNiveles[i] || ('Nivel ' + (i+1))}`;
                         
                         layerRow.appendChild(checkbox);
                         layerRow.appendChild(label);
 
                         checkbox.addEventListener('change', () => {
-                            let maxAlturaActiva = 19.50;
-                            for (let j = NIVELES_REVIT.length - 1; j >= 0; j--) {
-                                const chk = document.getElementById(`chk-piso-${j+1}`);
-                                if (chk && chk.checked) {
-                                    maxAlturaActiva = NIVELES_REVIT[j].altura;
-                                    break;
-                                }
-                                if (j === 0 && chk && !chk.checked) {
-                                    maxAlturaActiva = -5.0; // Ocultar todo si se apaga el primero
-                                }
-                            }
-
-                            globalClippingPlane.constant = maxAlturaActiva;
-                            needsRender = true;
+                            actualizarVisibilidadNiveles(alturasPisos);
                         });
 
                         fragment.appendChild(layerRow);
-                    });
+                    }
 
                     layersEl.appendChild(fragment);
 
-                    const boundingBoxGlobal = new THREE.Box3().setFromObject(model);
                     if (!boundingBoxGlobal.isEmpty()) {
                         const size = boundingBoxGlobal.getSize(new THREE.Vector3());
                         const center = boundingBoxGlobal.getCenter(new THREE.Vector3());
