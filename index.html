@@ -135,9 +135,9 @@
     <div class="app-body">
         <!-- BARRA IZQUIERDA -->
         <div class="sidebar-left">
-            <button class="nav-btn active" title="Plano General" onclick="irAVista('vista-mapa')">🌐</button>
-            <button class="nav-btn" title="Modelo 3D" onclick="irAVista('vista-3d')">🏢</button>
-            <button class="nav-btn" title="Planos 2D" onclick="irAVista('vista-2d')">📐</button>
+            <button class="nav-btn active" id="btn-nav-mapa" title="Plano General" onclick="irAVista('vista-mapa')">🌐</button>
+            <button class="nav-btn" id="btn-nav-3d" title="Modelo 3D" onclick="irAVista('vista-3d')">🏢</button>
+            <button class="nav-btn" id="btn-nav-2d" title="Planos 2D" onclick="irAVista('vista-2d')">📐</button>
         </div>
 
         <!-- AREA CENTRAL -->
@@ -205,13 +205,17 @@
         </div>
     </div>
 
-    <!-- SCRIPT NAVEGACIÓN SVG & VISTAS -->
+    <!-- SCRIPT NAVEGACIÓN Y CONEXIÓN CON POLÍGONO HUNZA -->
     <script>
         function irAVista(idVista) {
             document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             
             document.getElementById(idVista).classList.add('activa');
+
+            if (idVista === 'vista-mapa') document.getElementById('btn-nav-mapa').classList.add('active');
+            if (idVista === 'vista-3d') document.getElementById('btn-nav-3d').classList.add('active');
+            if (idVista === 'vista-2d') document.getElementById('btn-nav-2d').classList.add('active');
 
             const btnVolver = document.getElementById('btn-volver-mapa');
             const seccionCortes = document.getElementById('seccion-cortes-3d');
@@ -237,34 +241,62 @@
             irAVista('vista-2d');
         }
 
-        // Intercepción del clic sobre el SVG `plano_uptc.svg`
-        window.addEventListener('load', () => {
+        // LÓGICA DE DETECCIÓN DEL ID HUNZA EN EL SVG
+        function VincularPoligonoHunza() {
             const svgObj = document.getElementById('svg-object');
-            if (svgObj) {
-                svgObj.addEventListener('load', () => {
-                    const svgDoc = svgObj.contentDocument;
-                    if (svgDoc) {
-                        const elementoHunza = svgDoc.getElementById('HUNZA') || 
-                                              svgDoc.getElementById('hunza') || 
-                                              svgDoc.getElementById('Edificio_30') ||
-                                              svgDoc.querySelector('[id*="30"]') ||
-                                              svgDoc.querySelector('[id*="hunza" i]');
-                        
-                        if (elementoHunza) {
-                            elementoHunza.style.cursor = 'pointer';
-                            elementoHunza.addEventListener('click', () => {
-                                irAVista('vista-3d');
-                            });
-                        } else {
-                            // Si no encuentra la etiqueta exacta, permite hacer clic en el SVG completo
-                            svgDoc.addEventListener('click', () => {
-                                irAVista('vista-3d');
-                            });
+            if (!svgObj) return;
+
+            const conectar = () => {
+                const svgDoc = svgObj.contentDocument;
+                if (!svgDoc) return;
+
+                // Buscar el elemento con ID HUNZA (soporta combinaciones de mayúsculas/minúsculas)
+                const elementoHunza = svgDoc.getElementById('HUNZA') || 
+                                      svgDoc.getElementById('hunza') || 
+                                      svgDoc.querySelector('#HUNZA') ||
+                                      svgDoc.querySelector('[id="HUNZA"]') ||
+                                      svgDoc.querySelector('[id*="HUNZA" i]');
+                
+                if (elementoHunza) {
+                    elementoHunza.style.cursor = 'pointer';
+                    elementoHunza.style.transition = 'opacity 0.2s, filter 0.2s';
+
+                    // Efecto hover
+                    elementoHunza.addEventListener('mouseenter', () => {
+                        elementoHunza.style.opacity = '0.7';
+                        elementoHunza.style.filter = 'drop-shadow(0px 0px 8px #00b4d8)';
+                    });
+                    elementoHunza.addEventListener('mouseleave', () => {
+                        elementoHunza.style.opacity = '1';
+                        elementoHunza.style.filter = 'none';
+                    });
+
+                    // Evento Clic
+                    elementoHunza.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        irAVista('vista-3d');
+                    });
+
+                    console.log("✅ Polígono HUNZA detectado y conectado correctamente.");
+                } else {
+                    console.warn("⚠️ No se encontró la etiqueta ID='HUNZA' explícita. Permitiendo clic global como respaldo.");
+                    svgDoc.addEventListener('click', (e) => {
+                        // Verifica si el clic cayó dentro de cualquier elemento que se llame HUNZA
+                        const objetivo = e.target.closest('#HUNZA, #hunza, [id*="HUNZA" i]');
+                        if (objetivo) {
+                            irAVista('vista-3d');
                         }
-                    }
-                });
+                    });
+                }
+            };
+
+            svgObj.addEventListener('load', conectar);
+            if (svgObj.contentDocument && svgObj.contentDocument.readyState === 'complete') {
+                conectar();
             }
-        });
+        }
+
+        window.addEventListener('load', VincularPoligonoHunza);
     </script>
 
     <!-- THREE.JS ENGINE -->
