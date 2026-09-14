@@ -52,7 +52,7 @@
         .tag { background: #0284c7; color: #fff; font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: 600; }
         .sub-title { color: var(--text-muted); font-size: 13px; }
 
-        /* FILTROS HEADER (SE OCULTAN DE MANERA PREDETERMINADA) */
+        /* FILTROS HEADER */
         .header-center { display: none; align-items: center; gap: 12px; }
         .filter-group { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
         .filter-select { background: #0f172a; border: 1px solid #1e293b; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; }
@@ -143,8 +143,32 @@
             background-color: #ffffff;
         }
 
-        /* PANEL DERECHO DE DATOS */
-        .sidebar-right { width: 340px; background-color: var(--bg-panel); border-left: 1px solid #1e293b; display: flex; flex-direction: column; padding: 18px; z-index: 50; overflow-y: auto; color: var(--text-main); }
+        /* PANEL DERECHO DE DATOS (OCULTO POR DEFECTO EN EL MAPA GENERAL) */
+        .sidebar-right { 
+            width: 340px; 
+            background-color: var(--bg-panel); 
+            border-left: 1px solid #1e293b; 
+            display: flex; 
+            flex-direction: column; 
+            padding: 18px; 
+            z-index: 50; 
+            overflow-y: auto; 
+            color: var(--text-main);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transform: translateX(20px);
+            transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+        }
+
+        /* CLASE PARA REVELAR LA BARRA LATERAL DERECHA */
+        .sidebar-right.visible {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transform: translateX(0);
+        }
+
         .panel-title { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; text-transform: uppercase; }
         
         .info-group { margin-bottom: 12px; font-size: 13px; }
@@ -178,7 +202,7 @@
             <span class="sub-title" id="breadcrumb">Sede Central (Plano General)</span>
         </div>
 
-        <!-- FILTROS (Solo visibles en Planta 2D) -->
+        <!-- FILTROS -->
         <div class="header-center" id="header-filtros-horario">
             <div class="filter-group">
                 <span>🗓 Día:</span>
@@ -244,7 +268,7 @@
         </div>
 
         <!-- PANEL DERECHO DE DATOS -->
-        <div class="sidebar-right">
+        <div class="sidebar-right" id="sidebar-derecha">
             <button id="btn-volver-mapa" class="btn-regresar" onclick="irAVista('vista-mapa')">🗺️ Volver al Mapa General</button>
 
             <div class="panel-title" id="panel-derecho-titulo">📊 Datos del Edificio</div>
@@ -292,6 +316,7 @@
         let registrosHorariosExcel = [];
         let pisoActual2D = "Piso 1";
         let aulaSeleccionadaActual = null;
+        let vistaActualGlobal = "vista-mapa";
 
         const MAPA_ARCHIVOS_PISOS = {
             "Piso 1": "PLANTA_1_HUNZA.svg",
@@ -437,6 +462,7 @@
         }
 
         function irAVista(idVista) {
+            vistaActualGlobal = idVista;
             document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             
@@ -450,25 +476,29 @@
             const seccionCortes = document.getElementById('seccion-cortes-3d');
             const breadcrumb = document.getElementById('breadcrumb');
             const headerFiltros = document.getElementById('header-filtros-horario');
+            const sidebarDerecha = document.getElementById('sidebar-derecha');
 
             if (idVista === 'vista-3d') {
+                sidebarDerecha.classList.add('visible'); // Siempre visible en 3D
                 btnVolver.style.display = 'block';
                 seccionCortes.style.display = 'block';
-                headerFiltros.style.display = 'none'; // Ocultar filtros en 3D
+                headerFiltros.style.display = 'none';
                 breadcrumb.innerText = 'Edificio 30 Hunza (Modelo 3D)';
                 restablecerPanelEdificio();
                 if (window.cargarModeloIFC) window.cargarModeloIFC();
             } else if (idVista === 'vista-2d') {
+                sidebarDerecha.classList.add('visible'); // Siempre visible en 2D
                 btnVolver.style.display = 'block';
                 seccionCortes.style.display = 'none';
-                headerFiltros.style.display = 'flex'; // Mostrar filtros sólo en 2D
+                headerFiltros.style.display = 'flex';
                 document.getElementById('titulo-vista-2d').innerText = `Planta 2D - ${pisoActual2D}`;
                 breadcrumb.innerText = `Edificio 30 Hunza (${pisoActual2D})`;
                 actualizarEstadoAulas2D();
             } else {
+                sidebarDerecha.classList.remove('visible'); // Oculto por defecto en Mapa General
                 btnVolver.style.display = 'none';
                 seccionCortes.style.display = 'none';
-                headerFiltros.style.display = 'none'; // Ocultar filtros en Mapa General
+                headerFiltros.style.display = 'none';
                 breadcrumb.innerText = 'Sede Central (Plano General)';
                 restablecerPanelEdificio();
             }
@@ -595,6 +625,8 @@
             cargarExcelRealRepo();
 
             const svgObj = document.getElementById('svg-object');
+            const sidebarDerecha = document.getElementById('sidebar-derecha');
+
             if (svgObj) {
                 const conectarHunza = () => {
                     const svgDoc = svgObj.contentDocument;
@@ -609,13 +641,22 @@
                             elHunza.style.cursor = 'pointer';
                             elHunza.style.transition = 'opacity 0.2s, filter 0.2s';
                             
+                            // MOSTRAR PANEL DERECHO SOLO AL PASAR EL CURSOR SOBRE HUNZA
                             elHunza.addEventListener('mouseenter', () => {
                                 elHunza.style.opacity = '0.7';
                                 elHunza.style.filter = 'drop-shadow(0px 0px 8px #00b4d8)';
+                                if (vistaActualGlobal === 'vista-mapa') {
+                                    sidebarDerecha.classList.add('visible');
+                                }
                             });
+
+                            // OCULTAR PANEL DERECHO AL SALIR DEL EDIFICIO
                             elHunza.addEventListener('mouseleave', () => {
                                 elHunza.style.opacity = '1';
                                 elHunza.style.filter = 'none';
+                                if (vistaActualGlobal === 'vista-mapa') {
+                                    sidebarDerecha.classList.remove('visible');
+                                }
                             });
 
                             elHunza.addEventListener('click', (e) => {
