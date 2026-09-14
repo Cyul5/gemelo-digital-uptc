@@ -143,7 +143,7 @@
             background-color: #ffffff;
         }
 
-        /* PANEL DERECHO DE DATOS (OCULTO POR DEFECTO EN EL MAPA GENERAL) */
+        /* PANEL DERECHO DE DATOS */
         .sidebar-right { 
             width: 340px; 
             background-color: var(--bg-panel); 
@@ -161,7 +161,6 @@
             transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
         }
 
-        /* CLASE PARA REVELAR LA BARRA LATERAL DERECHA */
         .sidebar-right.visible {
             opacity: 1;
             visibility: visible;
@@ -183,7 +182,6 @@
 
         .btn-regresar { background: #0284c7; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; margin-bottom: 15px; display: none; }
         
-        /* BOTONES PISOS 3D */
         .btn-nivel { width: 100%; background: var(--bg-card); color: var(--text-main); border: 1px solid #1e293b; padding: 8px 12px; text-align: left; border-radius: 6px; cursor: pointer; margin-bottom: 6px; font-size: 12px; transition: all 0.2s; }
         .btn-nivel:hover { background: #1e293b; border-color: var(--accent); }
         .btn-nivel.active { background: rgba(0,180,216,0.2); border-color: var(--accent); color: var(--accent); font-weight: 600; }
@@ -237,7 +235,7 @@
         <div class="sidebar-left">
             <button class="nav-btn active" id="btn-nav-mapa" title="Plano General" onclick="irAVista('vista-mapa')">🌐</button>
             <button class="nav-btn" id="btn-nav-3d" title="Modelo 3D" onclick="irAVista('vista-3d')">🏢</button>
-            <button class="nav-btn" id="btn-nav-2d" title="Planos 2D" onclick="irAVista('vista-2d')">📐</button>
+            <button class="nav-btn" id="btn-nav-2d" title="Planos 2D" onclick="irAVista2DPiso(pisoActual2D)">📐</button>
         </div>
 
         <!-- AREA CENTRAL -->
@@ -479,7 +477,7 @@
             const sidebarDerecha = document.getElementById('sidebar-derecha');
 
             if (idVista === 'vista-3d') {
-                sidebarDerecha.classList.add('visible'); // Siempre visible en 3D
+                sidebarDerecha.classList.add('visible');
                 btnVolver.style.display = 'block';
                 seccionCortes.style.display = 'block';
                 headerFiltros.style.display = 'none';
@@ -487,7 +485,7 @@
                 restablecerPanelEdificio();
                 if (window.cargarModeloIFC) window.cargarModeloIFC();
             } else if (idVista === 'vista-2d') {
-                sidebarDerecha.classList.add('visible'); // Siempre visible en 2D
+                sidebarDerecha.classList.add('visible');
                 btnVolver.style.display = 'block';
                 seccionCortes.style.display = 'none';
                 headerFiltros.style.display = 'flex';
@@ -495,7 +493,7 @@
                 breadcrumb.innerText = `Edificio 30 Hunza (${pisoActual2D})`;
                 actualizarEstadoAulas2D();
             } else {
-                sidebarDerecha.classList.remove('visible'); // Oculto por defecto en Mapa General
+                sidebarDerecha.classList.remove('visible');
                 btnVolver.style.display = 'none';
                 seccionCortes.style.display = 'none';
                 headerFiltros.style.display = 'none';
@@ -508,9 +506,9 @@
             pisoActual2D = nombrePiso || "Piso 1";
             
             const archivoSVG = MAPA_ARCHIVOS_PISOS[pisoActual2D] || "PLANTA_1_HUNZA.svg";
-
             const svgObject = document.getElementById('svg-2d-object');
-            if (svgObject && svgObject.getAttribute('data') !== archivoSVG) {
+            
+            if (svgObject) {
                 svgObject.setAttribute('data', archivoSVG);
             }
 
@@ -641,7 +639,6 @@
                             elHunza.style.cursor = 'pointer';
                             elHunza.style.transition = 'opacity 0.2s, filter 0.2s';
                             
-                            // MOSTRAR PANEL DERECHO SOLO AL PASAR EL CURSOR SOBRE HUNZA
                             elHunza.addEventListener('mouseenter', () => {
                                 elHunza.style.opacity = '0.7';
                                 elHunza.style.filter = 'drop-shadow(0px 0px 8px #00b4d8)';
@@ -650,7 +647,6 @@
                                 }
                             });
 
-                            // OCULTAR PANEL DERECHO AL SALIR DEL EDIFICIO
                             elHunza.addEventListener('mouseleave', () => {
                                 elHunza.style.opacity = '1';
                                 elHunza.style.filter = 'none';
