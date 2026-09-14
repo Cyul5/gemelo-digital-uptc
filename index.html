@@ -103,7 +103,7 @@
         }
 
         .ifc-layers-panel {
-            width: 260px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px);
+            width: 280px; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px);
             border-left: 1px solid #1e293b; padding: 12px; overflow-y: auto; font-size: 12px;
         }
         .ifc-layers-panel h4 { margin: 0 0 10px 0; color: #38bdf8; border-bottom: 1px solid #334155; padding-bottom: 6px; }
@@ -124,6 +124,14 @@
         .fila-actual { background-color: rgba(56, 189, 248, 0.2); font-weight: bold; color: #ffffff; }
         .st-libre { color: #4ade80; font-weight: bold; }
         .st-ocupado { color: #f87171; font-weight: bold; }
+
+        .btn-nivel {
+            width: 100%; background: #1e293b; border: 1px solid #334155; color: #cbd5e1;
+            padding: 6px 10px; border-radius: 4px; cursor: pointer; text-align: left;
+            margin-bottom: 6px; font-size: 12px; transition: all 0.2s;
+        }
+        .btn-nivel:hover { background: #334155; color: #38bdf8; border-color: #38bdf8; }
+        .btn-nivel.active { background: #00b4d8; color: #070f1e; font-weight: bold; border-color: #00b4d8; }
 
         .status-badge { font-size: 11px; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
         .debug-box { margin-top: 15px; padding: 8px; background: #020617; border: 1px solid #1e293b; border-radius: 4px; font-size: 10px; color: #64748b; }
@@ -201,7 +209,7 @@
                 <div class="ifc-layout">
                     <div id="ifc-canvas-container"></div>
                     <div class="ifc-layers-panel">
-                        <h4>Niveles del Edificio</h4>
+                        <h4>Corte de Niveles (BIM)</h4>
                         <div id="ifc-status" style="margin-bottom:8px; font-size:11px; color:#94a3b8;">
                             <span class="loading-spinner"></span> Esperando activación...
                         </div>
@@ -283,7 +291,7 @@
         inicializarDatosBase();
     </script>
 
-    <!-- SCRIPT THREE.JS CON DIAGNÓSTICO DE ALTURAS Y SEPARACIÓN ABSOLUTA -->
+    <!-- SCRIPT THREE.JS CON PLANOS DE CORTE DINÁMICOS (CLIPPING PLANES) -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -297,7 +305,8 @@
         let animFrameId = null;
         let needsRender = true;
         let modeloGlobal = null;
-        let rangosPisos = [];
+        let planoCorteVertical = null;
+        let alturaMinModel = 0, alturaMaxModel = 100;
 
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
 
@@ -318,12 +327,15 @@
             camera = new THREE.PerspectiveCamera(45, width / height, 0.5, 2000);
 
             renderer = new THREE.WebGLRenderer({ 
-                antialias: false, 
+                antialias: true, 
                 powerPreference: "high-performance" 
             });
             renderer.setSize(width, height);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
             renderer.outputColorSpace = THREE.SRGBColorSpace;
+            
+            // Habilitar la funcionalidad de planos de corte en el motor WebGL
+            renderer.localClippingEnabled = true;
             container.appendChild(renderer.domElement);
 
             controls = new OrbitControls(camera, renderer.domElement);
@@ -373,33 +385,10 @@
             return true;
         }
 
-        function actualizarVisibilidadNivelesDirecto() {
-            if (!modeloGlobal || rangosPisos.length === 0) return;
-
-            const estados = [];
-            for (let i = 0; i < 5; i++) {
-                const chk = document.getElementById(`chk-piso-${i+1}`);
-                estados.push(chk ? chk.checked : true);
-            }
-
-            modeloGlobal.traverse((child) => {
-                if (child.isMesh) {
-                    const pos = new THREE.Vector3();
-                    child.getWorldPosition(pos);
-                    const y = pos.y;
-
-                    let pisoEncontrado = 4;
-                    for (let i = 0; i < rangosPisos.length; i++) {
-                        if (y >= rangosPisos[i].min && y <= rangosPisos[i].max) {
-                            pisoEncontrado = i;
-                            break;
-                        }
-                    }
-
-                    child.visible = estados[pisoEncontrado];
-                }
-            });
-
+        function aplicarCorteAltura(alturaLimite) {
+            if (!planoCorteVertical) return;
+            // El plano corta todo lo que esté POR ENCIMA de la altura especificada
+            planoCorteVertical.constant = alturaLimite;
             needsRender = true;
         }
 
@@ -416,56 +405,91 @@
                 URL_GLB,
                 (gltf) => {
                     modeloGlobal = gltf.scene;
+                    
+                    // Crear un plano de corte orientado hacia abajo (normal 0, -1, 0)
+                    planoCorteVertical = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
+
+                    // Aplicar el plano de corte a cada material del modelo GLB cargado
+                    modeloGlobal.traverse((child) => {
+                        if (child.isMesh) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(mat => {
+                                    mat.clippingPlanes = [planoCorteVertical];
+                                    mat.clipShadows = true;
+                                    mat.side = THREE.DoubleSide;
+                                    mat.needsUpdate = true;
+                                });
+                            } else if (child.material) {
+                                child.material.clippingPlanes = [planoCorteVertical];
+                                child.material.clipShadows = true;
+                                child.material.side = THREE.DoubleSide;
+                                child.material.needsUpdate = true;
+                            }
+                        }
+                    });
+
                     scene.add(modeloGlobal);
                     modeloGlobal.updateMatrixWorld(true);
 
+                    // Calcular dimensiones reales del edificio
                     const boxGlobal = new THREE.Box3().setFromObject(modeloGlobal);
-                    const minY = boxGlobal.min.y;
-                    const maxY = boxGlobal.max.y;
-                    const alturaTotal = maxY - minY;
+                    alturaMinModel = boxGlobal.min.y;
+                    alturaMaxModel = boxGlobal.max.y;
+                    const alturaTotal = alturaMaxModel - alturaMinModel;
 
-                    console.log(`📊 [Diagnóstico 3D] Min Y: ${minY.toFixed(2)}, Max Y: ${maxY.toFixed(2)}, Altura Total: ${alturaTotal.toFixed(2)}`);
+                    console.log(`📊 [Clipping] Min Y: ${alturaMinModel.toFixed(2)}, Max Y: ${alturaMaxModel.toFixed(2)}, Altura Total: ${alturaTotal.toFixed(2)}`);
 
-                    const paso = alturaTotal / 5;
-                    rangosPisos = [];
-                    for (let i = 0; i < 5; i++) {
-                        rangosPisos.push({
-                            min: minY + (i * paso),
-                            max: minY + ((i + 1) * paso) + 0.001
-                        });
-                    }
+                    // Establecer inicialmente el corte hasta el tope superior para ver todo el edificio
+                    aplicarCorteAltura(alturaMaxModel + 10);
 
+                    // Crear controles interactivos en el panel lateral (botones por piso + deslizador libre)
                     layersEl.innerHTML = '';
-                    const fragment = document.createDocumentFragment();
-                    const nombresNiveles = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
+                    
+                    const divControles = document.createElement('div');
+                    divControles.innerHTML = `
+                        <button class="btn-nivel active" data-altura="max">Ver Edificio Completo</button>
+                        <hr style="border-color:#334155; margin:8px 0;">
+                        <p style="margin:4px 0; color:#94a3b8; font-size:11px;">Corte por Niveles:</p>
+                        <div id="botones-pisos-container"></div>
+                        <hr style="border-color:#334155; margin:8px 0;">
+                        <label style="color:#38bdf8; display:block; margin-bottom:4px;">Altura de Corte Libre:</label>
+                        <input type="range" id="slider-corte" min="${alturaMinModel}" max="${alturaMaxModel}" step="0.1" value="${alturaMaxModel}" style="width:100%; cursor:pointer;">
+                    `;
+                    layersEl.appendChild(divControles);
 
-                    for (let i = 0; i < 5; i++) {
-                        const layerRow = document.createElement('div');
-                        layerRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:12px; color:#cbd5e1;';
-                        
-                        const checkbox = document.createElement('input');
-                        checkbox.type = 'checkbox';
-                        checkbox.checked = true;
-                        checkbox.id = `chk-piso-${i+1}`;
-                        checkbox.style.cursor = 'pointer';
-                        
-                        const label = document.createElement('label');
-                        label.htmlFor = `chk-piso-${i+1}`;
-                        label.style.cursor = 'pointer';
-                        label.style.fontWeight = '600';
-                        label.textContent = `🏢 ${nombresNiveles[i]}`;
-                        
-                        layerRow.appendChild(checkbox);
-                        layerRow.appendChild(label);
+                    // Generar dinámicamente 5 botones de corte equivalentes a los pisos
+                    const containerPisos = divControles.querySelector('#botones-pisos-container');
+                    const pasoPiso = alturaTotal / 5;
+                    const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
 
-                        checkbox.addEventListener('change', () => {
-                            actualizarVisibilidadNivelesDirecto();
+                    nombresPisos.forEach((nombre, idx) => {
+                        const alturaPisoActual = alturaMinModel + ((idx + 1) * pasoPiso);
+                        const btn = document.createElement('button');
+                        btn.className = 'btn-nivel';
+                        btn.innerText = `🏢 Aislar hasta ${nombre}`;
+                        btn.addEventListener('click', () => {
+                            document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
+                            btn.classList.add('active');
+                            document.getElementById('slider-corte').value = alturaPisoActual;
+                            aplicarCorteAltura(alturaPisoActual);
                         });
+                        containerPisos.appendChild(btn);
+                    });
 
-                        fragment.appendChild(layerRow);
-                    }
+                    // Botón para ver completo
+                    divControles.querySelector('[data-altura="max"]').addEventListener('click', function() {
+                        document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
+                        this.classList.add('active');
+                        document.getElementById('slider-corte').value = alturaMaxModel + 10;
+                        aplicarCorteAltura(alturaMaxModel + 10);
+                    });
 
-                    layersEl.appendChild(fragment);
+                    // Evento del Slider de altura libre
+                    const slider = document.getElementById('slider-corte');
+                    slider.addEventListener('input', (e) => {
+                        document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
+                        aplicarCorteAltura(parseFloat(e.target.value));
+                    });
 
                     if (!boxGlobal.isEmpty()) {
                         const size = boxGlobal.getSize(new THREE.Vector3());
@@ -479,7 +503,7 @@
                     }
 
                     needsRender = true;
-                    statusEl.innerText = '🟢 Visor 3D Listo';
+                    statusEl.innerText = '🟢 Visor 3D Listo (Corte Activo)';
                     yaCargado = true;
                 },
                 (xhr) => {
