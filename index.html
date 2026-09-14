@@ -87,6 +87,7 @@
             z-index: 1;
             transition: opacity 0.15s ease-in-out;
             background-color: #ffffff;
+            display: none;
         }
 
         .vista.activa { 
@@ -97,7 +98,7 @@
         }
 
         /* VISTA MAPA SVG GENERAL */
-        #vista-mapa { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; background-color: #ffffff; }
+        #vista-mapa { align-items: center; justify-content: center; width: 100%; height: 100%; background-color: #ffffff; }
         #svg-object { width: 100%; height: 100%; border: none; background-color: #ffffff; }
 
         /* VISTA 3D */
@@ -106,7 +107,6 @@
 
         /* VISTA PLANTA 2D */
         #vista-2d { 
-            display: flex; 
             flex-direction: column; 
             width: 100%; 
             height: 100%; 
@@ -273,7 +273,7 @@
         <div class="sidebar-right" id="sidebar-derecha">
             <button id="btn-volver-mapa" class="btn-regresar" onclick="irAVista('vista-mapa')">🗺️ Volver al Mapa General</button>
 
-            <!-- CONTENEDOR FILTROS DÍA Y FRANJA (AHORA ENCIMA DEL NOMBRE DEL SALÓN) -->
+            <!-- CONTENEDOR FILTROS DÍA Y FRANJA (ENCIMA DEL NOMBRE DEL SALÓN) -->
             <div class="panel-filtros-container" id="panel-filtros-horario">
                 <div class="filter-group">
                     <span>🗓️ Día:</span>
@@ -467,7 +467,7 @@
             });
 
             const selectFranja = document.getElementById('select-franja');
-            const textoFranjaVisible = selectFranja.options[selectFranja.selectedIndex].text;
+            const textoFranjaVisible = selectFranja.options[selectFranja.selectedIndex] ? selectFranja.options[selectFranja.selectedIndex].text : franjaSeleccionada;
 
             if (encontrado) {
                 return {
@@ -485,10 +485,19 @@
 
         function irAVista(idVista) {
             vistaActualGlobal = idVista;
-            document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
+            
+            document.querySelectorAll('.vista').forEach(v => {
+                v.classList.remove('activa');
+                v.style.display = 'none';
+            });
+            
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             
-            document.getElementById(idVista).classList.add('activa');
+            const vistaDestino = document.getElementById(idVista);
+            if (vistaDestino) {
+                vistaDestino.classList.add('activa');
+                vistaDestino.style.display = (idVista === 'vista-2d') ? 'flex' : (idVista === 'vista-mapa' ? 'flex' : 'block');
+            }
 
             if (idVista === 'vista-mapa') document.getElementById('btn-nav-mapa').classList.add('active');
             if (idVista === 'vista-3d') document.getElementById('btn-nav-3d').classList.add('active');
@@ -515,7 +524,8 @@
                 panelFiltros.style.display = 'flex';
                 document.getElementById('titulo-vista-2d').innerText = `Planta 2D - ${pisoActual2D}`;
                 breadcrumb.innerText = `Edificio 30 Hunza (${pisoActual2D})`;
-                actualizarEstadoAulas2D();
+                
+                setTimeout(actualizarEstadoAulas2D, 150);
             } else {
                 sidebarDerecha.classList.remove('visible');
                 btnVolver.style.display = 'none';
@@ -532,14 +542,17 @@
             
             const wrapper = document.getElementById('svg-2d-wrapper');
             if (wrapper) {
-                wrapper.innerHTML = `<object id="svg-2d-object" type="image/svg+xml" data="${archivoSVG}"></object>`;
+                wrapper.innerHTML = `<object id="svg-2d-object" type="image/svg+xml" data="${archivoSVG}" style="width:100%; height:100%; border:none; object-fit:contain; background-color:#ffffff;"></object>`;
+                
                 const nuevoSvgObj = document.getElementById('svg-2d-object');
-                nuevoSvgObj.addEventListener('load', actualizarEstadoAulas2D);
+                nuevoSvgObj.addEventListener('load', () => {
+                    setTimeout(actualizarEstadoAulas2D, 100);
+                });
             }
 
             document.getElementById('titulo-vista-2d').innerText = `Planta 2D - ${pisoActual2D}`;
             irAVista('vista-2d');
-        }
+        };
 
         function actualizarEstadoAulas2D() {
             const svg2d = document.getElementById('svg-2d-object');
