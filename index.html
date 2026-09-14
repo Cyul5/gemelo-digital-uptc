@@ -65,10 +65,33 @@
         .nav-btn { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; border: none; background: transparent; transition: 0.2s; }
         .nav-btn:hover, .nav-btn.active { background: #0284c7; color: #fff; }
 
-        /* CONTENEDOR DE VISTAS */
-        .content-area { flex: 1; position: relative; background: var(--bg-dark); overflow: hidden; }
-        .vista { display: none; width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
-        .vista.activa { display: block; }
+        /* CONTENEDOR DE VISTAS CON MANEJO DE SUPERPOSICIÓN CORREGIDO */
+        .content-area { 
+            flex: 1; 
+            position: relative; 
+            background: var(--bg-dark); 
+            overflow: hidden; 
+        }
+
+        .vista { 
+            width: 100%; 
+            height: 100%; 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            opacity: 0;
+            pointer-events: none;
+            visibility: hidden;
+            z-index: 1;
+            transition: opacity 0.15s ease-in-out;
+        }
+
+        .vista.activa { 
+            opacity: 1;
+            pointer-events: auto;
+            visibility: visible;
+            z-index: 10;
+        }
 
         /* VISTA MAPA SVG GENERAL */
         #vista-mapa { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
@@ -78,10 +101,37 @@
         #vista-3d { width: 100%; height: 100%; }
         #ifc-canvas-container { width: 100%; height: 100%; }
 
-        /* VISTA PLANTA 2D */
-        #vista-2d { display: flex; flex-direction: column; width: 100%; height: 100%; padding: 15px; color: white; }
-        .container-svg-2d { flex: 1; width: 100%; height: calc(100% - 50px); display: flex; align-items: center; justify-content: center; background: #070d19; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-        #svg-2d-object { width: 100%; height: 100%; border: none; }
+        /* VISTA PLANTA 2D CON ENMARCADO Y OVERFLOW CONTROLADO */
+        #vista-2d { 
+            display: flex; 
+            flex-direction: column; 
+            width: 100%; 
+            height: 100%; 
+            padding: 15px; 
+            color: white; 
+            box-sizing: border-box;
+        }
+
+        .container-svg-2d { 
+            flex: 1; 
+            width: 100%; 
+            height: calc(100% - 50px); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            background: #070d19; 
+            border: 1px solid var(--border); 
+            border-radius: 8px; 
+            overflow: hidden; 
+            position: relative;
+        }
+
+        #svg-2d-object { 
+            width: 100%; 
+            height: 100%; 
+            border: none; 
+            object-fit: contain;
+        }
 
         /* PANEL DERECHO DE DATOS */
         .sidebar-right { width: 340px; background-color: var(--bg-panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; padding: 18px; z-index: 50; overflow-y: auto; }
@@ -397,16 +447,40 @@
         window.addEventListener('load', () => {
             const svgObj = document.getElementById('svg-object');
             if (svgObj) {
-                svgObj.addEventListener('load', () => {
+                const conectarHunza = () => {
                     const svgDoc = svgObj.contentDocument;
                     if (svgDoc) {
-                        const elHunza = svgDoc.getElementById('HUNZA') || svgDoc.querySelector('[id*="HUNZA" i]');
+                        const elHunza = svgDoc.getElementById('HUNZA') || 
+                                        svgDoc.getElementById('hunza') || 
+                                        svgDoc.querySelector('#HUNZA') ||
+                                        svgDoc.querySelector('[id="HUNZA"]') ||
+                                        svgDoc.querySelector('[id*="HUNZA" i]');
+
                         if (elHunza) {
                             elHunza.style.cursor = 'pointer';
-                            elHunza.addEventListener('click', () => irAVista('vista-3d'));
+                            elHunza.style.transition = 'opacity 0.2s, filter 0.2s';
+                            
+                            elHunza.addEventListener('mouseenter', () => {
+                                elHunza.style.opacity = '0.7';
+                                elHunza.style.filter = 'drop-shadow(0px 0px 8px #00b4d8)';
+                            });
+                            elHunza.addEventListener('mouseleave', () => {
+                                elHunza.style.opacity = '1';
+                                elHunza.style.filter = 'none';
+                            });
+
+                            elHunza.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                irAVista('vista-3d');
+                            });
                         }
                     }
-                });
+                };
+
+                svgObj.addEventListener('load', conectarHunza);
+                if (svgObj.contentDocument && svgObj.contentDocument.readyState === 'complete') {
+                    conectarHunza();
+                }
             }
 
             const svg2dObj = document.getElementById('svg-2d-object');
