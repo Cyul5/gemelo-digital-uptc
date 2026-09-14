@@ -291,7 +291,7 @@
         inicializarDatosBase();
     </script>
 
-    <!-- SCRIPT THREE.JS CON PLANOS DE CORTE DINÁMICOS Y NORMALIZACIÓN A Y=0 -->
+    <!-- SCRIPT THREE.JS CORREGIDO CON CENTRADO EN ORIGEN (0,0) Y BASE EN Y=0 -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -334,7 +334,6 @@
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
             renderer.outputColorSpace = THREE.SRGBColorSpace;
             
-            // Habilitar la funcionalidad de planos de corte en el motor WebGL
             renderer.localClippingEnabled = true;
             container.appendChild(renderer.domElement);
 
@@ -351,7 +350,7 @@
             scene.add(dirLight1);
 
             const gridHelper = new THREE.GridHelper(300, 60, 0x00b4d8, 0x1e293b);
-            gridHelper.position.y = -0.1;
+            gridHelper.position.y = -0.01;
             scene.add(gridHelper);
 
             window.addEventListener('resize', () => {
@@ -404,33 +403,42 @@
                 URL_GLB,
                 (gltf) => {
                     modeloGlobal = gltf.scene;
-                    
-                    // 1. Centrar la base del modelo exactamente en Y = 0
+
+                    // 1. Forzar actualización de matrices globales antes de medir
+                    modeloGlobal.updateMatrixWorld(true);
+
+                    // 2. Calcular límites exactos considerando todos los hijos anidados
                     const boxTemp = new THREE.Box3().setFromObject(modeloGlobal);
-                    const minYOriginal = boxTemp.min.y;
-                    modeloGlobal.position.y -= minYOriginal; 
+                    const minY = boxTemp.min.y;
+                    const center = boxTemp.getCenter(new THREE.Vector3());
+                    const size = boxTemp.getSize(new THREE.Vector3());
+
+                    // 3. Trasladar la geometría al centro absoluto de la grilla (X=0, Z=0) y base en Y=0
+                    modeloGlobal.position.x -= center.x;
+                    modeloGlobal.position.z -= center.z;
+                    modeloGlobal.position.y -= minY; 
 
                     modeloGlobal.updateMatrixWorld(true);
 
-                    // Recalcular caja delimitadora con la base en el origen
+                    // Recalcular la caja delimitadora final perfectamente ajustada
                     const boxGlobal = new THREE.Box3().setFromObject(modeloGlobal);
-                    alturaMinModel = boxGlobal.min.y; 
-                    alturaMaxModel = boxGlobal.max.y; 
+                    alturaMinModel = boxGlobal.min.y; // 0
+                    alturaMaxModel = boxGlobal.max.y; // Altura real del edificio
                     const alturaTotal = alturaMaxModel - alturaMinModel;
 
-                    console.log(`📊 [Clipping Corregido] Base Y: ${alturaMinModel.toFixed(2)}, Tope Y: ${alturaMaxModel.toFixed(2)}, Altura Total: ${alturaTotal.toFixed(2)}`);
+                    console.log(`📊 [Modelo Centrado en Y=0] MinY: ${alturaMinModel.toFixed(2)}, MaxY: ${alturaMaxModel.toFixed(2)}, Altura Total: ${alturaTotal.toFixed(2)}`);
 
-                    // 2. Crear plano de corte apuntando hacia abajo
+                    // 4. Crear plano de corte apuntando hacia abajo
                     planoCorteVertical = new THREE.Plane(new THREE.Vector3(0, -1, 0), alturaMaxModel + 10);
 
-                    // Aplicar el plano de corte y doble cara a los materiales
+                    // Aplicar plano y doble cara a los materiales
                     modeloGlobal.traverse((child) => {
                         if (child.isMesh) {
                             if (Array.isArray(child.material)) {
                                 child.material.forEach(mat => {
                                     mat.clippingPlanes = [planoCorteVertical];
                                     mat.clipShadows = true;
-                                    mat.side = THREE.DoubleSide; 
+                                    mat.side = THREE.DoubleSide;
                                     mat.shadowSide = THREE.DoubleSide;
                                     mat.needsUpdate = true;
                                 });
@@ -446,7 +454,7 @@
 
                     scene.add(modeloGlobal);
 
-                    // Configurar controles y slider basados en alturas reales normalizadas (0 a Max)
+                    // Configurar controles y slider basados en alturas reales
                     layersEl.innerHTML = '';
                     
                     const divControles = document.createElement('div');
@@ -502,12 +510,12 @@
 
                     // Enfocar cámara correctamente al centro del edificio normalizado
                     if (!boxGlobal.isEmpty()) {
-                        const size = boxGlobal.getSize(new THREE.Vector3());
-                        const center = boxGlobal.getCenter(new THREE.Vector3());
+                        const newCenter = boxGlobal.getCenter(new THREE.Vector3());
+                        const sizeWorld = boxGlobal.getSize(new THREE.Vector3());
 
-                        controls.target.copy(center);
-                        const maxDim = Math.max(size.x, size.y, size.z);
-                        camera.position.set(center.x + maxDim * 1.2, center.y + maxDim * 1.0, center.z + maxDim * 1.2);
+                        controls.target.copy(newCenter);
+                        const maxDim = Math.max(sizeWorld.x, sizeWorld.y, sizeWorld.z);
+                        camera.position.set(newCenter.x + maxDim * 1.2, newCenter.y + maxDim * 0.8, newCenter.z + maxDim * 1.2);
                         camera.updateProjectionMatrix();
                         controls.update();
                     }
