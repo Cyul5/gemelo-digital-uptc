@@ -37,7 +37,7 @@
         .vista { display: none; width: 100%; height: 100%; position: relative; }
         .vista.activa { display: block; }
         #vista-3d { flex: 1; height: 100%; position: relative; }
-        #ifc-canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; cursor: pointer; }
+        #ifc-canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; cursor: default; }
         
         /* VISTA 2D SIMPLE DE EJEMPLO */
         #vista-2d { padding: 30px; background: #020617; }
@@ -120,7 +120,7 @@
         }
     </script>
 
-    <!-- SCRIPT THREE.JS: RAYCASTER Y DOBLE PLANO DE CORTE -->
+    <!-- SCRIPT THREE.JS: HOVER ILUMINADO Y DOBLE PLANO DE CORTE -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -138,6 +138,10 @@
         let planoSuperior = null;
         let alturaMinModel = 0, alturaMaxModel = 100;
         let pasoPisoGlobal = 20;
+
+        // Arreglos para almacenar las mallas clasificadas por piso para el efecto hover
+        let pisosMeshes = [[], [], [], [], []];
+        let pisoHoveredActual = -1;
 
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
 
@@ -184,7 +188,7 @@
             gridHelper.position.y = -0.01;
             scene.add(gridHelper);
 
-            // DETECCIÓN DE CLIC EN EL MODELO 3D (RAYCASTER)
+            // GESTIÓN DE HOVER Y CLIC CON RAYCASTER
             const raycaster = new THREE.Raycaster();
             const mouse = new THREE.Vector2();
             let pointerDownPos = { x: 0, y: 0 };
@@ -194,10 +198,65 @@
                 pointerDownPos.y = e.clientY;
             });
 
+            // EFECTO HOVER AL MOVER EL PUNTERO
+            container.addEventListener('pointermove', (e) => {
+                const rect = container.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                if (!modeloGlobal) return;
+
+                const intersects = raycaster.intersectObject(modeloGlobal, true);
+                
+                let nuevoPisoHover = -1;
+                if (intersects.length > 0) {
+                    container.style.cursor = 'pointer';
+                    const puntoIntersec = intersects[0].point;
+                    const alturaRelativa = puntoIntersec.y - alturaMinModel;
+                    nuevoPisoHover = Math.floor(alturaRelativa / pasoPisoGlobal);
+                    nuevoPisoHover = Math.max(0, Math.min(nuevoPisoHover, 4));
+                } else {
+                    container.style.cursor = 'default';
+                }
+
+                // Cambiar iluminación (emissive) del piso en hover
+                if (nuevoPisoHover !== pisoHoveredActual) {
+                    // Apagar brillo del piso anterior
+                    if (pisoHoveredActual !== -1 && pisosMeshes[pisoHoveredActual]) {
+                        pisosMeshes[pisoHoveredActual].forEach(mesh => {
+                            if (mesh.material) {
+                                if (Array.isArray(mesh.material)) {
+                                    mesh.material.forEach(m => { if (m.emissive) m.emissive.setHex(0x000000); });
+                                } else if (mesh.material.emissive) {
+                                    mesh.material.emissive.setHex(0x000000);
+                                }
+                            }
+                        });
+                    }
+
+                    pisoHoveredActual = nuevoPisoHover;
+
+                    // Encender brillo (iluminar) del nuevo piso
+                    if (pisoHoveredActual !== -1 && pisosMeshes[pisoHoveredActual]) {
+                        pisosMeshes[pisoHoveredActual].forEach(mesh => {
+                            if (mesh.material) {
+                                if (Array.isArray(mesh.material)) {
+                                    mesh.material.forEach(m => { if (m.emissive) m.emissive.setHex(0x005577); });
+                                } else if (mesh.material.emissive) {
+                                    mesh.material.emissive.setHex(0x005577);
+                                }
+                            }
+                        });
+                    }
+                    needsRender = true;
+                }
+            });
+
+            // CLIC PARA IR A LA VISTA 2D DEL PISO
             container.addEventListener('pointerup', (e) => {
-                // Verificar que no haya sido un arrastre de cámara (orbit)
                 const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
-                if (dist > 5) return; 
+                if (dist > 5) return; // Si fue un arrastre de cámara, ignorar
 
                 const rect = container.getBoundingClientRect();
                 mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
@@ -209,14 +268,12 @@
                 const intersects = raycaster.intersectObject(modeloGlobal, true);
                 if (intersects.length > 0) {
                     const puntoIntersec = intersects[0].point;
-                    // Calcular a qué altura (piso) corresponde el clic relativo a la base del modelo
                     const alturaRelativa = puntoIntersec.y - alturaMinModel;
                     let indicePiso = Math.floor(alturaRelativa / pasoPisoGlobal);
                     
                     const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
                     indicePiso = Math.max(0, Math.min(indicePiso, nombresPisos.length - 1));
 
-                    // Redirigir a la vista 2D del piso detectado
                     if (window.irAVista2DPiso) {
                         window.irAVista2DPiso(nombresPisos[indicePiso]);
                     }
@@ -296,6 +353,9 @@
                     planoSuperior = new THREE.Plane(new THREE.Vector3(0, -1, 0), alturaMaxModel + 50);
                     const arrayPlanosCorte = [planoInferior, planoSuperior];
 
+                    // Reiniciar arreglos de pisos
+                    pisosMeshes = [[], [], [], [], []];
+
                     modeloGlobal.traverse((child) => {
                         if (child.isMesh) {
                             if (Array.isArray(child.material)) {
@@ -313,6 +373,13 @@
                                 child.material.shadowSide = THREE.DoubleSide;
                                 child.material.needsUpdate = true;
                             }
+
+                            // Clasificar la malla en su respectivo piso según su altura central
+                            const boxMalla = new THREE.Box3().setFromObject(child);
+                            const centerY = boxMalla.getCenter(new THREE.Vector3()).y;
+                            let idxPiso = Math.floor((centerY - alturaMinModel) / pasoPisoGlobal);
+                            idxPiso = Math.max(0, Math.min(idxPiso, 4));
+                            pisosMeshes[idxPiso].push(child);
                         }
                     });
 
@@ -365,7 +432,7 @@
                     }
 
                     needsRender = true;
-                    statusEl.innerText = '🟢 Visor 3D Listo (Haz clic en un piso)';
+                    statusEl.innerText = '🟢 Listo: Pasa el mouse e ilumina pisos';
                     yaCargado = true;
                 },
                 (xhr) => {
