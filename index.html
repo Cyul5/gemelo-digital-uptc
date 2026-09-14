@@ -36,13 +36,23 @@
         /* VISTAS */
         .vista { display: none; width: 100%; height: 100%; position: relative; }
         .vista.activa { display: block; }
+        
+        /* VISTA 1: MAPA GENERAL / INICIO */
+        #vista-mapa { display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle at center, #1e293b 0%, #0a1120 100%); padding: 20px; text-align: center; }
+        .map-card { background: rgba(30, 41, 59, 0.8); border: 1px solid var(--border); border-radius: 12px; padding: 30px; max-width: 500px; width: 100%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); backdrop-filter: blur(5px); }
+        .map-card h2 { color: var(--accent); margin-bottom: 15px; font-size: 22px; }
+        .map-card p { color: var(--text-muted); margin-bottom: 25px; font-size: 14px; line-height: 1.5; }
+        .btn-primary { background: var(--accent); color: #0f172a; border: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: all 0.2s; font-size: 14px; }
+        .btn-primary:hover { background: #0096c7; transform: translateY(-2px); }
+
+        /* VISTA 2: 3D */
         #vista-3d { flex: 1; height: 100%; position: relative; }
         #ifc-canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; cursor: default; }
         
-        /* VISTA 2D SIMPLE DE EJEMPLO */
+        /* VISTA 3: 2D PLANO */
         #vista-2d { padding: 30px; background: #020617; }
         
-        /* PANEL DERECHO */
+        /* PANEL DERECHO (Visible en 3D) */
         .sidebar-right { width: 320px; background-color: var(--bg-panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; padding: 15px; overflow-y: auto; z-index: 10; }
         .panel-section { margin-bottom: 20px; }
         .panel-section h3 { font-size: 14px; color: var(--accent); margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -67,23 +77,37 @@
         <div class="header-title">
             UPTC SIG <span>Gemelo Digital Sede Central Tunja</span> Edificio 30 Hunza
         </div>
+        <button class="btn-nivel" style="width: auto; padding: 6px 12px; margin: 0;" onclick="irAVista('vista-mapa')">🗺️ Mapa General</button>
     </header>
 
     <div class="main-container">
-        <!-- VISTA 3D -->
-        <div id="vista-3d" class="vista activa">
+        <!-- VISTA 1: MAPA GENERAL / INICIO -->
+        <div id="vista-mapa" class="vista activa">
+            <div class="map-card">
+                <h2>Campus Sede Central Tunja</h2>
+                <p>Bienvenido al sistema de gemelos digitales de la UPTC. Selecciona el edificio para acceder al modelo BIM interactivo detallado.</p>
+                <div style="background: #0f172a; padding: 15px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 20px; text-align: left;">
+                    <p><strong>Edificio Seleccionado:</strong> Edificio 30 - Aulas Hunza</p>
+                    <p><strong>Estado:</strong> Disponible (BIM 3D)</p>
+                </div>
+                <button class="btn-primary" onclick="irAVista('vista-3d')">Entrar al Edificio 30 ➡</button>
+            </div>
+        </div>
+
+        <!-- VISTA 2: 3D -->
+        <div id="vista-3d" class="vista">
             <div id="ifc-canvas-container"></div>
         </div>
 
-        <!-- VISTA 2D -->
+        <!-- VISTA 3: 2D -->
         <div id="vista-2d" class="vista">
             <h2 id="titulo-vista-2d" style="color: var(--accent); margin-bottom: 15px;">Planta 2D - Nivel</h2>
             <p style="color: var(--text-muted); margin-bottom: 20px;">Visualizando distribución de aulas y espacios correspondientes al nivel seleccionado.</p>
-            <button class="btn-nivel" style="width: 200px;" onclick="irAVista3D()">⬅ Volver al Modelo 3D</button>
+            <button class="btn-nivel" style="width: 200px;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
         </div>
 
-        <!-- PANEL LATERAL -->
-        <div class="sidebar-right">
+        <!-- PANEL LATERAL (Solo visible en 3D) -->
+        <div class="sidebar-right" id="panel-lateral-derecho">
             <div class="panel-section">
                 <h3>Corte de Niveles (BIM)</h3>
                 <div id="ifc-status"><span class="loading-spinner"></span> Inicializando visor...</div>
@@ -108,6 +132,16 @@
         function irAVista(idVista) {
             document.querySelectorAll('.vista').forEach(v => v.classList.remove('activa'));
             document.getElementById(idVista).classList.add('activa');
+
+            // Mostrar u ocultar el panel derecho dependiendo de si estamos en 3D
+            const panel = document.getElementById('panel-lateral-derecho');
+            if (idVista === 'vista-3d') {
+                panel.style.display = 'flex';
+                // Forzar redimensionamiento del canvas 3D al volver a activarlo
+                window.dispatchEvent(new Event('resize'));
+            } else {
+                panel.style.display = 'none';
+            }
         }
 
         window.irAVista3D = function() {
@@ -120,7 +154,7 @@
         }
     </script>
 
-    <!-- SCRIPT THREE.JS CORREGIDO (ZOOM SUAVE, HOVER Y CORTE) -->
+    <!-- SCRIPT THREE.JS -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -176,8 +210,6 @@
             controls.dampingFactor = 0.08;
             controls.minDistance = 2;
             controls.maxDistance = 800;
-            
-            // 🎛️ Control de velocidad de zoom suave y equilibrado
             controls.zoomSpeed = 0.5;
 
             controls.addEventListener('change', () => { needsRender = true; });
