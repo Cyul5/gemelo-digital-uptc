@@ -188,7 +188,7 @@
             <div class="filter-group">
                 <span>⏰ Franja:</span>
                 <select id="select-franja" class="filter-select" onchange="actualizarEstadoAulas2D()">
-                    <!-- Se llena dinámicamente de 7-8 a 22-23 -->
+                    <!-- Se llena dinámicamente con horas en formato 07:00 - 08:00 -->
                 </select>
             </div>
         </div>
@@ -286,19 +286,27 @@
     <script>
         let registrosHorariosExcel = []; // Guarda las celdas procesadas
         let pisoActual2D = "Piso 1";
+        let aulaSeleccionadaActual = null; // Rastrea el aula seleccionada activa en el panel
 
+        // 1. GENERAR FRANJAS HORARIAS EN FORMATO LIMPIO (07:00 - 08:00)
         function inicializarFranjasHorarias() {
             const selectFranja = document.getElementById('select-franja');
             selectFranja.innerHTML = '';
             for (let h = 7; h < 23; h++) {
                 const opt = document.createElement('option');
-                opt.value = `${h} - ${h + 1}`;
-                opt.innerText = `${h < 10 ? '0'+h : h}:00 - ${h+1 < 10 ? '0'+(h+1) : h+1}:00 (${h} - ${h+1})`;
+                // Valor interno que coincide con la clave en Excel ("7 - 8")
+                opt.value = `${h} - ${h + 1}`; 
+                
+                // Texto legible visual ("07:00 - 08:00")
+                const inicio = h < 10 ? `0${h}:00` : `${h}:00`;
+                const fin = (h + 1) < 10 ? `0${h + 1}:00` : `${h + 1}:00`;
+                opt.innerText = `${inicio} - ${fin}`;
+                
                 selectFranja.appendChild(opt);
             }
         }
 
-        // PARSER ASÍNCRONO DEL ARCHIVO EXCEL MATRICIAL CON CELDAS COMBINADAS
+        // 2. PARSER ASÍNCRONO DEL ARCHIVO EXCEL MATRICIAL CON CELDAS COMBINADAS
         async function cargarExcelRealRepo() {
             const statusTag = document.getElementById('excel-status-tag');
             try {
@@ -329,8 +337,8 @@
                 });
 
                 // Detectar Fila de Encabezados (Días) y Fila de Datos
-                let colEspacio = 1; // Columna B por defecto (Código de espacio)
-                let colHoras = 2;   // Columna C por defecto (Horas)
+                let colEspacio = 1; // Columna B (Código de espacio)
+                let colHoras = 2;   // Columna C (Horas)
                 let headerRowIdx = -1;
                 let diasHeaders = {};
 
@@ -372,7 +380,7 @@
                     const valHoraRaw = String(row[colHoras] || "").trim();
                     if (!valHoraRaw || !espacioActual) continue;
 
-                    // Normalizar hora "7 - 8" o "07:00 - 08:00"
+                    // Normalizar formato de hora
                     const horaLimpia = valHoraRaw.replace(/\s+/g, '');
 
                     // Iterar por cada columna de día
@@ -400,27 +408,32 @@
             }
         }
 
-        // BÚSQUEDA EN TIEMPO REAL
+        // 3. CONSULTA EN TIEMPO REAL CON MATCH EXACTO DE FRANJA
         function consultarHorarioAula(aula, dia, franjaSeleccionada) {
-            const franjaLimpia = franjaSeleccionada.replace(/\s+/g, '');
+            const franjaBuscada = franjaSeleccionada.replace(/\s+/g, '');
 
-            const encontrado = registrosHorariosExcel.find(r => 
-                r.aula.toUpperCase() === aula.toUpperCase() &&
-                r.dia.toLowerCase() === dia.toLowerCase() &&
-                (r.hora === franjaLimpia || r.hora.includes(franjaLimpia))
-            );
+            const encontrado = registrosHorariosExcel.find(r => {
+                const aulaMatch = r.aula.toUpperCase() === aula.toUpperCase();
+                const diaMatch = r.dia.toLowerCase() === dia.toLowerCase();
+                const horaMatch = r.hora.replace(/\s+/g, '') === franjaBuscada;
+
+                return aulaMatch && diaMatch && horaMatch;
+            });
+
+            const selectFranja = document.getElementById('select-franja');
+            const textoFranjaVisible = selectFranja.options[selectFranja.selectedIndex].text;
 
             if (encontrado) {
                 return {
                     estado: "Ocupado",
                     detalle: encontrado.detalle,
-                    franja: franjaSeleccionada
+                    franja: textoFranjaVisible
                 };
             }
             return {
                 estado: "Libre",
-                detalle: "",
-                franja: franjaSeleccionada
+                detalle: "Sin clase o evento programado",
+                franja: textoFranjaVisible
             };
         }
 
@@ -463,6 +476,7 @@
             irAVista('vista-2d');
         }
 
+        // 4. ACTUALIZACIÓN REACTIVA DE PLANO 2D Y PANEL LATERAL
         function actualizarEstadoAulas2D() {
             const svg2d = document.getElementById('svg-2d-object');
             if (!svg2d) return;
@@ -495,10 +509,18 @@
 
                     elAula.onclick = (e) => {
                         e.stopPropagation();
-                        mostrarDetalleAulaPanel(codigoAula, infoHorario);
+                        aulaSeleccionadaActual = codigoAula;
+                        const infoAlMomento = consultarHorarioAula(codigoAula, document.getElementById('select-dia').value, document.getElementById('select-franja').value);
+                        mostrarDetalleAulaPanel(codigoAula, infoAlMomento);
                     };
                 }
             });
+
+            // Si hay un aula activa en pantalla, refrescar su información al cambiar día u hora
+            if (aulaSeleccionadaActual) {
+                const infoActualizada = consultarHorarioAula(aulaSeleccionadaActual, diaSeleccionado, franjaSeleccionada);
+                mostrarDetalleAulaPanel(aulaSeleccionadaActual, infoActualizada);
+            }
         }
 
         function mostrarDetalleAulaPanel(codigoAula, info) {
@@ -520,7 +542,7 @@
                 </div>
                 <div class="info-group">
                     <div class="info-label">Actividad / Asignatura:</div>
-                    <div class="info-val">${info.detalle || 'Sin clase o evento programado'}</div>
+                    <div class="info-val">${info.detalle}</div>
                 </div>
                 <div class="info-group">
                     <div class="info-label">Franja Horaria:</div>
@@ -534,6 +556,7 @@
         }
 
         function restablecerPanelEdificio() {
+            aulaSeleccionadaActual = null;
             document.getElementById('panel-derecho-titulo').innerHTML = `📊 Datos del Edificio`;
             document.getElementById('panel-contenido').innerHTML = `
                 <div class="info-group">
@@ -559,7 +582,7 @@
             `;
         }
 
-        // EVENTOS AL CORTAR EL DOM
+        // EVENTOS DE CARGA DEL DOM
         window.addEventListener('load', () => {
             inicializarFranjasHorarias();
             cargarExcelRealRepo();
