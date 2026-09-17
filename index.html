@@ -3,717 +3,692 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UPTC SIG - Gestor de Información</title>
+    <title>Dashboard interactivo - Edificio Aulas</title>
     
-    <!-- LECTURA REAL DE EXCEL (SheetJS) -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- LIBRERÍAS DE ESTILOS Y ICONOS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- CHART.JS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Import Maps para Three.js -->
+    <!-- MAPBOX GL JS -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+
+    <!-- IMPORT MAPS PARA THREE.JS -->
     <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
         }
+    }
     </script>
 
     <style>
         :root {
-            --bg-dark: #ffffff;
-            --bg-header: #070d19;
-            --bg-panel: #0b1324;
-            --bg-card: #111c33;
-            --accent: #00b4d8;
-            --border: #e2e8f0;
-            --text-main: #f8fafc;
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --accent-blue: #00b4d8;
+            --accent-green: #10b981;
             --text-muted: #94a3b8;
-            --green: #10b981;
-            --red: #ef4444;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
-        body { background-color: var(--bg-dark); color: #0f172a; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-
-        /* HEADER */
-        header { 
-            height: 50px; 
-            background-color: var(--bg-header); 
-            border-bottom: 1px solid #1e293b; 
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between; 
-            padding: 0 16px; 
-            z-index: 100;
-            color: var(--text-main);
-        }
-        .header-left { display: flex; align-items: center; gap: 12px; font-size: 14px; }
-        .brand { font-weight: 800; font-size: 15px; letter-spacing: 0.5px; }
-        .tag { background: #0284c7; color: #fff; font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: 600; }
-        .sub-title { color: var(--text-muted); font-size: 13px; }
-
-        .header-right { display: flex; align-items: center; gap: 16px; }
-        .search-box { position: relative; }
-        .search-box input { background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 5px 10px 5px 28px; color: #fff; font-size: 12px; width: 220px; }
-        .search-box::before { content: "🔍"; position: absolute; left: 8px; top: 4px; font-size: 11px; opacity: 0.6; }
-        .excel-status { font-size: 11px; color: var(--green); display: flex; align-items: center; gap: 6px; font-weight: 500; }
-        .dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; display: inline-block; }
-
-        /* LAYOUT PRINCIPAL */
-        .app-body { display: flex; flex: 1; height: calc(100vh - 50px); position: relative; }
-
-        /* BARRA NAVEGACIÓN IZQUIERDA */
-        .sidebar-left { width: 48px; background-color: var(--bg-header); border-right: 1px solid #1e293b; display: flex; flex-direction: column; align-items: center; padding-top: 10px; gap: 15px; z-index: 50; }
-        .nav-btn { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; border: none; background: transparent; transition: 0.2s; }
-        .nav-btn:hover, .nav-btn.active { background: #0284c7; color: #fff; }
-
-        /* CONTENEDOR DE VISTAS OPTIMIZADO */
-        .content-area { 
-            flex: 1; 
-            position: relative; 
-            background: #ffffff;
-            overflow: hidden; 
-        }
-
-        .vista { 
-            width: 100%; 
-            height: 100%; 
-            position: absolute; 
-            top: 0; 
-            left: 0; 
-            opacity: 0;
-            pointer-events: none;
-            visibility: hidden;
-            z-index: 1;
-            transition: opacity 0.15s ease-in-out;
-            background-color: #ffffff;
-            display: flex;
-        }
-
-        .vista.activa { 
-            opacity: 1;
-            pointer-events: auto;
-            visibility: visible;
-            z-index: 10;
-        }
-
-        /* VISTA MAPA SVG GENERAL */
-        #vista-mapa { align-items: center; justify-content: center; width: 100%; height: 100%; background-color: #ffffff; }
-        #svg-object { width: 100%; height: 100%; border: none; background-color: #ffffff; }
-
-        /* VISTA 3D */
-        #vista-3d { width: 100%; height: 100%; background-color: #ffffff; display: block; }
-        #ifc-canvas-container { width: 100%; height: 100%; background-color: #ffffff; }
-
-        /* VISTA PLANTA 2D */
-        #vista-2d { 
-            flex-direction: column; 
-            width: 100%; 
-            height: 100%; 
-            padding: 15px; 
-            color: #0f172a; 
-            box-sizing: border-box;
-            background-color: #ffffff;
-        }
-
-        .container-svg-2d { 
-            flex: 1; 
-            width: 100%; 
-            height: calc(100% - 50px); 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            background: #ffffff;
-            border: 1px solid var(--border); 
-            border-radius: 8px; 
-            overflow: hidden; 
-            position: relative;
-        }
-
-        #svg-2d-object { 
-            width: 100%; 
-            height: 100%; 
-            border: none; 
-            object-fit: contain;
-            background-color: #ffffff;
-        }
-
-        /* PANEL DERECHO DE DATOS */
-        .sidebar-right { 
-            width: 340px; 
-            background-color: var(--bg-panel); 
-            border-left: 1px solid #1e293b; 
-            display: flex; 
-            flex-direction: column; 
-            padding: 18px; 
-            z-index: 50; 
-            overflow-y: auto; 
-            color: var(--text-main);
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-            transform: translateX(20px);
-            transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
-        }
-
-        .sidebar-right.visible {
-            opacity: 1;
-            visibility: visible;
-            pointer-events: auto;
-            transform: translateX(0);
-        }
-
-        /* CONTENEDOR FILTROS EN BARRA LATERAL DERECHA */
-        .panel-filtros-container {
-            background: var(--bg-card);
-            border: 1px solid #1e293b;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 16px;
+        body {
+            background-color: var(--bg-dark);
+            color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            gap: 10px;
-        }
-        .filter-group { 
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between; 
-            font-size: 12px; 
-            color: var(--text-muted); 
-        }
-        .filter-select { 
-            background: #0f172a; 
-            border: 1px solid #1e293b; 
-            color: #fff; 
-            padding: 5px 8px; 
-            border-radius: 4px; 
-            font-size: 12px; 
-            cursor: pointer; 
-            width: 160px;
+            overflow: hidden;
         }
 
-        .panel-title { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; text-transform: uppercase; }
-        
-        .info-group { margin-bottom: 12px; font-size: 13px; }
-        .info-label { color: var(--text-muted); font-size: 12px; margin-bottom: 2px; }
-        .info-val { font-weight: 600; color: #f1f5f9; white-space: pre-line; }
+        /* BARRA SUPERIOR */
+        .navbar {
+            background-color: #1e293b;
+            border-bottom: 1px solid #334155;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 50;
+        }
 
-        .badge-estado { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
-        .badge-ocupado { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
-        .badge-libre { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
+        /* PESTAÑAS DE NAVEGACIÓN */
+        .tab-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            color: var(--text-muted);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
 
-        .excel-box { background: var(--bg-card); border: 1px solid #1e293b; border-radius: 6px; padding: 10px; margin-top: 20px; font-size: 11px; color: var(--text-muted); }
+        .tab-btn:hover {
+            color: #ffffff;
+            background-color: #334155;
+        }
 
-        .btn-regresar { background: #0284c7; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; margin-bottom: 15px; display: none; width: 100%; text-align: center; }
-        
-        .btn-nivel { width: 100%; background: var(--bg-card); color: var(--text-main); border: 1px solid #1e293b; padding: 8px 12px; text-align: left; border-radius: 6px; cursor: pointer; margin-bottom: 6px; font-size: 12px; transition: all 0.2s; }
-        .btn-nivel:hover { background: #1e293b; border-color: var(--accent); }
-        .btn-nivel.active { background: rgba(0,180,216,0.2); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+        .tab-btn.active {
+            color: #ffffff;
+            background-color: #0284c7;
+        }
 
-        .loading-spinner { width: 12px; height: 12px; border: 2px solid var(--text-muted); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        /* CONTENEDOR DE SECCIONES */
+        .main-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tab-content {
+            display: none;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        /* VISUALIZADOR 3D */
+        #ifc-canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background-color: #ffffff;
+        }
+
+        /* ESTILOS MAPA */
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* PANELES DE CONTROL FLOTANTES */
+        .floating-panel {
+            position: absolute;
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid #334155;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            z-index: 10;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            max-height: 90%;
+            overflow-y: auto;
+        }
+
+        .panel-right {
+            top: 1rem;
+            right: 1rem;
+            width: 300px;
+        }
+
+        .panel-left {
+            top: 1rem;
+            left: 1rem;
+            width: 320px;
+        }
+
+        /* TABLAS Y GRÁFICOS */
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+
+        /* ESTILOS DE BOTONES EN PANEL 3D */
+        .btn-nivel {
+            width: 100%;
+            text-align: left;
+            padding: 6px 12px;
+            margin-bottom: 4px;
+            background: #334155;
+            color: #cbd5e1;
+            border: 1px solid #475569;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .btn-nivel:hover {
+            background: #0284c7;
+            color: white;
+            border-color: #38bdf8;
+        }
+        .btn-nivel.active {
+            background: #0284c7;
+            color: white;
+            font-weight: bold;
+            border-color: #38bdf8;
+        }
+
+        .loading-spinner {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            border-top: 3px solid #00b4d8;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* SECCIÓN PLANOS 2D INTERACTIVOS */
+        .svg-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #0f172a;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .aula-polygon {
+            fill: #1e293b;
+            stroke: #38bdf8;
+            stroke-width: 2;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .aula-polygon:hover {
+            fill: #0284c7;
+            stroke: #ffffff;
+            stroke-width: 3;
+            filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.8));
+        }
+
+        .aula-polygon.selected {
+            fill: #10b981 !important;
+            stroke: #ffffff;
+            stroke-width: 3;
+        }
+
+        .aula-texto {
+            fill: #ffffff;
+            font-size: 14px;
+            font-weight: bold;
+            pointer-events: none;
+            text-anchor: middle;
+            dominant-baseline: middle;
+        }
     </style>
 </head>
 <body>
 
-    <!-- HEADER TOP -->
-    <header>
-        <div class="header-left">
-            <span class="brand">UPTC SIG</span>
-            <span class="tag">Gestor de Información</span>
-            <span class="sub-title" id="breadcrumb">Sede Central (Plano General)</span>
+    <!-- NAV BARRA SUPERIOR -->
+    <header class="navbar">
+        <div class="flex items-center space-x-3">
+            <i class="fa-solid fa-building-user text-sky-400 text-2xl"></i>
+            <div>
+                <h1 class="font-bold text-lg leading-none">Edificio de Aulas - Campus Central</h1>
+                <p class="text-xs text-slate-400">Sistema de Gestión Geospacial y Modelado 3D (BIM/GIS)</p>
+            </div>
         </div>
 
-        <div class="header-right">
-            <div class="search-box">
-                <input type="text" placeholder="Buscar edificio, aula o docente...">
-            </div>
-            <div class="excel-status" id="excel-status-tag">
-                <span class="dot" style="background:#eab308;"></span> Leyendo Excel...
-            </div>
-        </div>
+        <nav class="flex space-x-2">
+            <button class="tab-btn active" onclick="switchTab('map-tab')">
+                <i class="fa-solid fa-map-location-dot"></i> Vista GIS (Mapa)
+            </button>
+            <button class="tab-btn" onclick="switchTab('bim-tab')">
+                <i class="fa-solid fa-cube"></i> Modelo 3D (BIM)
+            </button>
+            <button class="tab-btn" onclick="switchTab('planos-tab')">
+                <i class="fa-solid fa-drafting-compass"></i> Planos 2D Interactivos
+            </button>
+            <button class="tab-btn" onclick="switchTab('analytics-tab')">
+                <i class="fa-solid fa-chart-pie"></i> Indicadores / Datos
+            </button>
+        </nav>
     </header>
 
-    <div class="app-body">
-        <!-- BARRA IZQUIERDA -->
-        <div class="sidebar-left">
-            <button class="nav-btn active" id="btn-nav-mapa" title="Plano General" onclick="irAVista('vista-mapa')">🌐</button>
-            <button class="nav-btn" id="btn-nav-3d" title="Modelo 3D" onclick="irAVista('vista-3d')">🏢</button>
-            <button class="nav-btn" id="btn-nav-2d" title="Planos 2D" onclick="irAVista2DPiso(pisoActual2D)">📐</button>
-        </div>
+    <!-- CONTENEDOR PRINCIPAL DE PESTAÑAS -->
+    <main class="main-container">
 
-        <!-- AREA CENTRAL -->
-        <div class="content-area">
-            <!-- VISTA 1: MAPA GENERAL SVG -->
-            <div id="vista-mapa" class="vista activa">
-                <object id="svg-object" type="image/svg+xml" data="plano_uptc.svg"></object>
-            </div>
-
-            <!-- VISTA 2: MODELO 3D -->
-            <div id="vista-3d" class="vista">
-                <div id="ifc-canvas-container"></div>
-            </div>
-
-            <!-- VISTA 3: PLANTA 2D DINÁMICA -->
-            <div id="vista-2d" class="vista">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <div>
-                        <h2 id="titulo-vista-2d" style="color: #0284c7; font-size: 16px;">Planta 2D - Piso 1</h2>
-                        <p style="color: #64748b; font-size: 12px;">Haz clic en un aula para consultar el horario activo en Excel.</p>
+        <!-- 1. PESTAÑA: MAPA GIS -->
+        <section id="map-tab" class="tab-content active">
+            <div id="map"></div>
+            
+            <!-- Panel Izquierdo: Información Geográfica -->
+            <div class="floating-panel panel-left">
+                <h3 class="text-sm font-bold text-sky-400 mb-2 uppercase tracking-wider">
+                    <i class="fa-solid fa-circle-info mr-1"></i> Información del Predio
+                </h3>
+                <div class="space-y-2 text-xs">
+                    <div class="bg-slate-800 p-2 rounded border border-slate-700">
+                        <span class="text-slate-400 block">Ubicación:</span>
+                        <span class="font-semibold text-slate-200">Sector Campus Universitario</span>
                     </div>
-                    <button class="btn-regresar" style="display:inline-block; margin-bottom: 0; width: auto;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
+                    <div class="bg-slate-800 p-2 rounded border border-slate-700">
+                        <span class="text-slate-400 block">Área Construida Base:</span>
+                        <span class="font-semibold text-slate-200">1,250 m²</span>
+                    </div>
+                    <div class="bg-slate-800 p-2 rounded border border-slate-700">
+                        <span class="text-slate-400 block">Niveles Totales:</span>
+                        <span class="font-semibold text-slate-200">5 Pisos</span>
+                    </div>
                 </div>
-                <div class="container-svg-2d" id="svg-2d-wrapper">
-                    <object id="svg-2d-object" type="image/svg+xml" data="PLANTA_1_HUNZA.svg"></object>
-                </div>
-            </div>
-        </div>
 
-        <!-- PANEL DERECHO DE DATOS -->
-        <div class="sidebar-right" id="sidebar-derecha">
-            <button id="btn-volver-mapa" class="btn-regresar" onclick="irAVista('vista-mapa')">🗺️ Volver al Mapa General</button>
-
-            <!-- CONTENEDOR FILTROS DÍA Y FRANJA -->
-            <div class="panel-filtros-container" id="panel-filtros-horario">
-                <div class="filter-group">
-                    <span>🗓️ Día:</span>
-                    <select id="select-dia" class="filter-select" onchange="actualizarEstadoAulas2D()">
-                        <option value="Lunes">Lunes</option>
-                        <option value="Martes">Martes</option>
-                        <option value="Miércoles">Miércoles</option>
-                        <option value="Jueves">Jueves</option>
-                        <option value="Viernes">Viernes</option>
-                        <option value="Sábado">Sábado</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <span>⏰ Franja:</span>
-                    <select id="select-franja" class="filter-select" onchange="actualizarEstadoAulas2D()">
-                    </select>
+                <h3 class="text-sm font-bold text-sky-400 mt-4 mb-2 uppercase tracking-wider">Controles del Mapa</h3>
+                <div class="space-y-1">
+                    <button onclick="flyToEdificio()" class="w-full text-left bg-slate-700 hover:bg-slate-600 text-xs text-white p-2 rounded flex items-center justify-between">
+                        <span>Enfocar Edificio de Aulas</span>
+                        <i class="fa-solid fa-crosshairs text-sky-400"></i>
+                    </button>
                 </div>
             </div>
+        </section>
 
-            <div class="panel-title" id="panel-derecho-titulo">📊 Datos del Edificio</div>
+        <!-- 2. PESTAÑA: MODELO 3D (BIM) -->
+        <section id="bim-tab" class="tab-content">
+            <div id="ifc-canvas-container"></div>
 
-            <!-- CONTENIDO DINÁMICO DEL PANEL DERECHO -->
-            <div id="panel-contenido">
-                <div class="info-group">
-                    <div class="info-label">Edificio:</div>
-                    <div class="info-val" id="info-edificio">Edificio 30 - Aulas Hunza</div>
+            <!-- Panel de Control de Modelo 3D -->
+            <div class="floating-panel panel-right">
+                <div class="flex items-center justify-between border-b border-slate-700 pb-2 mb-3">
+                    <h3 class="text-sm font-bold text-sky-400 uppercase tracking-wider">
+                        <i class="fa-solid fa-layer-group mr-1"></i> Control del Modelo
+                    </h3>
+                    <span id="ifc-status" class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">Esperando...</span>
                 </div>
-                <div class="info-group">
-                    <div class="info-label">Código:</div>
-                    <div class="info-val">30</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Sede:</div>
-                    <div class="info-val">UPTC - Sede Central Tunja</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Uso Principal:</div>
-                    <div class="info-val">Aulas de Clase y Laboratorios</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Nº Pisos:</div>
-                    <div class="info-val">5</div>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-xs font-semibold text-slate-300 block mb-1">Estructura por Pisos:</label>
+                        <div id="ifc-layers-list" class="space-y-1 max-h-48 overflow-y-auto custom-scroll pr-1">
+                            <p class="text-xs text-slate-400 italic">Cargue el modelo para ver los pisos...</p>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-700 pt-3">
+                        <p class="text-xs text-slate-400 mb-2">Instrucciones de Navegación:</p>
+                        <ul class="text-xs text-slate-300 space-y-1">
+                            <li><i class="fa-solid fa-mouse text-sky-400 w-4"></i> <b>Click Izq + Arrastrar:</b> Rotar</li>
+                            <li><i class="fa-solid fa-hand text-sky-400 w-4"></i> <b>Click Der + Arrastrar:</b> Desplazar</li>
+                            <li><i class="fa-solid fa-magnifying-glass-plus text-sky-400 w-4"></i> <b>Rueda del Mouse:</b> Zoom ultrasuave</li>
+                            <li><i class="fa-solid fa-hand-pointer text-sky-400 w-4"></i> <b>Click en Piso:</b> Ir al plano 2D</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
+        </section>
 
-            <!-- SECCIÓN CORTES BIM (SOLO VISIBLE EN 3D) -->
-            <div id="seccion-cortes-3d" style="display:none; margin-top: 15px;">
-                <div class="panel-title">✂️ Niveles (Modelo 3D)</div>
-                <div id="ifc-status" style="font-size:12px; color:var(--text-muted); margin-bottom:10px;"><span class="loading-spinner"></span> Esperando modelo 3D...</div>
-                <div id="ifc-layers-list"></div>
-            </div>
-
-            <div class="excel-box">
-                <div><strong>Archivo:</strong> Plantilla_Levantamiento_Edificio_2.xlsx</div>
-                <div><strong>Hoja:</strong> Horarios de Uso</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MOTOR LECTOR DE EXCEL MATRIX Y RUTEO DINÁMICO DE PISOS -->
-    <script>
-        let registrosHorariosExcel = [];
-        let pisoActual2D = "Piso 1";
-        let aulaSeleccionadaActual = null;
-        let vistaActualGlobal = "vista-mapa";
-
-        const MAPA_ARCHIVOS_PISOS = {
-            "Piso 1": "PLANTA_1_HUNZA.svg",
-            "Piso 2": "PLANTA_2_HUNZA.svg",
-            "Piso 3": "PLANTA_3_HUNZA.svg",
-            "Piso 4": "PLANTA_4_HUNZA.svg",
-            "Piso 5 / Cubierta": "PLANTA_5_HUNZA.svg"
-        };
-
-        function inicializarFranjasHorarias() {
-            const selectFranja = document.getElementById('select-franja');
-            selectFranja.innerHTML = '';
-            for (let h = 7; h < 23; h++) {
-                const opt = document.createElement('option');
-                opt.value = `${h} - ${h + 1}`; 
+        <!-- 3. PESTAÑA: PLANOS 2D INTERACTIVOS -->
+        <section id="planos-tab" class="tab-content">
+            <div class="w-full h-full flex flex-col md:flex-row">
                 
-                const inicio = h < 10 ? `0${h}:00` : `${h}:00`;
-                const fin = (h + 1) < 10 ? `0${h + 1}:00` : `${h + 1}:00`;
-                opt.innerText = `${inicio} - ${fin}`;
-                
-                selectFranja.appendChild(opt);
-            }
-        }
+                <!-- SVG Plano 2D -->
+                <div class="flex-1 h-full relative bg-slate-950 flex items-center justify-center p-4">
+                    
+                    <!-- Selector de piso -->
+                    <div class="absolute top-4 left-4 z-10 bg-slate-900/90 border border-slate-700 p-3 rounded-lg shadow-xl backdrop-blur">
+                        <label class="block text-xs font-bold text-sky-400 uppercase mb-2">Seleccionar Nivel:</label>
+                        <select id="select-piso-2d" onchange="cambiarPlano2DPiso(this.value)" class="bg-slate-800 text-white text-xs p-2 rounded border border-slate-600 outline-none focus:border-sky-400 w-48">
+                            <option value="Piso 1">Piso 1 - Aulas Principales</option>
+                            <option value="Piso 2">Piso 2 - Laboratorios</option>
+                            <option value="Piso 3">Piso 3 - Salas de Sistemas</option>
+                            <option value="Piso 4">Piso 4 - Oficinas / Docentes</option>
+                            <option value="Piso 5 / Cubierta">Piso 5 - Cubierta / Auditori</option>
+                        </select>
+                    </div>
 
-        async function cargarExcelRealRepo() {
-            const statusTag = document.getElementById('excel-status-tag');
-            try {
-                const response = await fetch('Plantilla_Levantamiento_Edificio_2.xlsx');
-                if (!response.ok) throw new Error("No se pudo cargar el archivo Excel.");
-
-                const arrayBuffer = await response.arrayBuffer();
-                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-                const sheet = workbook.Sheets["Horarios de Uso"];
-                if (!sheet) return;
-
-                const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
-                
-                const merges = sheet['!merges'] || [];
-                merges.forEach(range => {
-                    const firstVal = matrix[range.s.r] ? matrix[range.s.r][range.s.c] : "";
-                    for (let r = range.s.r; r <= range.e.r; r++) {
-                        for (let c = range.s.c; c <= range.e.c; c++) {
-                            if (matrix[r]) matrix[r][c] = firstVal;
-                        }
-                    }
-                });
-
-                let colEspacio = 1;
-                let colHoras = 2;
-                let headerRowIdx = -1;
-                let diasHeaders = {};
-
-                for (let r = 0; r < Math.min(15, matrix.length); r++) {
-                    const row = matrix[r];
-                    for (let c = 0; c < row.length; c++) {
-                        const val = String(row[c]).trim().toLowerCase();
-                        if (val.includes("lunes")) {
-                            headerRowIdx = r;
-                            break;
-                        }
-                    }
-                    if (headerRowIdx !== -1) break;
-                }
-
-                if (headerRowIdx !== -1) {
-                    const hRow = matrix[headerRowIdx];
-                    for (let c = 0; c < hRow.length; c++) {
-                        const cellVal = String(hRow[c]).trim();
-                        if (["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"].includes(cellVal)) {
-                            diasHeaders[c] = cellVal;
-                        }
-                    }
-                }
-
-                registrosHorariosExcel = [];
-                let espacioActual = "";
-
-                for (let r = headerRowIdx + 1; r < matrix.length; r++) {
-                    const row = matrix[r];
-                    if (!row) continue;
-
-                    const valEspacio = String(row[colEspacio] || "").trim();
-                    if (valEspacio && valEspacio.toUpperCase().startsWith("A-")) {
-                        espacioActual = valEspacio.toUpperCase();
-                    }
-
-                    const valHoraRaw = String(row[colHoras] || "").trim();
-                    if (!valHoraRaw || !espacioActual) continue;
-
-                    const horaLimpia = valHoraRaw.replace(/\s+/g, '');
-
-                    Object.keys(diasHeaders).forEach(colIdx => {
-                        const nombreDia = diasHeaders[colIdx];
-                        const contenidoCelda = String(row[colIdx] || "").trim();
-
-                        if (contenidoCelda !== "") {
-                            registrosHorariosExcel.push({
-                                aula: espacioActual,
-                                hora: horaLimpia,
-                                dia: nombreDia,
-                                detalle: contenidoCelda
-                            });
-                        }
-                    });
-                }
-
-                statusTag.innerHTML = `<span class="dot"></span> Excel Conectado`;
-                actualizarEstadoAulas2D();
-
-            } catch (err) {
-                console.error("Error leyendo Excel:", err);
-                statusTag.innerHTML = `<span class="dot" style="background:#ef4444;"></span> Error al leer Excel`;
-            }
-        }
-
-        function consultarHorarioAula(aula, dia, franjaSeleccionada) {
-            const franjaBuscada = franjaSeleccionada.replace(/\s+/g, '');
-
-            const encontrado = registrosHorariosExcel.find(r => {
-                const aulaMatch = r.aula.toUpperCase() === aula.toUpperCase();
-                const diaMatch = r.dia.toLowerCase() === dia.toLowerCase();
-                const horaMatch = r.hora.replace(/\s+/g, '') === franjaBuscada;
-
-                return aulaMatch && diaMatch && horaMatch;
-            });
-
-            const selectFranja = document.getElementById('select-franja');
-            const textoFranjaVisible = selectFranja.options[selectFranja.selectedIndex] ? selectFranja.options[selectFranja.selectedIndex].text : franjaSeleccionada;
-
-            if (encontrado) {
-                return {
-                    estado: "Ocupado",
-                    detalle: encontrado.detalle,
-                    franja: textoFranjaVisible
-                };
-            }
-            return {
-                estado: "Libre",
-                detalle: "Sin clase o evento programado",
-                franja: textoFranjaVisible
-            };
-        }
-
-        function irAVista(idVista) {
-            vistaActualGlobal = idVista;
-            
-            document.querySelectorAll('.vista').forEach(v => {
-                v.classList.remove('activa');
-            });
-            
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            
-            const vistaDestino = document.getElementById(idVista);
-            if (vistaDestino) {
-                vistaDestino.classList.add('activa');
-            }
-
-            if (idVista === 'vista-mapa') document.getElementById('btn-nav-mapa').classList.add('active');
-            if (idVista === 'vista-3d') document.getElementById('btn-nav-3d').classList.add('active');
-            if (idVista === 'vista-2d') document.getElementById('btn-nav-2d').classList.add('active');
-
-            const btnVolver = document.getElementById('btn-volver-mapa');
-            const seccionCortes = document.getElementById('seccion-cortes-3d');
-            const breadcrumb = document.getElementById('breadcrumb');
-            const panelFiltros = document.getElementById('panel-filtros-horario');
-            const sidebarDerecha = document.getElementById('sidebar-derecha');
-
-            if (idVista === 'vista-3d') {
-                sidebarDerecha.classList.add('visible');
-                btnVolver.style.display = 'block';
-                seccionCortes.style.display = 'block';
-                panelFiltros.style.display = 'none';
-                breadcrumb.innerText = 'Edificio 30 Hunza (Modelo 3D)';
-                restablecerPanelEdificio();
-                if (window.cargarModeloIFC) window.cargarModeloIFC();
-            } else if (idVista === 'vista-2d') {
-                sidebarDerecha.classList.add('visible');
-                btnVolver.style.display = 'block';
-                seccionCortes.style.display = 'none';
-                panelFiltros.style.display = 'flex';
-                document.getElementById('titulo-vista-2d').innerText = `Planta 2D - ${pisoActual2D}`;
-                breadcrumb.innerText = `Edificio 30 Hunza (${pisoActual2D})`;
-                
-                setTimeout(actualizarEstadoAulas2D, 150);
-            } else {
-                sidebarDerecha.classList.remove('visible');
-                btnVolver.style.display = 'none';
-                seccionCortes.style.display = 'none';
-                panelFiltros.style.display = 'none';
-                breadcrumb.innerText = 'Sede Central (Plano General)';
-                restablecerPanelEdificio();
-            }
-        }
-
-        window.irAVista2DPiso = function(nombrePiso) {
-            pisoActual2D = nombrePiso || "Piso 1";
-            const archivoSVG = MAPA_ARCHIVOS_PISOS[pisoActual2D] || "PLANTA_1_HUNZA.svg";
-            
-            const wrapper = document.getElementById('svg-2d-wrapper');
-            if (wrapper) {
-                wrapper.innerHTML = `<object id="svg-2d-object" type="image/svg+xml" data="${archivoSVG}" style="width:100%; height:100%; border:none; object-fit:contain; background-color:#ffffff;"></object>`;
-                
-                const nuevoSvgObj = document.getElementById('svg-2d-object');
-                nuevoSvgObj.addEventListener('load', () => {
-                    setTimeout(actualizarEstadoAulas2D, 100);
-                });
-            }
-
-            document.getElementById('titulo-vista-2d').innerText = `Planta 2D - ${pisoActual2D}`;
-            irAVista('vista-2d');
-        };
-
-        function actualizarEstadoAulas2D() {
-            const svg2d = document.getElementById('svg-2d-object');
-            if (!svg2d) return;
-
-            const svgDoc = svg2d.contentDocument;
-            if (!svgDoc) return;
-
-            const diaSeleccionado = document.getElementById('select-dia').value;
-            const franjaSeleccionada = document.getElementById('select-franja').value;
-
-            const elementosAulas = svgDoc.querySelectorAll('[id^="A-"], [id^="a-"]');
-
-            elementosAulas.forEach(elAula => {
-                const codigoAula = elAula.id.toUpperCase();
-                elAula.style.cursor = 'pointer';
-                elAula.style.transition = 'all 0.3s';
-
-                const infoHorario = consultarHorarioAula(codigoAula, diaSeleccionado, franjaSeleccionada);
-
-                if (infoHorario.estado === "Ocupado") {
-                    elAula.style.fill = 'rgba(239, 68, 68, 0.45)';
-                    elAula.style.stroke = '#ef4444';
-                    elAula.style.strokeWidth = '2px';
-                } else {
-                    elAula.style.fill = 'rgba(16, 185, 129, 0.25)';
-                    elAula.style.stroke = '#10b981';
-                    elAula.style.strokeWidth = '1px';
-                }
-
-                elAula.onclick = (e) => {
-                    e.stopPropagation();
-                    aulaSeleccionadaActual = codigoAula;
-                    const infoAlMomento = consultarHorarioAula(codigoAula, document.getElementById('select-dia').value, document.getElementById('select-franja').value);
-                    mostrarDetalleAulaPanel(codigoAula, infoAlMomento);
-                };
-            });
-
-            if (aulaSeleccionadaActual) {
-                const infoActualizada = consultarHorarioAula(aulaSeleccionadaActual, diaSeleccionado, franjaSeleccionada);
-                mostrarDetalleAulaPanel(aulaSeleccionadaActual, infoActualizada);
-            }
-        }
-
-        function mostrarDetalleAulaPanel(codigoAula, info) {
-            const panelTitulo = document.getElementById('panel-derecho-titulo');
-            const panelContenido = document.getElementById('panel-contenido');
-
-            panelTitulo.innerHTML = `📌 Aula ${codigoAula}`;
-
-            const badgeClase = info.estado === "Ocupado" ? "badge-ocupado" : "badge-libre";
-
-            panelContenido.innerHTML = `
-                <div class="info-group">
-                    <div class="info-label">Estado Actual:</div>
-                    <div class="info-val"><span class="badge-estado ${badgeClase}">${info.estado}</span></div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Planta:</div>
-                    <div class="info-val">${pisoActual2D}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Actividad / Asignatura:</div>
-                    <div class="info-val">${info.detalle}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Franja Horaria:</div>
-                    <div class="info-val">${info.franja}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Día:</div>
-                    <div class="info-val">${document.getElementById('select-dia').value}</div>
-                </div>
-            `;
-        }
-
-        function restablecerPanelEdificio() {
-            aulaSeleccionadaActual = null;
-            document.getElementById('panel-derecho-titulo').innerHTML = `📊 Datos del Edificio`;
-            document.getElementById('panel-contenido').innerHTML = `
-                <div class="info-group">
-                    <div class="info-label">Edificio:</div>
-                    <div class="info-val">Edificio 30 - Aulas Hunza</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Código:</div>
-                    <div class="info-val">30</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Sede:</div>
-                    <div class="info-val">UPTC - Sede Central Tunja</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Uso Principal:</div>
-                    <div class="info-val">Aulas de Clase y Laboratorios</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Nº Pisos:</div>
-                    <div class="info-val">5</div>
-                </div>
-            `;
-        }
-
-        window.addEventListener('load', () => {
-            inicializarFranjasHorarias();
-            cargarExcelRealRepo();
-
-            const svgObj = document.getElementById('svg-object');
-            const sidebarDerecha = document.getElementById('sidebar-derecha');
-
-            if (svgObj) {
-                const conectarHunza = () => {
-                    const svgDoc = svgObj.contentDocument;
-                    if (svgDoc) {
-                        const elHunza = svgDoc.getElementById('HUNZA') || 
-                                        svgDoc.getElementById('hunza') || 
-                                        svgDoc.querySelector('#HUNZA') ||
-                                        svgDoc.querySelector('[id="HUNZA"]') ||
-                                        svgDoc.querySelector('[id*="HUNZA" i]');
-
-                        if (elHunza) {
-                            elHunza.style.cursor = 'pointer';
-                            elHunza.style.transition = 'opacity 0.2s, filter 0.2s';
+                    <!-- Contenedor SVG Interactivo -->
+                    <div class="svg-container rounded-lg border border-slate-800 shadow-2xl">
+                        <svg id="plano-svg" viewBox="0 0 800 500" class="w-full h-full max-w-4xl max-h-[80vh]">
+                            <!-- Marco base del edificio -->
+                            <rect x="50" y="50" width="700" height="400" fill="#0f172a" stroke="#334155" stroke-width="4" rx="8" />
+                            <line x1="50" y1="250" x2="750" y2="250" stroke="#334155" stroke-width="2" stroke-dasharray="5,5" />
                             
-                            elHunza.addEventListener('mouseenter', () => {
-                                elHunza.style.opacity = '0.7';
-                                elHunza.style.filter = 'drop-shadow(0px 0px 8px #00b4d8)';
-                                if (vistaActualGlobal === 'vista-mapa') {
-                                    sidebarDerecha.classList.add('visible');
-                                }
-                            });
+                            <!-- Pasillo Central -->
+                            <rect x="70" y="220" width="660" height="60" fill="#1e293b" stroke="#475569" stroke-width="1" />
+                            <text x="400" y="253" class="aula-texto" fill="#64748b" font-size="12">PASILLO CENTRAL</text>
 
-                            elHunza.addEventListener('mouseleave', () => {
-                                elHunza.style.opacity = '1';
-                                elHunza.style.filter = 'none';
-                                if (vistaActualGlobal === 'vista-mapa') {
-                                    sidebarDerecha.classList.remove('visible');
-                                }
-                            });
+                            <!-- Grupo Dinámico de Aulas -->
+                            <g id="svg-aulas-group">
+                                <!-- Se genera dinámicamente mediante JS -->
+                            </g>
+                        </svg>
+                    </div>
+                </div>
 
-                            elHunza.addEventListener('click', (e) => {
-                                e.stopPropagation();
-                                irAVista('vista-3d');
-                            });
-                        }
-                    }
-                };
+                <!-- Panel Lateral de Información del Aula Seleccionada -->
+                <div class="w-full md:w-80 bg-slate-900 border-l border-slate-800 p-4 flex flex-col justify-between overflow-y-auto">
+                    <div>
+                        <div class="border-b border-slate-800 pb-3 mb-4">
+                            <span id="detalle-piso-tag" class="text-xs bg-sky-950 text-sky-400 px-2 py-1 rounded font-semibold border border-sky-800">PISO 1</span>
+                            <h2 id="detalle-aula-titulo" class="text-xl font-bold text-white mt-2">Selecciona un Espacio</h2>
+                            <p id="detalle-aula-sub" class="text-xs text-slate-400">Haz click sobre cualquier aula del plano para inspeccionar sus características.</p>
+                        </div>
 
-                if (svgObj.contentDocument && svgObj.contentDocument.readyState === 'complete') {
-                    conectarHunza();
-                } else {
-                    svgObj.addEventListener('load', conectarHunza);
+                        <div id="detalle-aula-contenido" class="space-y-3 text-xs">
+                            <div class="bg-slate-800/50 p-3 rounded border border-slate-700/50">
+                                <span class="text-slate-400 block mb-1">Capacidad Estimada:</span>
+                                <span id="info-capacidad" class="text-sm font-semibold text-slate-200">--</span>
+                            </div>
+
+                            <div class="bg-slate-800/50 p-3 rounded border border-slate-700/50">
+                                <span class="text-slate-400 block mb-1">Área Útil:</span>
+                                <span id="info-area" class="text-sm font-semibold text-slate-200">--</span>
+                            </div>
+
+                            <div class="bg-slate-800/50 p-3 rounded border border-slate-700/50">
+                                <span class="text-slate-400 block mb-1">Equipamiento Técnico:</span>
+                                <span id="info-equipo" class="text-sm font-semibold text-slate-200">--</span>
+                            </div>
+
+                            <div class="bg-slate-800/50 p-3 rounded border border-slate-700/50">
+                                <span class="text-slate-400 block mb-1">Estado de Uso:</span>
+                                <span id="info-estado" class="inline-block px-2 py-0.5 rounded text-xs font-bold bg-slate-700 text-slate-300">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-800 mt-4">
+                        <button onclick="switchTab('bim-tab')" class="w-full bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold py-2 px-4 rounded transition flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-cube"></i>
+                            <span>Ver este nivel en 3D</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- 4. PESTAÑA: ANALÍTICA / DATOS -->
+        <section id="analytics-tab" class="tab-content">
+            <div class="w-full h-full p-6 overflow-y-auto custom-scroll space-y-6">
+                
+                <!-- MÁTRICAS CLAVE (KPIs) -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                        <span class="text-xs text-slate-400 block">Capacidad Total Edificio</span>
+                        <span class="text-2xl font-bold text-sky-400">1,450 Estudiantes</span>
+                    </div>
+                    <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                        <span class="text-xs text-slate-400 block">Aulas / Laboratorios</span>
+                        <span class="text-2xl font-bold text-emerald-400">32 Espacios</span>
+                    </div>
+                    <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                        <span class="text-xs text-slate-400 block">Área Construida</span>
+                        <span class="text-2xl font-bold text-purple-400">6,250 m²</span>
+                    </div>
+                    <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                        <span class="text-xs text-slate-400 block">Eficiencia Energética</span>
+                        <span class="text-2xl font-bold text-amber-400">Clase A (BIM)</span>
+                    </div>
+                </div>
+
+                <!-- GRÁFICOS -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                        <h3 class="text-sm font-bold text-slate-200 mb-4">Ocupación Promedio por Nivel</h3>
+                        <div class="h-64">
+                            <canvas id="chartOcupacion"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                        <h3 class="text-sm font-bold text-slate-200 mb-4">Distribución de Usos de Espacio</h3>
+                        <div class="h-64">
+                            <canvas id="chartUsos"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- LÓGICA JAVASCRIPT GLOBAL Y CONTROLADORES -->
+    <script>
+        // SISTEMA DE CAMBIO DE PESTAÑAS
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+            const selectedTab = document.getElementById(tabId);
+            if (selectedTab) selectedTab.classList.add('active');
+
+            const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => btn.getAttribute('onclick').includes(tabId));
+            if (activeBtn) activeBtn.classList.add('active');
+
+            // DISPARAR INICIALIZACIONES ESPECÍFICAS SEGÚN LA PESTAÑA
+            if (tabId === 'bim-tab' && window.cargarModeloIFC) {
+                window.cargarModeloIFC();
+            } else if (tabId === 'map-tab' && window.mapaBox) {
+                setTimeout(() => window.mapaBox.resize(), 200);
+            } else if (tabId === 'planos-tab') {
+                if (!window.planoInicializado) {
+                    cambiarPlano2DPiso("Piso 1");
+                    window.planoInicializado = true;
                 }
             }
+        }
 
-            const svg2dObj = document.getElementById('svg-2d-object');
-            if (svg2dObj) {
-                svg2dObj.addEventListener('load', actualizarEstadoAulas2D);
+        // BASE DE DATOS LOCAL PARA PLANOS 2D Y ESPACIOS
+        const baseDatosPisos = {
+            "Piso 1": [
+                { id: "A101", nombre: "Aula Magistral 101", capacidad: "60 personas", area: "85 m²", equipo: "Video Beam, Sonido, Aire Acondicionado", estado: "Disponible", x: 70, y: 70, w: 200, h: 140 },
+                { id: "A102", nombre: "Aula Interactiva 102", capacidad: "45 personas", area: "65 m²", equipo: "Pantalla Táctil, Modulares", estado: "Ocupado", x: 290, y: 70, w: 200, h: 140 },
+                { id: "A103", nombre: "Laboratorio de Física 1", capacidad: "30 personas", area: "90 m²", equipo: "Mesas de Trabajo, Gas, Extractores", estado: "Mantenimiento", x: 510, y: 70, w: 220, h: 140 },
+                { id: "A104", nombre: "Aula General 104", capacidad: "50 personas", area: "70 m²", equipo: "Proyector Estándar", estado: "Disponible", x: 70, y: 290, w: 210, h: 140 },
+                { id: "A105", nombre: "Auditorio Menor", capacidad: "120 personas", area: "180 m²", equipo: "Audio Profesional, Iluminación LED", estado: "Reservado", x: 300, y: 290, w: 430, h: 140 }
+            ],
+            "Piso 2": [
+                { id: "A201", nombre: "Lab. Biología Celular", capacidad: "25 personas", area: "80 m²", equipo: "Microscopios, Autoclave", estado: "Disponible", x: 70, y: 70, w: 220, h: 140 },
+                { id: "A202", nombre: "Lab. Química Orgánica", capacidad: "25 personas", area: "85 m²", equipo: "Campanas de Extracción", estado: "Ocupado", x: 310, y: 70, w: 210, h: 140 },
+                { id: "A203", nombre: "Sala de Cómputo 1", capacidad: "40 Equipos", area: "75 m²", equipo: "PCs i7, Red 10Gbps", estado: "Disponible", x: 540, y: 70, w: 190, h: 140 },
+                { id: "A204", nombre: "Aula Posgrados 204", capacidad: "35 personas", area: "60 m²", equipo: "Videoconferencia 4K", estado: "Disponible", x: 70, y: 290, w: 320, h: 140 },
+                { id: "A205", nombre: "Sala de Estudio Grupal", capacidad: "20 personas", area: "50 m²", equipo: "Pizarras Cristal", estado: "Disponible", x: 410, y: 290, w: 320, h: 140 }
+            ],
+            "Piso 3": [
+                { id: "A301", nombre: "Lab. Redes y Telecom", capacidad: "30 personas", area: "85 m²", equipo: "Racks Cisco, Fibra Óptica", estado: "Disponible", x: 70, y: 70, w: 320, h: 140 },
+                { id: "A302", nombre: "Lab. Desarrollo Software", capacidad: "40 Equipos", area: "90 m²", equipo: "Monitores Duales, Servidor Local", estado: "Ocupado", x: 410, y: 70, w: 320, h: 140 },
+                { id: "A303", nombre: "Aula Electrónica", capacidad: "30 personas", area: "80 m²", equipo: "Osciloscopios, Fuentes Reguladas", estado: "Disponible", x: 70, y: 290, w: 320, h: 140 },
+                { id: "A304", nombre: "Centro de Datos / Servidores", capacidad: "Acceso Restringido", area: "40 m²", equipo: "Climatización Precision, UPS", estado: "Reservado", x: 410, y: 290, w: 320, h: 140 }
+            ],
+            "Piso 4": [
+                { id: "A401", nombre: "Decanatura de Ingeniería", capacidad: "15 personas", area: "60 m²", equipo: "Sala de Juntas", estado: "Ocupado", x: 70, y: 70, w: 220, h: 140 },
+                { id: "A402", nombre: "Oficinas Docentes Tiempo Completo", capacidad: "30 Módulos", area: "150 m²", equipo: "Estaciones de Trabajo", estado: "Disponible", x: 310, y: 70, w: 420, h: 140 },
+                { id: "A403", nombre: "Sala de Reuniones A", capacidad: "12 personas", area: "35 m²", equipo: "Pantalla Smart", estado: "Disponible", x: 70, y: 290, w: 320, h: 140 },
+                { id: "A404", nombre: "Sala de Reuniones B", capacidad: "12 personas", area: "35 m²", equipo: "Pantalla Smart", estado: "Disponible", x: 410, y: 290, w: 320, h: 140 }
+            ],
+            "Piso 5 / Cubierta": [
+                { id: "A501", nombre: "Auditorio Principal Magna", capacidad: "300 personas", area: "400 m²", equipo: "Acústica Integral, Escenario, Proyección Láser", estado: "Disponible", x: 70, y: 70, w: 660, h: 220 },
+                { id: "A502", nombre: "Terraza / Cafetería Cubierta", capacidad: "80 personas", area: "150 m²", equipo: "Mobiliario Exterior", estado: "Disponible", x: 70, y: 310, w: 660, h: 120 }
+            ]
+        };
+
+        // RENDERIZAR PLANO 2D DINÁMICO
+        function cambiarPlano2DPiso(nombrePiso) {
+            const select = document.getElementById('select-piso-2d');
+            if (select) select.value = nombrePiso;
+
+            const grupo = document.getElementById('svg-aulas-group');
+            if (!grupo) return;
+
+            grupo.innerHTML = '';
+            const aulas = baseDatosPisos[nombrePiso] || [];
+
+            aulas.forEach((aula, idx) => {
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', aula.x);
+                rect.setAttribute('y', aula.y);
+                rect.setAttribute('width', aula.w);
+                rect.setAttribute('height', aula.h);
+                rect.setAttribute('rx', '6');
+                rect.setAttribute('class', 'aula-polygon');
+                rect.setAttribute('data-id', aula.id);
+
+                rect.addEventListener('click', () => seleccionarAula2D(aula, rect, nombrePiso));
+
+                const texto = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                texto.setAttribute('x', aula.x + aula.w / 2);
+                texto.setAttribute('y', aula.y + aula.h / 2);
+                texto.setAttribute('class', 'aula-texto');
+                texto.textContent = `${aula.id} - ${aula.nombre}`;
+
+                grupo.appendChild(rect);
+                grupo.appendChild(texto);
+
+                if (idx === 0) {
+                    seleccionarAula2D(aula, rect, nombrePiso);
+                }
+            });
+        }
+
+        function seleccionarAula2D(aula, elementoSVG, nombrePiso) {
+            document.querySelectorAll('.aula-polygon').forEach(el => el.classList.remove('selected'));
+            if (elementoSVG) elementoSVG.classList.add('selected');
+
+            document.getElementById('detalle-piso-tag').innerText = nombrePiso.toUpperCase();
+            document.getElementById('detalle-aula-titulo').innerText = aula.nombre;
+            document.getElementById('detalle-aula-sub').innerText = `Código del espacio: ${aula.id}`;
+
+            document.getElementById('info-capacidad').innerText = aula.capacidad;
+            document.getElementById('info-area').innerText = aula.area;
+            document.getElementById('info-equipo').innerText = aula.equipo;
+
+            const estadoEl = document.getElementById('info-estado');
+            estadoEl.innerText = aula.estado;
+
+            if (aula.estado === 'Disponible') {
+                estadoEl.className = 'inline-block px-2 py-0.5 rounded text-xs font-bold bg-emerald-950 text-emerald-400 border border-emerald-800';
+            } else if (aula.estado === 'Ocupado') {
+                estadoEl.className = 'inline-block px-2 py-0.5 rounded text-xs font-bold bg-rose-950 text-rose-400 border border-rose-800';
+            } else {
+                estadoEl.className = 'inline-block px-2 py-0.5 rounded text-xs font-bold bg-amber-950 text-amber-400 border border-amber-800';
             }
+        }
+
+        // ENLACE GLOBAL DESDE EL MOTOR 3D A PLANO 2D
+        window.irAVista2DPiso = function(nombrePiso) {
+            switchTab('planos-tab');
+            cambiarPlano2DPiso(nombrePiso);
+        };
+    </script>
+
+    <!-- INICIALIZACIÓN DE MAPBOX (GIS) -->
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ.A62N-128BAKawRVAA0hT2w';
+
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v11',
+            center: [-74.08175, 4.60971],
+            zoom: 16.5,
+            pitch: 45,
+            bearing: -17.6
+        });
+
+        window.mapaBox = map;
+
+        map.on('load', () => {
+            map.addLayer({
+                'id': 'add-3d-buildings',
+                'source': 'composite',
+                'source-layer': 'building',
+                'filter': ['==', 'extrude', 'true'],
+                'type': 'fill-extrusion',
+                'minzoom': 15,
+                'paint': {
+                    'fill-extrusion-color': '#334155',
+                    'fill-extrusion-height': ['get', 'height'],
+                    'fill-extrusion-base': ['get', 'min_height'],
+                    'fill-extrusion-opacity': 0.6
+                }
+            });
+        });
+
+        function flyToEdificio() {
+            map.flyTo({
+                center: [-74.08175, 4.60971],
+                zoom: 18,
+                pitch: 60,
+                bearing: 25,
+                essential: true
+            });
+        }
+    </script>
+
+    <!-- INICIALIZACIÓN DE GRÁFICOS (CHART.JS) -->
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const ctxOcupacion = document.getElementById('chartOcupacion').getContext('2d');
+            new Chart(ctxOcupacion, {
+                type: 'bar',
+                data: {
+                    labels: ['Piso 1', 'Piso 2', 'Piso 3', 'Piso 4', 'Piso 5'],
+                    datasets: [{
+                        label: '% Ocupación Semanal',
+                        data: [85, 92, 78, 60, 45],
+                        backgroundColor: '#0284c7',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, max: 100, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            const ctxUsos = document.getElementById('chartUsos').getContext('2d');
+            new Chart(ctxUsos, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Aulas Teóricas', 'Laboratorios', 'Sistemas', 'Oficinas', 'Auditorios'],
+                    datasets: [{
+                        data: [40, 25, 15, 10, 10],
+                        backgroundColor: ['#0284c7', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { color: '#cbd5e1', font: { size: 11 } } }
+                    }
+                }
+            });
         });
     </script>
 
-    <!-- THREE.JS ENGINE ULTRA OPTIMIZADO PARA ZOOM SUAVE -->
+    <!-- MOTOR THREE.JS OPTIMIZADO (CON INTERPOLACIÓN DE ZOOM ULTRASUAVE Y CERO LAG) -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -733,6 +708,8 @@
         let pisosMeshes = [[], [], [], [], []];
         let pisoHoveredActual = -1;
 
+        // Variables de control de FPS y Zoom Suave
+        let targetZoomDistance = null;
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
 
         function init3DViewer() {
@@ -751,7 +728,11 @@
 
             camera = new THREE.PerspectiveCamera(45, width / height, 0.05, 3000);
 
-            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: true, 
+                powerPreference: "high-performance",
+                precision: "mediump"
+            });
             renderer.setSize(width, height);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
             renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -759,18 +740,30 @@
 
             container.appendChild(renderer.domElement);
 
-            // OPTIMIZACIÓN EXCELENTE DEL ZOOM Y AMORTIGUACIÓN
+            // CONTROLES OPTIMIZADOS
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.dampingFactor = 0.035; // Amortiguación extremadamente sedosa sin lag
+            controls.dampingFactor = 0.08;
             controls.enableZoom = true;
-            controls.zoomSpeed = 0.2;     // Velocidad ajustada para evitar aceleración abrupta
+            controls.zoomSpeed = 0.6;
             controls.rotateSpeed = 0.8;
             controls.minDistance = 1.0;
             controls.maxDistance = 1200.0;
 
-            // Evitamos scroll por defecto del navegador en el contenedor de renderizado
-            renderer.domElement.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
+            // ELIMINAR EL SATURADO DE EVENTOS WHEEL DEL NAVEGADOR
+            const domElement = renderer.domElement;
+            
+            domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                
+                const zoomFactor = e.deltaY > 0 ? 1.08 : 0.92;
+                const currentDistance = camera.position.distanceTo(controls.target);
+                
+                let newDistance = currentDistance * zoomFactor;
+                newDistance = Math.max(controls.minDistance, Math.min(controls.maxDistance, newDistance));
+
+                targetZoomDistance = newDistance;
+            }, { passive: false });
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
             scene.add(ambientLight);
@@ -875,9 +868,23 @@
                 }
             });
 
-            // BUCLE DE ANIMACIÓN CONTINUO
+            // BUCLE DE ANIMACIÓN CON INTERPOLACIÓN (LERP) AL 15% POR FRAME
             function animate() {
                 animFrameId = requestAnimationFrame(animate);
+
+                if (targetZoomDistance !== null) {
+                    const currentDist = camera.position.distanceTo(controls.target);
+                    const diff = targetZoomDistance - currentDist;
+
+                    if (Math.abs(diff) > 0.01) {
+                        const direction = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
+                        const newPosDistance = THREE.MathUtils.lerp(currentDist, targetZoomDistance, 0.15);
+                        camera.position.copy(controls.target).addScaledVector(direction, newPosDistance);
+                    } else {
+                        targetZoomDistance = null;
+                    }
+                }
+
                 controls.update();
                 renderer.render(scene, camera);
             }
