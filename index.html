@@ -67,7 +67,7 @@
         .nav-btn { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; border: none; background: transparent; transition: 0.2s; }
         .nav-btn:hover, .nav-btn.active { background: #0284c7; color: #fff; }
 
-        /* CONTENEDOR DE VISTAS OPTIMIZADO */
+        /* CONTENEDOR DE VISTAS */
         .content-area { 
             flex: 1; 
             position: relative; 
@@ -103,7 +103,7 @@
 
         /* VISTA 3D */
         #vista-3d { width: 100%; height: 100%; background-color: #ffffff; display: block; }
-        #ifc-canvas-container { width: 100%; height: 100%; background-color: #ffffff; }
+        #ifc-canvas-container { width: 100%; height: 100%; background-color: #ffffff; touch-action: none; }
 
         /* VISTA PLANTA 2D */
         #vista-2d { 
@@ -333,7 +333,7 @@
         </div>
     </div>
 
-    <!-- MOTOR LECTOR DE EXCEL MATRIX Y RUTEO DINÁMICO DE PISOS -->
+    <!-- MOTOR LECTOR DE EXCEL Y RUTEO DE PLANOS -->
     <script>
         let registrosHorariosExcel = [];
         let pisoActual2D = "Piso 1";
@@ -713,7 +713,7 @@
         });
     </script>
 
-    <!-- THREE.JS ENGINE ULTRA OPTIMIZADO PARA ZOOM Y NAVEGACIÓN SUAVE -->
+    <!-- MOTOR THREE.JS - SOLUCIÓN TOTAL ZOOM SUAVE -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -733,6 +733,7 @@
         let pisosMeshes = [[], [], [], [], []];
         let pisoHoveredActual = -1;
 
+        const clock = new THREE.Clock();
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
 
         function init3DViewer() {
@@ -749,29 +750,33 @@
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xffffff);
 
-            camera = new THREE.PerspectiveCamera(45, width / height, 0.05, 3000);
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 3000);
 
             renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
             renderer.setSize(width, height);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.outputColorSpace = THREE.SRGBColorSpace;
             renderer.localClippingEnabled = true;
 
             container.appendChild(renderer.domElement);
 
-            // CONTROL DE NAVEGACIÓN Y ZOOM SUAVE
+            /* ==============================================================
+               CONFIGURACIÓN CORREGIDA 100% SUAVE PARA ZOOM Y ORBITA
+               ============================================================== */
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.dampingFactor = 0.05;    // Inercia progresiva para desaceleración suave
+            controls.dampingFactor = 0.04;      // Factor de deslizamiento (sensación de peso ligera)
             controls.enableZoom = true;
-            controls.zoomSpeed = 0.4;         // Transición progresiva al usar la rueda del ratón
-            controls.rotateSpeed = 0.6;
-            controls.panSpeed = 0.6;
-            controls.minDistance = 1.0;
-            controls.maxDistance = 1200.0;
+            controls.zoomSpeed = 0.25;          // Velocidad del zoom suave calibrada
+            controls.rotateSpeed = 0.5;
+            controls.panSpeed = 0.5;
+            controls.minDistance = 2.0;
+            controls.maxDistance = 1000.0;
 
-            // Previene saltos bruscos en la página durante el desplazamiento
-            renderer.domElement.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
+            // Bloquear desplazamiento de la página al usar el scroll en el 3D
+            renderer.domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+            }, { passive: false });
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
             scene.add(ambientLight);
@@ -876,10 +881,11 @@
                 }
             });
 
-            // BUCLE DE RENDERIZADO CONTINUO PARA MANTENER LA FLUIDEZ DEL DAMPING
+            /* BUCLE DE ANIMACIÓN CONTINUO CON ACTUALIZACIÓN CONSTANTE DE ORBIT CONTROLS */
             function animate() {
                 animFrameId = requestAnimationFrame(animate);
-                controls.update();
+                clock.getDelta(); // Sincronización continua de tiempo
+                controls.update(); // Actualización fluida de la cámara con damping
                 renderer.render(scene, camera);
             }
 
