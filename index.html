@@ -713,7 +713,7 @@
         });
     </script>
 
-    <!-- THREE.JS ENGINE -->
+    <!-- THREE.JS ENGINE ULTRA OPTIMIZADO PARA ZOOM SUAVE -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -753,20 +753,24 @@
 
             renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
             renderer.setSize(width, height);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
             renderer.outputColorSpace = THREE.SRGBColorSpace;
             renderer.localClippingEnabled = true;
 
             container.appendChild(renderer.domElement);
 
-            // CONFIGURACIÓN DE NAVEGACIÓN Y ZOOM ULTRA SUAVE CON NATIVE DAMPING
+            // OPTIMIZACIÓN EXCELENTE DEL ZOOM Y AMORTIGUACIÓN
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.dampingFactor = 0.05; // Controla la inercia/suavidad de movimiento
+            controls.dampingFactor = 0.035; // Amortiguación extremadamente sedosa sin lag
             controls.enableZoom = true;
-            controls.zoomSpeed = 0.6; // Reduce la agresividad del salto de rueda para hacerlo fluido
-            controls.minDistance = 2.0;
-            controls.maxDistance = 1000.0;
+            controls.zoomSpeed = 0.2;     // Velocidad ajustada para evitar aceleración abrupta
+            controls.rotateSpeed = 0.8;
+            controls.minDistance = 1.0;
+            controls.maxDistance = 1200.0;
+
+            // Evitamos scroll por defecto del navegador en el contenedor de renderizado
+            renderer.domElement.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
             scene.add(ambientLight);
@@ -871,10 +875,10 @@
                 }
             });
 
-            // BUCLE DE ANIMACIÓN LIMPIO Y FLUIDO A 60+ FPS
+            // BUCLE DE ANIMACIÓN CONTINUO
             function animate() {
                 animFrameId = requestAnimationFrame(animate);
-                controls.update(); // OrbitControls calcula la desaceleración suave internamente
+                controls.update();
                 renderer.render(scene, camera);
             }
 
