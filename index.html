@@ -713,7 +713,7 @@
         });
     </script>
 
-    <!-- THREE.JS ENGINE ULTRA OPTIMIZADO PARA ZOOM SUAVE -->
+    <!-- THREE.JS ENGINE ULTRA OPTIMIZADO PARA ZOOM Y NAVEGACIÓN SUAVE -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -759,17 +759,18 @@
 
             container.appendChild(renderer.domElement);
 
-            // OPTIMIZACIÓN EXCELENTE DEL ZOOM Y AMORTIGUACIÓN
+            // CONTROL DE NAVEGACIÓN Y ZOOM SUAVE
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.dampingFactor = 0.035; // Amortiguación extremadamente sedosa sin lag
+            controls.dampingFactor = 0.05;    // Inercia progresiva para desaceleración suave
             controls.enableZoom = true;
-            controls.zoomSpeed = 0.2;     // Velocidad ajustada para evitar aceleración abrupta
-            controls.rotateSpeed = 0.8;
+            controls.zoomSpeed = 0.4;         // Transición progresiva al usar la rueda del ratón
+            controls.rotateSpeed = 0.6;
+            controls.panSpeed = 0.6;
             controls.minDistance = 1.0;
             controls.maxDistance = 1200.0;
 
-            // Evitamos scroll por defecto del navegador en el contenedor de renderizado
+            // Previene saltos bruscos en la página durante el desplazamiento
             renderer.domElement.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
@@ -875,7 +876,7 @@
                 }
             });
 
-            // BUCLE DE ANIMACIÓN CONTINUO
+            // BUCLE DE RENDERIZADO CONTINUO PARA MANTENER LA FLUIDEZ DEL DAMPING
             function animate() {
                 animFrameId = requestAnimationFrame(animate);
                 controls.update();
