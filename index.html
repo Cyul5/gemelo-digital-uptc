@@ -725,7 +725,6 @@
         let is3DInitialized = false;
         let yaCargado = false;
         let animFrameId = null;
-        let needsRender = true;
         let modeloGlobal = null;
         let planoInferior = null, planoSuperior = null;
         let alturaMinModel = 0, alturaMaxModel = 100;
@@ -733,6 +732,12 @@
 
         let pisosMeshes = [[], [], [], [], []];
         let pisoHoveredActual = -1;
+
+        // VARIABLES DE INTERPOLACIÓN Y SUAVIZADO DE ZOOM (LERP)
+        let targetDistance = 0;
+        const minDistanceLimit = 2.0;
+        const maxDistanceLimit = 1000.0;
+        const zoomSmoothness = 0.08; // Factor de suavizado (más bajo = más fluido/suave)
 
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
 
@@ -762,14 +767,27 @@
 
             controls = new OrbitControls(camera, renderer.domElement);
             
-            // AJUSTES DE SUAVIZADO PARA EL ZOOM Y NAVEGACIÓN
+            // CONFIGURACIÓN DE ORBITCONTROLS PARA NAVEGACIÓN Y ROTACIÓN SUAVE
             controls.enableDamping = true;
-            controls.dampingFactor = 0.03; // Reducido para desaceleración suave tras soltar la rueda
-            controls.zoomSpeed = 0.5;      // Reducido para evitar saltos bruscos durante el zoom
-            controls.minDistance = 2.0;
-            controls.maxDistance = 1000.0;
+            controls.dampingFactor = 0.05;
+            controls.enableZoom = false; // Desactivamos el zoom por defecto para usar nuestro suavizador de precisión
 
-            controls.addEventListener('change', () => { needsRender = true; });
+            targetDistance = camera.position.distanceTo(controls.target);
+
+            // GESTOR PERSONALIZADO DE ZOOM ULTRA-FLUIDO VIA EVENTO WHEEL
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+
+                // Normalización de sensibilidad entre ratón físico y trackpad
+                const delta = Math.sign(e.deltaY) * Math.min(Math.abs(e.deltaY), 100);
+                const currentDist = camera.position.distanceTo(controls.target);
+
+                if (targetDistance === 0) targetDistance = currentDist;
+
+                // Factor de escalado proporcional a la distancia actual
+                const factor = 1 + (delta * 0.0012);
+                targetDistance = Math.max(minDistanceLimit, Math.min(maxDistanceLimit, targetDistance * factor));
+            }, { passive: false });
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
             scene.add(ambientLight);
@@ -837,7 +855,6 @@
                             }
                         });
                     }
-                    needsRender = true;
                 }
             });
 
@@ -872,19 +889,26 @@
                     camera.aspect = container.clientWidth / container.clientHeight;
                     camera.updateProjectionMatrix();
                     renderer.setSize(container.clientWidth, container.clientHeight);
-                    needsRender = true;
                 }
             });
 
+            // BUCLE DE ANIMACIÓN CONTINUO CON INTERPOLACIÓN LERP PARA ZOOM
             function animate() {
                 animFrameId = requestAnimationFrame(animate);
                 
-                // Mantiene renderizando si hay amortiguación (damping) activa
-                const isMoving = controls.update();
-                if (isMoving || needsRender) {
-                    renderer.render(scene, camera);
-                    needsRender = false;
+                controls.update();
+
+                // LERP (Linear Interpolation) constante de la posición de la cámara
+                if (targetDistance > 0) {
+                    const currentDist = camera.position.distanceTo(controls.target);
+                    if (Math.abs(currentDist - targetDistance) > 0.001) {
+                        const newDist = THREE.MathUtils.lerp(currentDist, targetDistance, zoomSmoothness);
+                        const direction = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
+                        camera.position.copy(controls.target).addScaledVector(direction, newDist);
+                    }
                 }
+
+                renderer.render(scene, camera);
             }
 
             if (animFrameId) cancelAnimationFrame(animFrameId);
@@ -903,7 +927,6 @@
             if (!planoInferior || !planoSuperior) return;
             planoInferior.constant = -alturaInferior;
             planoSuperior.constant = alturaSuperior;
-            needsRender = true;
         }
 
         function cargarModeloGLBReal() {
@@ -1012,9 +1035,11 @@
                         camera.position.set(newCenter.x + maxDim * 1.2, newCenter.y + maxDim * 0.8, newCenter.z + maxDim * 1.2);
                         camera.updateProjectionMatrix();
                         controls.update();
+
+                        // Sincronizar distancia inicial objetivo para el suavizador
+                        targetDistance = camera.position.distanceTo(controls.target);
                     }
 
-                    needsRender = true;
                     statusEl.innerText = '🟢 Modelo 3D Cargado';
                     yaCargado = true;
                 },
