@@ -761,21 +761,44 @@
             container.appendChild(renderer.domElement);
 
             /* ==============================================================
-               CONFIGURACIÓN CORREGIDA 100% SUAVE PARA ZOOM Y ORBITA
+               CONFIGURACIÓN CORREGIDA 100% SUAVE PARA ZOOM Y ÓRBITA
                ============================================================== */
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.dampingFactor = 0.04;      // Factor de deslizamiento (sensación de peso ligera)
-            controls.enableZoom = true;
-            controls.zoomSpeed = 0.25;          // Velocidad del zoom suave calibrada
-            controls.rotateSpeed = 0.5;
-            controls.panSpeed = 0.5;
+            controls.dampingFactor = 0.025;      // Inercia progresiva y suave
+            controls.enableZoom = false;         // Desactivamos el zoom nativo de OrbitControls para controlarlo manualmente
+            controls.rotateSpeed = 0.4;
+            controls.panSpeed = 0.4;
             controls.minDistance = 2.0;
             controls.maxDistance = 1000.0;
 
-            // Bloquear desplazamiento de la página al usar el scroll en el 3D
-            renderer.domElement.addEventListener('wheel', (e) => {
-                e.preventDefault();
+            // CONTROL MANUAL DEL SCROLL: Normaliza el impulso del ratón/trackpad para evitar saltos bruscos
+            renderer.domElement.addEventListener('wheel', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                // Obtenemos el vector de dirección desde la cámara hacia el objetivo (target)
+                const direction = new THREE.Vector3();
+                camera.getWorldDirection(direction);
+
+                // Normalizamos el delta de la rueda (solo dirección +1 o -1)
+                const dir = Math.sign(event.deltaY);
+
+                // Calculamos la distancia actual al target para un movimiento proporcional
+                const dist = camera.position.distanceTo(controls.target);
+                const step = Math.max(0.5, dist * 0.05); // Paso de zoom fino y progresivo (5% de la distancia actual)
+
+                if (dir > 0) {
+                    // Alejar cámara
+                    if (dist < controls.maxDistance) {
+                        camera.position.addScaledVector(direction, -step);
+                    }
+                } else {
+                    // Acercar cámara
+                    if (dist > controls.minDistance) {
+                        camera.position.addScaledVector(direction, step);
+                    }
+                }
             }, { passive: false });
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
