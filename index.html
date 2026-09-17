@@ -273,7 +273,7 @@
         <div class="sidebar-right" id="sidebar-derecha">
             <button id="btn-volver-mapa" class="btn-regresar" onclick="irAVista('vista-mapa')">🗺️ Volver al Mapa General</button>
 
-            <!-- CONTENEDOR FILTROS DÍA Y FRANJA (ENCIMA DEL NOMBRE DEL SALÓN) -->
+            <!-- CONTENEDOR FILTROS DÍA Y FRANJA -->
             <div class="panel-filtros-container" id="panel-filtros-horario">
                 <div class="filter-group">
                     <span>🗓️ Día:</span>
@@ -750,7 +750,6 @@
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xffffff);
 
-            // OPTIMIZACIÓN 1: Plano 'near' más bajo (0.05 en lugar de 0.1) para evitar la pérdida de paredes o mallas al hacer un zoom muy cercano
             camera = new THREE.PerspectiveCamera(45, width / height, 0.05, 3000);
 
             renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -762,13 +761,13 @@
             container.appendChild(renderer.domElement);
 
             controls = new OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.08;
             
-            // OPTIMIZACIÓN 2: Ajuste fino de la velocidad de zoom y límites de distancia
-            controls.zoomSpeed = 1.2; // Aumentado para una respuesta más rápida e intuitiva al scroll
-            controls.minDistance = 2.0; // Evita atravesar completamente las superficies o deformar la perspectiva al acercarse
-            controls.maxDistance = 1000.0; // Límite máximo para mantener el modelo enfocado y visible
+            // AJUSTES DE SUAVIZADO PARA EL ZOOM Y NAVEGACIÓN
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.03; // Reducido para desaceleración suave tras soltar la rueda
+            controls.zoomSpeed = 0.5;      // Reducido para evitar saltos bruscos durante el zoom
+            controls.minDistance = 2.0;
+            controls.maxDistance = 1000.0;
 
             controls.addEventListener('change', () => { needsRender = true; });
 
@@ -879,6 +878,8 @@
 
             function animate() {
                 animFrameId = requestAnimationFrame(animate);
+                
+                // Mantiene renderizando si hay amortiguación (damping) activa
                 const isMoving = controls.update();
                 if (isMoving || needsRender) {
                     renderer.render(scene, camera);
