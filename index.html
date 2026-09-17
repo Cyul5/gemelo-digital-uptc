@@ -750,7 +750,8 @@
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xffffff);
 
-            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 2000);
+            // OPTIMIZACIÓN 1: Plano 'near' más bajo (0.05 en lugar de 0.1) para evitar la pérdida de paredes o mallas al hacer un zoom muy cercano
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.05, 3000);
 
             renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
             renderer.setSize(width, height);
@@ -763,7 +764,11 @@
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.08;
-            controls.zoomSpeed = 0.5;
+            
+            // OPTIMIZACIÓN 2: Ajuste fino de la velocidad de zoom y límites de distancia
+            controls.zoomSpeed = 1.2; // Aumentado para una respuesta más rápida e intuitiva al scroll
+            controls.minDistance = 2.0; // Evita atravesar completamente las superficies o deformar la perspectiva al acercarse
+            controls.maxDistance = 1000.0; // Límite máximo para mantener el modelo enfocado y visible
 
             controls.addEventListener('change', () => { needsRender = true; });
 
