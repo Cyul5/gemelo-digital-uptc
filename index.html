@@ -1511,7 +1511,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
         });
     </script>
 
-  <!-- MOTOR THREE.JS Y ZOOM INTERACTIVO -->
+<!-- MOTOR THREE.JS Y ZOOM INTERACTIVO -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -1560,7 +1560,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.dampingFactor = 0.05; // MODIFICADO: Aumentado ligeramente para frenar más rápido al soltar el click
+            controls.dampingFactor = 0.05; // Frena rápidamente al soltar el click
             controls.enableZoom = false;
             controls.rotateSpeed = 0.4;
             controls.panSpeed = 0.4;
@@ -1599,6 +1599,10 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
             const gridHelper = new THREE.GridHelper(300, 60, 0x00b4d8, 0xcbd5e1);
             gridHelper.position.y = -0.01;
             scene.add(gridHelper);
+
+            // Inicializar planos de corte globales muy amplios para que nada se oculte de entrada
+            planoInferior = new THREE.Plane(new THREE.Vector3(0, 1, 0), -1000);
+            planoSuperior = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1000);
 
             const raycaster = new THREE.Raycaster();
             const mouse = new THREE.Vector2();
@@ -1748,9 +1752,9 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                     const alturaTotal = alturaMaxModel - alturaMinModel;
                     pasoPisoGlobal = alturaTotal / 5;
 
-                    // MODIFICADO: Inicializar los planos abarcando todo el edificio completo por defecto
-                    planoInferior = new THREE.Plane(new THREE.Vector3(0, 1, 0), -alturaMinModel - 50);
-                    planoSuperior = new THREE.Plane(new THREE.Vector3(0, -1, 0), alturaMaxModel + 100);
+                    // Asignar los planos abarcando todo el edificio de forma holgada desde el inicio
+                    planoInferior.constant = -(alturaMinModel - 50);
+                    planoSuperior.constant = alturaMaxModel + 100;
                     const arrayPlanosCorte = [planoInferior, planoSuperior];
 
                     pisosMeshes = [[], [], [], [], []];
