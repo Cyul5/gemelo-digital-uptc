@@ -318,7 +318,7 @@
             </div>
 
             <div class="excel-box">
-                <div><strong>Archivo:</strong> Plantilla_Levantamiento_Edificio_2.xlsx</div>
+                <div><strong>Archivo:</strong> Plantilla_Levantamiento_Edificio.xlsx</div>
                 <div id="hoja-excel-indicador"><strong>Hoja:</strong> Inventario de Espacios</div>
             </div>
         </div>
@@ -374,7 +374,8 @@
         async function cargarExcelRealRepo() {
             const statusTag = document.getElementById('excel-status-tag');
             try {
-                const response = await fetch('Plantilla_Levantamiento_Edificio_2.xlsx');
+                // NOMBRE DE ARCHIVO ACTUALIZADO
+                const response = await fetch('Plantilla_Levantamiento_Edificio.xlsx');
                 if (!response.ok) throw new Error("No se pudo cargar el archivo Excel.");
 
                 const arrayBuffer = await response.arrayBuffer();
