@@ -485,7 +485,7 @@
                     }
                 }
 
-                // 2. HOJA: Horarios
+                // 2. HOJA: Horarios (Corregido y robusto para detección de espacios)
                 if (workbook.Sheets[nombreHojaHorariosReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaHorariosReal]);
                     let headerRowIdx = -1;
@@ -520,7 +520,7 @@
                         if (!row) continue;
 
                         const valEspacio = String(row[1] || "").trim();
-                        if (valEspacio && (valEspacio.toUpperCase().startsWith("A-") || valEspacio.toUpperCase().startsWith("L-") || valEspacio.toUpperCase().startsWith("HUNZA") || valEspacio.toUpperCase().startsWith("ESPACIO"))) {
+                        if (valEspacio && !normalizarTextoSimple(valEspacio).includes("HORA") && !normalizarTextoSimple(valEspacio).includes("LUNES")) {
                             espacioActual = valEspacio.toUpperCase();
                         }
 
@@ -614,7 +614,7 @@
 
                         for (let c = 0; c < Math.min(5, row.length); c++) {
                             const candidate = String(row[c] || "").trim().toUpperCase();
-                            if (/^(A|L|HUNZA|SALA|ESPACIO)[-\s]?\d+/i.test(candidate) || /^A-\d+/i.test(candidate)) {
+                            if (/^(A|L|HUNZA|SALA|ESPACIO)[-\s]?\d+/i.test(candidate) || /^A-\d+/i.test(candidate) || /^\d{3}$/.test(candidate)) {
                                 codigoVal = candidate;
                                 break;
                             }
@@ -683,7 +683,7 @@
                         let colCode = -1;
                         for (let c = 0; c < Math.min(6, row.length); c++) {
                             const cellVal = String(row[c] || "").trim().toUpperCase();
-                            if (/^(A|L|HUNZA|SALA|ESPACIO)[-\s]?\d+/i.test(cellVal) || /^A-\d+/i.test(cellVal)) {
+                            if (/^(A|L|HUNZA|SALA|ESPACIO)[-\s]?\d+/i.test(cellVal) || /^A-\d+/i.test(cellVal) || /^\d{3}$/.test(cellVal)) {
                                 codigo = cellVal;
                                 colCode = c;
                                 break;
