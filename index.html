@@ -1530,6 +1530,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
         let pisosMeshes = [[], [], [], [], []];
         let pisoHoveredActual = -1;
+        let pisoActivoSeleccionado = -1; // -1 significa Edificio Completo
 
         const clock = new THREE.Clock();
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
@@ -1560,7 +1561,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.dampingFactor = 0.05; // Frena rápidamente al soltar el click
+            controls.dampingFactor = 0.05;
             controls.enableZoom = false;
             controls.rotateSpeed = 0.4;
             controls.panSpeed = 0.4;
@@ -1600,7 +1601,6 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
             gridHelper.position.y = -0.01;
             scene.add(gridHelper);
 
-            // Inicializar planos de corte globales muy amplios para que nada se oculte de entrada
             planoInferior = new THREE.Plane(new THREE.Vector3(0, 1, 0), -1000);
             planoSuperior = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1000);
 
@@ -1666,25 +1666,30 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                 const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
                 if (dist > 5) return;
 
-                const rect = container.getBoundingClientRect();
-                mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
-                mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
+                const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
+                let indicePisoFinal = -1;
 
-                raycaster.setFromCamera(mouse, camera);
-                if (!modeloGlobal) return;
+                if (pisoActivoSeleccionado !== -1) {
+                    indicePisoFinal = pisoActivoSeleccionado;
+                } else {
+                    const rect = container.getBoundingClientRect();
+                    mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
+                    mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
 
-                const intersects = raycaster.intersectObject(modeloGlobal, true);
-                if (intersects.length > 0) {
-                    const puntoIntersec = intersects[0].point;
-                    const alturaRelativa = puntoIntersec.y - alturaMinModel;
-                    let indicePiso = Math.floor(alturaRelativa / pasoPisoGlobal);
-                    
-                    const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
-                    indicePiso = Math.max(0, Math.min(indicePiso, nombresPisos.length - 1));
+                    raycaster.setFromCamera(mouse, camera);
+                    if (!modeloGlobal) return;
 
-                    if (window.irAVista2DPiso) {
-                        window.irAVista2DPiso(nombresPisos[indicePiso]);
+                    const intersects = raycaster.intersectObject(modeloGlobal, true);
+                    if (intersects.length > 0) {
+                        const puntoIntersec = intersects[0].point;
+                        const alturaRelativa = puntoIntersec.y - alturaMinModel;
+                        indicePisoFinal = Math.floor(alturaRelativa / pasoPisoGlobal);
+                        indicePisoFinal = Math.max(0, Math.min(indicePisoFinal, nombresPisos.length - 1));
                     }
+                }
+
+                if (indicePisoFinal !== -1 && window.irAVista2DPiso) {
+                    window.irAVista2DPiso(nombresPisos[indicePisoFinal]);
                 }
             });
 
@@ -1752,7 +1757,6 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                     const alturaTotal = alturaMaxModel - alturaMinModel;
                     pasoPisoGlobal = alturaTotal / 5;
 
-                    // Asignar los planos abarcando todo el edificio de forma holgada desde el inicio
                     planoInferior.constant = -(alturaMinModel - 50);
                     planoSuperior.constant = alturaMaxModel + 100;
                     const arrayPlanosCorte = [planoInferior, planoSuperior];
@@ -1811,6 +1815,8 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                             btn.classList.add('active');
                             aislarRangoAltura(basePiso, techoPiso);
                             
+                            pisoActivoSeleccionado = idx; // Guardamos el piso aislado actual
+                            
                             if (window.actualizarPanelDetallePiso3D) {
                                 window.actualizarPanelDetallePiso3D(nombre);
                             }
@@ -1822,6 +1828,8 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                         document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
                         this.classList.add('active');
                         aislarRangoAltura(alturaMinModel - 50, alturaMaxModel + 100);
+                        
+                        pisoActivoSeleccionado = -1; // Regresamos a modo edificio completo
                         
                         if (window.actualizarPanelDetallePiso3D) {
                             window.actualizarPanelDetallePiso3D("Edificio Completo");
