@@ -163,7 +163,6 @@
             transform: translateX(0);
         }
 
-        /* CONTENEDOR FILTROS EN BARRA LATERAL DERECHA */
         .panel-filtros-container {
             background: var(--bg-card);
             border: 1px solid #1e293b;
@@ -324,7 +323,7 @@
         </div>
     </div>
 
-    <!-- MOTOR LECTOR DE EXCEL Y RUTEO DE PLANOS -->
+    <!-- MOTOR LECTOR DE EXCEL REFINADO Y RUTEO -->
     <script>
         let registrosHorariosExcel = [];
         let registrosInventarioExcel = {};
@@ -342,7 +341,6 @@
             "Piso 5 / Cubierta": "PLANTA_5_HUNZA.svg"
         };
 
-        // --- FUNCIONES UTILITARIAS DE NORMALIZACIÓN Y BÚSQUEDA ROBUSTA ---
         function normalizarTextoSimple(txt) {
             if (txt === null || txt === undefined) return "";
             return String(txt).trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -354,7 +352,7 @@
                 .trim()
                 .toUpperCase()
                 .replace(/^ESPACIO\s+/i, "")
-                .replace(/[^A-Z0-9]/g, ""); // Convierte "A-101", "ESPACIO A-101", "A 101" -> "A101"
+                .replace(/[^A-Z0-9]/g, "");
         }
 
         function buscarRegistroPorCodigo(diccionario, codigoBuscado) {
@@ -471,109 +469,97 @@
                     }
                 }
 
-                // 2. CARGA HOJA: Inventario de Espacios (CON DETECCIÓN DINÁMICA DE ENCABEZADOS)
+                // 2. CARGA HOJA: Inventario de Espacios (CON PARSER ADAPTATIVO POR COLUMNAS Y MULTI-ENCABEZADO)
                 if (workbook.Sheets["Inventario de Espacios"]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets["Inventario de Espacios"]);
                     registrosInventarioExcel = {};
 
-                    let headerRowIdx = -1;
-                    let mapCols = {};
+                    let colMap = {};
+                    let codigoColIdx = -1;
 
+                    // Escanear las primeras 15 filas para asociar nombres de columnas
                     for (let r = 0; r < Math.min(15, matrix.length); r++) {
                         const row = matrix[r];
                         if (!row) continue;
+
                         for (let c = 0; c < row.length; c++) {
-                            const cellText = normalizarTextoSimple(row[c]);
-                            if (cellText.includes("CODIGO") || cellText.includes("ESPACIO") || cellText.includes("AULA")) {
-                                headerRowIdx = r;
-                                break;
+                            const txt = normalizarTextoSimple(row[c]);
+                            if (!txt) continue;
+
+                            if ((txt.includes("CODIGO") || txt.includes("ESPACIO") || txt.includes("AULA") || txt.includes("NUMERO")) && codigoColIdx === -1) {
+                                codigoColIdx = c;
                             }
-                        }
-                        if (headerRowIdx !== -1) break;
-                    }
-
-                    if (headerRowIdx !== -1) {
-                        const hRow = matrix[headerRowIdx];
-                        for (let c = 0; c < hRow.length; c++) {
-                            const head = normalizarTextoSimple(hRow[c]);
-                            if (head.includes("CODIGO") || head.includes("ESPACIO") || head.includes("AULA")) mapCols.codigo = c;
-                            else if (head.includes("CATEGOR")) mapCols.categoria = c;
-                            else if (head.includes("SUB")) mapCols.subcategoria = c;
-                            else if (head.includes("USO")) mapCols.uso = c;
-                            else if (head.includes("AREA") || head.includes("ÁREA")) mapCols.area = c;
-                            else if (head.includes("ALTURA") || head.includes("ALTO")) mapCols.altura = c;
-                            else if (head.includes("CAPACIDAD") || head.includes("AFORO") || head.includes("PUESTOS")) mapCols.capacidadEstud = c;
-                            else if (head.includes("ACABADO") || head.includes("PARED")) mapCols.acabadoMuros = c;
-                            else if (head.includes("ESTADO MUROS") || head.includes("ESTADO DE MUROS")) mapCols.estadoMuros = c;
-                            else if (head.includes("PATOLOGI") || head.includes("DAÑO")) mapCols.tipoPatologia = c;
-                            else if (head.includes("UBICACIO") || head.includes("UBICACIÓN")) mapCols.ubicacionPatologia = c;
-                            else if (head.includes("OBSERVAC") || head.includes("DIAGNOST")) mapCols.observacionesPatologia = c;
+                            if (txt.includes("CATEGOR")) colMap.categoria = c;
+                            if (txt.includes("SUBCATEGOR")) colMap.subcategoria = c;
+                            if (txt.includes("USO") || txt.includes("DESTINAC")) colMap.uso = c;
+                            if (txt.includes("AREA") || txt.includes("ÁREA") || txt.includes("M2")) colMap.area = c;
+                            if (txt.includes("ALTURA") || txt.includes("ALTO")) colMap.altura = c;
+                            if (txt.includes("CAPACID") || txt.includes("AFORO") || txt.includes("PUESTOS")) colMap.capacidadEstud = c;
+                            if (txt.includes("ACABADO") || (txt.includes("MURO") && !txt.includes("ESTADO"))) colMap.acabadoMuros = c;
+                            if (txt.includes("ESTADO") && (txt.includes("MURO") || txt.includes("CONSERV"))) colMap.estadoMuros = c;
+                            if (txt.includes("PATOLOG") || txt.includes("DANO") || txt.includes("DAÑO") || txt.includes("DETERIORO")) colMap.tipoPatologia = c;
+                            if (txt.includes("UBICAC")) colMap.ubicacionPatologia = c;
+                            if (txt.includes("OBSERVAC") || txt.includes("DIAGNOST")) colMap.observacionesPatologia = c;
+                            if (txt.includes("ESTADO GENERAL") || txt.includes("ESTADO DE CONSERVACION")) colMap.estadoGeneral = c;
                         }
                     }
 
-                    const startRow = headerRowIdx !== -1 ? headerRowIdx + 1 : 0;
-
-                    for (let r = startRow; r < matrix.length; r++) {
+                    for (let r = 0; r < matrix.length; r++) {
                         const row = matrix[r];
                         if (!row) continue;
 
-                        let codigo = "";
-                        if (mapCols.codigo !== undefined && row[mapCols.codigo]) {
-                            const val = String(row[mapCols.codigo]).trim().toUpperCase();
-                            if (val && val !== "CÓDIGO" && val !== "CODIGO" && val !== "N/A") {
-                                codigo = val;
+                        let codigoVal = "";
+
+                        // Intentar obtener código en la columna detectada
+                        if (codigoColIdx !== -1 && row[codigoColIdx]) {
+                            const candidate = String(row[codigoColIdx]).trim().toUpperCase();
+                            if (candidate && !candidate.includes("CODIGO") && !candidate.includes("ESPACIO") && candidate !== "N/A") {
+                                codigoVal = candidate;
                             }
                         }
 
-                        if (!codigo) {
-                            for (let c = 0; c < Math.min(5, row.length); c++) {
-                                const cellVal = String(row[c] || "").trim().toUpperCase();
-                                if (cellVal.startsWith("A-") || cellVal.startsWith("L-") || cellVal.startsWith("HUNZA") || cellVal.startsWith("SALA") || cellVal.startsWith("ESPACIO")) {
-                                    codigo = cellVal;
+                        // Si no lo encuentra, buscar en las primeras 6 celdas
+                        if (!codigoVal) {
+                            for (let c = 0; c < Math.min(6, row.length); c++) {
+                                const val = String(row[c] || "").trim().toUpperCase();
+                                if (/^(A|L|HUNZA|SALA|ESPACIO)[-\s]?\d+/i.test(val) || /^A-\d+/i.test(val)) {
+                                    codigoVal = val;
+                                    codigoColIdx = c;
                                     break;
                                 }
                             }
                         }
 
-                        if (codigo) {
-                            const getVal = (colIdx, fallbackIdx) => {
-                                let idx = (colIdx !== undefined) ? colIdx : fallbackIdx;
-                                if (idx !== undefined && row[idx] !== undefined && row[idx] !== null) {
-                                    const str = String(row[idx]).trim();
-                                    if (str !== "" && str !== "undefined") return str;
+                        if (codigoVal) {
+                            const getCell = (primaryCol, relativeOffset) => {
+                                let cIdx = (primaryCol !== undefined) ? primaryCol : (codigoColIdx !== -1 ? codigoColIdx + relativeOffset : -1);
+                                if (cIdx !== -1 && row[cIdx] !== undefined && row[cIdx] !== null) {
+                                    const res = String(row[cIdx]).trim();
+                                    if (res !== "" && res !== "undefined" && res !== "N/A") return res;
                                 }
                                 return "N/A";
                             };
 
-                            registrosInventarioExcel[codigo] = {
-                                categoria: getVal(mapCols.categoria, 2),
-                                subcategoria: getVal(mapCols.subcategoria, 3),
-                                uso: getVal(mapCols.uso, 4),
-                                area: getVal(mapCols.area, 5),
-                                altura: getVal(mapCols.altura, 6),
-                                capacidadEstud: getVal(mapCols.capacidadEstud, 7),
-                                capacidadDoc: getVal(mapCols.capacidadDoc, 8),
-                                puertas: getVal(mapCols.puertas, 9),
-                                estadoPuertas: getVal(mapCols.estadoPuertas, 10),
-                                obsPuertas: getVal(mapCols.obsPuertas, 11),
-                                ventanas: getVal(mapCols.ventanas, 12),
-                                estadoVentanas: getVal(mapCols.estadoVentanas, 13),
-                                obsVentanas: getVal(mapCols.obsVentanas, 14),
-                                cieloRaso: getVal(mapCols.cieloRaso, 15),
-                                obsCieloRaso: getVal(mapCols.obsCieloRaso, 16),
-                                acabadoMuros: getVal(mapCols.acabadoMuros, 17),
-                                estadoMuros: getVal(mapCols.estadoMuros, 18),
-                                obsMuros: getVal(mapCols.obsMuros, 19),
-                                orientacion: getVal(mapCols.orientacion, 20),
-                                accesoLibre: getVal(mapCols.accesoLibre, 21),
-                                tipoAcceso: getVal(mapCols.tipoAcceso, 22),
-                                responsable: getVal(mapCols.responsable, 23),
-                                tipoPatologia: getVal(mapCols.tipoPatologia, 24) !== "N/A" ? getVal(mapCols.tipoPatologia, 24) : "Ninguna",
-                                ubicacionPatologia: getVal(mapCols.ubicacionPatologia, 25),
-                                estadoGeneral: getVal(mapCols.estadoGeneral, 26) !== "N/A" ? getVal(mapCols.estadoGeneral, 26) : "Bueno",
-                                observacionesPatologia: getVal(mapCols.observacionesPatologia, 27) !== "N/A" ? getVal(mapCols.observacionesPatologia, 27) : "Sin novedades registradas",
-                                fechaRegistro: getVal(mapCols.fechaRegistro, 28)
+                            const objData = {
+                                categoria: getCell(colMap.categoria, 1),
+                                subcategoria: getCell(colMap.subcategoria, 2),
+                                uso: getCell(colMap.uso, 3),
+                                area: getCell(colMap.area, 4),
+                                altura: getCell(colMap.altura, 5),
+                                capacidadEstud: getCell(colMap.capacidadEstud, 6),
+                                acabadoMuros: getCell(colMap.acabadoMuros, 7),
+                                estadoMuros: getCell(colMap.estadoMuros, 8),
+                                tipoPatologia: getCell(colMap.tipoPatologia, 9) !== "N/A" ? getCell(colMap.tipoPatologia, 9) : "Ninguna",
+                                ubicacionPatologia: getCell(colMap.ubicacionPatologia, 10),
+                                estadoGeneral: getCell(colMap.estadoGeneral, 11) !== "N/A" ? getCell(colMap.estadoGeneral, 11) : "Bueno",
+                                observacionesPatologia: getCell(colMap.observacionesPatologia, 12) !== "N/A" ? getCell(colMap.observacionesPatologia, 12) : "Sin novedades registradas"
                             };
+
+                            // Guardar bajo distintas variaciones de clave para garantizar match total
+                            const codLimpio = normalizarCodigoEspacio(codigoVal);
+                            registrosInventarioExcel[codigoVal] = objData;
+                            registrosInventarioExcel[codLimpio] = objData;
+                            registrosInventarioExcel[`A-${codLimpio}`] = objData;
                         }
                     }
                 }
@@ -588,38 +574,49 @@
                         if (!row) continue;
 
                         let codigo = "";
-                        for (let c = 0; c < Math.min(5, row.length); c++) {
+                        let colCode = -1;
+                        for (let c = 0; c < Math.min(6, row.length); c++) {
                             const cellVal = String(row[c] || "").trim().toUpperCase();
-                            if (cellVal.startsWith("A-") || cellVal.startsWith("L-") || cellVal.startsWith("HUNZA") || cellVal.startsWith("SALA") || cellVal.startsWith("ESPACIO")) {
+                            if (/^(A|L|HUNZA|SALA|ESPACIO)[-\s]?\d+/i.test(cellVal) || /^A-\d+/i.test(cellVal)) {
                                 codigo = cellVal;
+                                colCode = c;
                                 break;
                             }
                         }
 
                         if (codigo) {
-                            const getCell = (idx) => (row[idx] !== undefined && row[idx] !== null && String(row[idx]).trim() !== "") ? row[idx] : "N/A";
-
-                            registrosMobiliarioExcel[codigo] = {
-                                numSillas: getCell(2),
-                                sillasProg: getCell(3),
-                                sillasBuenas: getCell(4),
-                                escritorioDocente: getCell(5),
-                                numTableros: getCell(6),
-                                tipoTablero: getCell(7),
-                                videoBeam: getCell(8),
-                                pantallaInteligente: getCell(9),
-                                numComputadores: getCell(10),
-                                tomacorrientes: getCell(11),
-                                luminariasTotal: getCell(12),
-                                luminariasFunc: getCell(13),
-                                tipoIluminacion: getCell(14),
-                                obsElectricas: getCell(15),
-                                cortinas: getCell(16),
-                                estadoMobiliario: getCell(17),
-                                sistemaAudio: getCell(18),
-                                extintor: getCell(19),
-                                observacionesMob: getCell(20) !== "N/A" ? getCell(20) : "Sin observaciones adicionales"
+                            const getCell = (offset) => {
+                                const idx = colCode + offset;
+                                if (row[idx] !== undefined && row[idx] !== null && String(row[idx]).trim() !== "") {
+                                    return String(row[idx]).trim();
+                                }
+                                return "N/A";
                             };
+
+                            const mobObj = {
+                                numSillas: getCell(1),
+                                sillasProg: getCell(2),
+                                sillasBuenas: getCell(3),
+                                escritorioDocente: getCell(4),
+                                numTableros: getCell(5),
+                                tipoTablero: getCell(6),
+                                videoBeam: getCell(7),
+                                pantallaInteligente: getCell(8),
+                                numComputadores: getCell(9),
+                                tomacorrientes: getCell(10),
+                                luminariasTotal: getCell(11),
+                                luminariasFunc: getCell(12),
+                                tipoIluminacion: getCell(13),
+                                obsElectricas: getCell(14),
+                                cortinas: getCell(15),
+                                estadoMobiliario: getCell(16),
+                                observacionesMob: getCell(17) !== "N/A" ? getCell(17) : "Sin observaciones adicionales"
+                            };
+
+                            const codLimpio = normalizarCodigoEspacio(codigo);
+                            registrosMobiliarioExcel[codigo] = mobObj;
+                            registrosMobiliarioExcel[codLimpio] = mobObj;
+                            registrosMobiliarioExcel[`A-${codLimpio}`] = mobObj;
                         }
                     }
                 }
@@ -1065,7 +1062,7 @@
         });
     </script>
 
-    <!-- MOTOR THREE.JS - SOLUCIÓN TOTAL ZOOM SUAVE -->
+    <!-- MOTOR THREE.JS Y ZOOM INTERACTIVO -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -1112,7 +1109,6 @@
 
             container.appendChild(renderer.domElement);
 
-            /* CONFIGURACIÓN SUAVE ZOOM */
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.025;
