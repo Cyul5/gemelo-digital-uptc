@@ -335,15 +335,21 @@
         </div>
     </div>
 
-    <!-- MOTOR LECTOR DE EXCEL REFINADO Y RUTEO -->
+   <!-- MOTOR LECTOR DE EXCEL REFINADO Y RUTEO -->
     <script>
+let registrosDatosGeneralesExcel = {};
 let registrosInventarioExcel = {};
 let registrosMobiliarioExcel = {};
 let registrosHorariosExcel = [];
+let registrosAccesibilidadExcel = [];
+let registrosInstalacionesExcel = [];
 
+let nombreHojaDatosGeneralesReal = "Datos Generales";
 let nombreHojaInventarioReal = "Inventario Espacios";
 let nombreHojaMobiliarioReal = "Mobiliario y Equipo";
 let nombreHojaHorariosReal = "Horarios de Uso";
+let nombreHojaAccesibilidadReal = "Accesibilidad y Seguridad";
+let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
         let pisoActual2D = "Piso 1";
         let aulaSeleccionadaActual = null;
@@ -389,6 +395,7 @@ let nombreHojaHorariosReal = "Horarios de Uso";
 
         function inicializarFranjasHorarias() {
             const selectFranja = document.getElementById('select-franja');
+            if (!selectFranja) return;
             selectFranja.innerHTML = '';
             for (let h = 7; h < 23; h++) {
                 const opt = document.createElement('option');
@@ -444,7 +451,7 @@ let nombreHojaHorariosReal = "Horarios de Uso";
                 const hInst = sheetNames.find(n => normalizarTextoSimple(n).includes("INSTALACIONES"));
                 if (hInst) nombreHojaInstalacionesReal = hInst;
 
-                // 1. HOJA: Datos Generales
+                // 1. HOJA: Datos Generales (Global Edificio)
                 if (workbook.Sheets[nombreHojaDatosGeneralesReal]) {
                     const matrixGen = obtenerMatrizConMerges(workbook.Sheets[nombreHojaDatosGeneralesReal]);
                     registrosDatosGeneralesExcel = {};
@@ -479,7 +486,7 @@ let nombreHojaHorariosReal = "Horarios de Uso";
                     }
                 }
 
-                // 2. HOJA: Horarios (Corregido y robusto para detección de espacios)
+                // 2. HOJA: Horarios (Visor 2D)
                 if (workbook.Sheets[nombreHojaHorariosReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaHorariosReal]);
                     let headerRowIdx = -1;
@@ -539,7 +546,7 @@ let nombreHojaHorariosReal = "Horarios de Uso";
                     }
                 }
 
-                // 3. HOJA: Inventario Espacios
+                // 3. HOJA: Inventario Espacios (Visor 2D)
                 if (workbook.Sheets[nombreHojaInventarioReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaInventarioReal]);
                     registrosInventarioExcel = {};
@@ -664,7 +671,7 @@ let nombreHojaHorariosReal = "Horarios de Uso";
                     }
                 }
 
-                // 4. HOJA: Mobiliario
+                // 4. HOJA: Mobiliario y Equipo (Visor 2D)
                 if (workbook.Sheets[nombreHojaMobiliarioReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaMobiliarioReal]);
                     registrosMobiliarioExcel = {};
@@ -721,7 +728,7 @@ let nombreHojaHorariosReal = "Horarios de Uso";
                     }
                 }
 
-                // 5. HOJA: Accesibilidad y Seguridad
+                // 5. HOJA: Accesibilidad y Seguridad (Visor 3D)
                 if (workbook.Sheets[nombreHojaAccesibilidadReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaAccesibilidadReal]);
                     registrosAccesibilidadExcel = [];
@@ -762,7 +769,7 @@ let nombreHojaHorariosReal = "Horarios de Uso";
                     }
                 }
 
-                // 6. HOJA: Instalaciones por Piso
+                // 6. HOJA: Instalaciones por Piso (Visor 3D)
                 if (workbook.Sheets[nombreHojaInstalacionesReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaInstalacionesReal]);
                     registrosInstalacionesExcel = [];
@@ -803,7 +810,7 @@ let nombreHojaHorariosReal = "Horarios de Uso";
                     }
                 }
 
-                statusTag.innerHTML = `<span class="dot"></span> Excel Conectado`;
+                if (statusTag) statusTag.innerHTML = `<span class="dot"></span> Excel Conectado`;
                 
                 if (vistaActualGlobal === 'vista-3d') {
                     actualizarPanelDetallePiso3D("Edificio Completo");
@@ -814,7 +821,7 @@ let nombreHojaHorariosReal = "Horarios de Uso";
 
             } catch (err) {
                 console.error("Error leyendo Excel:", err);
-                statusTag.innerHTML = `<span class="dot" style="background:#ef4444;"></span> Error al leer Excel`;
+                if (statusTag) statusTag.innerHTML = `<span class="dot" style="background:#ef4444;"></span> Error al leer Excel`;
             }
         }
 
@@ -832,7 +839,7 @@ let nombreHojaHorariosReal = "Horarios de Uso";
             });
 
             const selectFranja = document.getElementById('select-franja');
-            const textoFranjaVisible = selectFranja.options[selectFranja.selectedIndex] ? selectFranja.options[selectFranja.selectedIndex].text : franjaSeleccionada;
+            const textoFranjaVisible = selectFranja && selectFranja.options[selectFranja.selectedIndex] ? selectFranja.options[selectFranja.selectedIndex].text : franjaSeleccionada;
 
             if (encontrado) {
                 return {
@@ -873,30 +880,31 @@ let nombreHojaHorariosReal = "Horarios de Uso";
             const sidebarDerecha = document.getElementById('sidebar-derecha');
 
             if (idVista === 'vista-3d') {
-                sidebarDerecha.classList.add('visible');
-                btnVolver.style.display = 'block';
-                seccionCortes.style.display = 'block';
-                panelFiltros.style.display = 'none';
-                breadcrumb.innerText = 'Edificio 30 Hunza (Modelo 3D)';
+                if(sidebarDerecha) sidebarDerecha.classList.add('visible');
+                if(btnVolver) btnVolver.style.display = 'block';
+                if(seccionCortes) seccionCortes.style.display = 'block';
+                if(panelFiltros) panelFiltros.style.display = 'none';
+                if(breadcrumb) breadcrumb.innerText = 'Edificio 30 Hunza (Modelo 3D)';
                 actualizarPanelDetallePiso3D("Edificio Completo");
                 if (window.cargarModeloIFC) window.cargarModeloIFC();
             } else if (idVista === 'vista-2d') {
-                sidebarDerecha.classList.add('visible');
-                btnVolver.style.display = 'block';
-                seccionCortes.style.display = 'none';
-                panelFiltros.style.display = 'flex';
-                document.getElementById('titulo-vista-2d').innerText = `Planta 2D - ${pisoActual2D}`;
-                breadcrumb.innerText = `Edificio 30 Hunza (${pisoActual2D})`;
+                if(sidebarDerecha) sidebarDerecha.classList.add('visible');
+                if(btnVolver) btnVolver.style.display = 'block';
+                if(seccionCortes) seccionCortes.style.display = 'none';
+                if(panelFiltros) panelFiltros.style.display = 'flex';
+                const titulo2d = document.getElementById('titulo-vista-2d');
+                if(titulo2d) titulo2d.innerText = `Planta 2D - ${pisoActual2D}`;
+                if(breadcrumb) breadcrumb.innerText = `Edificio 30 Hunza (${pisoActual2D})`;
                 
                 aulaSeleccionadaActual = null;
                 mostrarResumenPlanta2D();
                 setTimeout(actualizarEstadoAulas2D, 150);
             } else {
-                sidebarDerecha.classList.remove('visible');
-                btnVolver.style.display = 'none';
-                seccionCortes.style.display = 'none';
-                panelFiltros.style.display = 'none';
-                breadcrumb.innerText = 'Sede Central (Plano General)';
+                if(sidebarDerecha) sidebarDerecha.classList.remove('visible');
+                if(btnVolver) btnVolver.style.display = 'none';
+                if(seccionCortes) seccionCortes.style.display = 'none';
+                if(panelFiltros) panelFiltros.style.display = 'none';
+                if(breadcrumb) breadcrumb.innerText = 'Sede Central (Plano General)';
                 restablecerPanelEdificio();
             }
         }
@@ -910,31 +918,37 @@ let nombreHojaHorariosReal = "Horarios de Uso";
                 wrapper.innerHTML = `<object id="svg-2d-object" type="image/svg+xml" data="${archivoSVG}" style="width:100%; height:100%; border:none; object-fit:contain; background-color:#ffffff;"></object>`;
                 
                 const nuevoSvgObj = document.getElementById('svg-2d-object');
-                nuevoSvgObj.addEventListener('load', () => {
-                    aulaSeleccionadaActual = null;
-                    mostrarResumenPlanta2D();
-                    setTimeout(actualizarEstadoAulas2D, 100);
-                });
+                if(nuevoSvgObj) {
+                    nuevoSvgObj.addEventListener('load', () => {
+                        aulaSeleccionadaActual = null;
+                        mostrarResumenPlanta2D();
+                        setTimeout(actualizarEstadoAulas2D, 100);
+                    });
+                }
             }
 
-            document.getElementById('titulo-vista-2d').innerText = `Planta 2D - ${pisoActual2D}`;
+            const titulo2d = document.getElementById('titulo-vista-2d');
+            if(titulo2d) titulo2d.innerText = `Planta 2D - ${pisoActual2D}`;
             irAVista('vista-2d');
         };
 
         function cambiarModoConsulta() {
-            const modo = document.getElementById('select-modo-consulta').value;
+            const selectModo = document.getElementById('select-modo-consulta');
             const grupoHorario = document.getElementById('grupo-controles-horario');
             const hojaIndicador = document.getElementById('hoja-excel-indicador');
+            if(!selectModo) return;
+
+            const modo = selectModo.value;
 
             if (modo === "horarios") {
-                grupoHorario.style.display = "block";
-                hojaIndicador.innerHTML = `<strong>Hoja:</strong> ${nombreHojaHorariosReal}`;
+                if(grupoHorario) grupoHorario.style.display = "block";
+                if(hojaIndicador) hojaIndicador.innerHTML = `<strong>Hoja:</strong> ${nombreHojaHorariosReal}`;
             } else if (modo === "mobiliario") {
-                grupoHorario.style.display = "none";
-                hojaIndicador.innerHTML = `<strong>Hoja:</strong> ${nombreHojaMobiliarioReal}`;
+                if(grupoHorario) grupoHorario.style.display = "none";
+                if(hojaIndicador) hojaIndicador.innerHTML = `<strong>Hoja:</strong> ${nombreHojaMobiliarioReal}`;
             } else {
-                grupoHorario.style.display = "none";
-                hojaIndicador.innerHTML = `<strong>Hoja:</strong> ${nombreHojaInventarioReal}`;
+                if(grupoHorario) grupoHorario.style.display = "none";
+                if(hojaIndicador) hojaIndicador.innerHTML = `<strong>Hoja:</strong> ${nombreHojaInventarioReal}`;
             }
 
             aulaSeleccionadaActual = null;
@@ -949,9 +963,13 @@ let nombreHojaHorariosReal = "Horarios de Uso";
             const svgDoc = svg2d.contentDocument;
             if (!svgDoc) return;
 
-            const diaSeleccionado = document.getElementById('select-dia').value;
-            const franjaSeleccionada = document.getElementById('select-franja').value;
-            const modoConsulta = document.getElementById('select-modo-consulta').value;
+            const selDia = document.getElementById('select-dia');
+            const selFranja = document.getElementById('select-franja');
+            const selModo = document.getElementById('select-modo-consulta');
+
+            const diaSeleccionado = selDia ? selDia.value : "Lunes";
+            const franjaSeleccionada = selFranja ? selFranja.value : "7 -8";
+            const modoConsulta = selModo ? selModo.value : "inventario";
 
             const elementosAulas = svgDoc.querySelectorAll('[id^="A-"], [id^="a-"], [id^="L-"], [id^="l-"], [id*="HUNZA"]');
 
@@ -1011,8 +1029,10 @@ let nombreHojaHorariosReal = "Horarios de Uso";
                 const elementosAulas = svg2d.contentDocument.querySelectorAll('[id^="A-"], [id^="a-"], [id^="L-"], [id^="l-"], [id*="HUNZA"]');
                 totalAulas = elementosAulas.length;
 
-                const diaSeleccionado = document.getElementById('select-dia').value;
-                const franjaSeleccionada = document.getElementById('select-franja').value;
+                const selDia = document.getElementById('select-dia');
+                const selFranja = document.getElementById('select-franja');
+                const diaSeleccionado = selDia ? selDia.value : "Lunes";
+                const franjaSeleccionada = selFranja ? selFranja.value : "7 -8";
 
                 elementosAulas.forEach(el => {
                     const info = consultarHorarioAula(el.id.toUpperCase(), diaSeleccionado, franjaSeleccionada);
@@ -1021,8 +1041,11 @@ let nombreHojaHorariosReal = "Horarios de Uso";
                 });
             }
 
-            const modo = document.getElementById('select-modo-consulta').value;
-            document.getElementById('panel-derecho-titulo').innerHTML = `📊 ${pisoActual2D} - Resumen`;
+            const selModo = document.getElementById('select-modo-consulta');
+            const modo = selModo ? selModo.value : "inventario";
+            
+            const panelTitulo = document.getElementById('panel-derecho-titulo');
+            if(panelTitulo) panelTitulo.innerHTML = `📊 ${pisoActual2D} - Resumen`;
 
             let htmlContenido = `
                 <div class="info-group">
@@ -1054,13 +1077,18 @@ let nombreHojaHorariosReal = "Horarios de Uso";
                 </div>
             `;
 
-            document.getElementById('panel-contenido').innerHTML = htmlContenido;
+            const panelContenido = document.getElementById('panel-contenido');
+            if(panelContenido) panelContenido.innerHTML = htmlContenido;
         }
 
         function restablecerPanelEdificio() {
             aulaSeleccionadaActual = null;
-            document.getElementById('panel-derecho-titulo').innerHTML = `🏢 DATOS DEL EDIFICIO`;
-            document.getElementById('hoja-excel-indicador').innerHTML = `<strong>Hoja:</strong> ${nombreHojaDatosGeneralesReal}`;
+            const panelTitulo = document.getElementById('panel-derecho-titulo');
+            const hojaIndicador = document.getElementById('hoja-excel-indicador');
+            const panelContenido = document.getElementById('panel-contenido');
+
+            if(panelTitulo) panelTitulo.innerHTML = `🏢 DATOS DEL EDIFICIO`;
+            if(hojaIndicador) hojaIndicador.innerHTML = `<strong>Hoja:</strong> ${nombreHojaDatosGeneralesReal}`;
 
             const nombre = registrosDatosGeneralesExcel["NOMBRE"] || "Edificio de Aula Hunza";
             const codigo = registrosDatosGeneralesExcel["CODIGO"] || "30";
@@ -1081,61 +1109,63 @@ let nombreHojaHorariosReal = "Horarios de Uso";
             const estadoEscaleras = registrosDatosGeneralesExcel["ESTADO_ESCALERAS"] || "Bueno";
             const ascensores = registrosDatosGeneralesExcel["ASCENSORES"] || "1";
 
-            document.getElementById('panel-contenido').innerHTML = `
-                <div class="info-section-title">📍 1. Identificación del Edificio</div>
-                <div class="info-group">
-                    <div class="info-label">Nombre del Edificio:</div>
-                    <div class="info-val">${nombre}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Código / Identificador:</div>
-                    <div class="info-val">${codigo}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Institución / Sede:</div>
-                    <div class="info-val">${institucion} -${ciudad}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Dirección:</div>
-                    <div class="info-val">${direccion}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Coordenadas GPS:</div>
-                    <div class="info-val" style="font-size:11px; color:#cbd5e1;">${gps}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Uso Principal:</div>
-                    <div class="info-val">${uso}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Año de Construcción:</div>
-                    <div class="info-val">${anioConst}</div>
-                </div>
+            if(panelContenido) {
+                panelContenido.innerHTML = `
+                    <div class="info-section-title">📍 1. Identificación del Edificio</div>
+                    <div class="info-group">
+                        <div class="info-label">Nombre del Edificio:</div>
+                        <div class="info-val">${nombre}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Código / Identificador:</div>
+                        <div class="info-val">${codigo}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Institución / Sede:</div>
+                        <div class="info-val">${institucion} -${ciudad}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Dirección:</div>
+                        <div class="info-val">${direccion}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Coordenadas GPS:</div>
+                        <div class="info-val" style="font-size:11px; color:#cbd5e1;">${gps}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Uso Principal:</div>
+                        <div class="info-val">${uso}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Año de Construcción:</div>
+                        <div class="info-val">${anioConst}</div>
+                    </div>
 
-                <div class="info-section-title">🧱 2. Datos Constructivos Generales</div>
-                <div class="info-group">
-                    <div class="info-label">Número de Pisos:</div>
-                    <div class="info-val">${numPisos}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Área Total Construida:</div>
-                    <div class="info-val">${areaTotal} m²</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Área por Piso:</div>
-                    <div class="info-val">${areaPiso} m²</div>
-                </div>
+                    <div class="info-section-title">🧱 2. Datos Constructivos Generales</div>
+                    <div class="info-group">
+                        <div class="info-label">Número de Pisos:</div>
+                        <div class="info-val">${numPisos}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Área Total Construida:</div>
+                        <div class="info-val">${areaTotal} m²</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Área por Piso:</div>
+                        <div class="info-val">${areaPiso} m²</div>
+                    </div>
 
-                <div class="info-section-title">🚶 2.2 Circulación Vertical</div>
-                <div class="info-group">
-                    <div class="info-label">Escaleras:</div>
-                    <div class="info-val">${numEscaleras} ${notasEscaleras ? '(' + notasEscaleras + ')' : ''} \vert{} Estado: ${estadoEscaleras}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Ascensores:</div>
-                    <div class="info-val">${ascensores}</div>
-                </div>
-            `;
+                    <div class="info-section-title">🚶 2.2 Circulación Vertical</div>
+                    <div class="info-group">
+                        <div class="info-label">Escaleras:</div>
+                        <div class="info-val">${numEscaleras} ${notasEscaleras ? '(' + notasEscaleras + ')' : ''} \vert{} Estado: ${estadoEscaleras}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Ascensores:</div>
+                        <div class="info-val">${ascensores}</div>
+                    </div>
+                `;
+            }
         }
 
         function actualizarPanelDetallePiso3D(nombrePiso) {
@@ -1150,16 +1180,18 @@ let nombreHojaHorariosReal = "Horarios de Uso";
             }
 
             if (!nombrePiso || nombrePiso === "Edificio Completo") {
-                panelTitulo.innerHTML = `🏢 EDIFICIO COMPLETO (3D)`;
-                panelContenido.innerHTML = `
-                    <div style="padding:10px 0; color:var(--text-muted); font-size:12px;">
-                        <p>💡 Seleccione un nivel en el menú de aislamiento para desplegar las condiciones de <strong>Accesibilidad y Seguridad</strong> e <strong>Instalaciones y Acabados</strong> del piso.</p>
-                    </div>
-                `;
+                if(panelTitulo) panelTitulo.innerHTML = `🏢 EDIFICIO COMPLETO (3D)`;
+                if(panelContenido) {
+                    panelContenido.innerHTML = `
+                        <div style="padding:10px 0; color:var(--text-muted); font-size:12px;">
+                            <p>💡 Seleccione un nivel en el menú de aislamiento para desplegar las condiciones de <strong>Accesibilidad y Seguridad</strong> e <strong>Instalaciones y Acabados</strong> del piso.</p>
+                        </div>
+                    `;
+                }
                 return;
             }
 
-            panelTitulo.innerHTML = `🏢 ${nombrePiso.toUpperCase()}`;
+            if(panelTitulo) panelTitulo.innerHTML = `🏢 ${nombrePiso.toUpperCase()}`;
 
             const numeroPisoStr = String(nombrePiso).replace(/[^0-9]/g, '');
 
@@ -1253,145 +1285,155 @@ let nombreHojaHorariosReal = "Horarios de Uso";
                 html += `<div class="info-group"><div class="info-val" style="color:var(--text-muted); font-size:11px;">Sin datos registrados de instalaciones para este piso.</div></div>`;
             }
 
-            panelContenido.innerHTML = html;
+            if(panelContenido) panelContenido.innerHTML = html;
         }
 
         window.actualizarPanelDetallePiso3D = actualizarPanelDetallePiso3D;
 
         function mostrarDetalleAulaPanel(codigoAula) {
-            const modo = document.getElementById('select-modo-consulta').value;
+            const selModo = document.getElementById('select-modo-consulta');
+            const modo = selModo ? selModo.value : "inventario";
             const panelTitulo = document.getElementById('panel-derecho-titulo');
             const panelContenido = document.getElementById('panel-contenido');
+            const hojaIndicador = document.getElementById('hoja-excel-indicador');
 
             const codigoMostrado = codigoAula.toUpperCase().replace(/^ESPACIO\s+/i, "");
-            panelTitulo.innerHTML = `📌 ESPACIO ${codigoMostrado}`;
+            if(panelTitulo) panelTitulo.innerHTML = `📌 ESPACIO ${codigoMostrado}`;
 
             if (modo === "inventario") {
-                document.getElementById('hoja-excel-indicador').innerHTML = `<strong>Hoja:</strong> ${nombreHojaInventarioReal}`;
+                if(hojaIndicador) hojaIndicador.innerHTML = `<strong>Hoja:</strong> ${nombreHojaInventarioReal}`;
                 const inv = buscarRegistroPorCodigo(registrosInventarioExcel, codigoAula) || {};
                 
-                panelContenido.innerHTML = `
-                    <div class="info-section-title">📐 Dimensiones y Uso</div>
-                    <div class="info-group">
-                        <div class="info-label">Categoría / Subcategoría:</div>
-                        <div class="info-val">${inv.categoria || 'N/A'} - ${inv.subcategoria || 'N/A'}</div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Uso Actual:</div>
-                        <div class="info-val">${inv.uso || 'N/A'}</div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Área / Altura Techo:</div>
-                        <div class="info-val">${inv.area && inv.area !== 'N/A' ? inv.area + ' m²' : 'N/A'} | H: ${inv.altura && inv.altura !== 'N/A' ? inv.altura + ' m' : 'N/A'}</div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Capacidad Observada:</div>
-                        <div class="info-val">👥 Estudiantes: <strong>${inv.capEstudiantes || 'N/A'}</strong> | 👨‍🏫 Docente: <strong>${inv.capDocente || 'N/A'}</strong></div>
-                    </div>
-
-                    <div class="info-section-title">🚪 Puertas y Ventanas</div>
-                    <div class="info-group">
-                        <div class="info-label">Puertas (N.º ${inv.puertasNum || '0'}):</div>
-                        <div class="info-val">Estado: ${inv.puertasEstado || 'N/A'}<br><small style="color:#94a3b8;">${inv.puertasObs && inv.puertasObs !== 'N/A' ? inv.puertasObs : ''}</small></div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Ventanas (N.º ${inv.ventanasNum || '0'}):</div>
-                        <div class="info-val">Estado: ${inv.ventanasEstado || 'N/A'}<br><small style="color:#94a3b8;">${inv.ventanasObs && inv.ventanasObs !== 'N/A' ? inv.ventanasObs : ''}</small></div>
-                    </div>
-
-                    <div class="info-section-title">🧱 Cielo Raso y Muros</div>
-                    <div class="info-group">
-                        <div class="info-label">Cielo Raso:</div>
-                        <div class="info-val">Estado: ${inv.cieloEstado || 'N/A'} ${inv.cieloObs && inv.cieloObs !== 'N/A' ? '(' + inv.cieloObs + ')' : ''}</div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Acabado y Estado de Muros:</div>
-                        <div class="info-val">${inv.murosAcabado || 'N/A'} (Estado: ${inv.murosEstado || 'N/A'})<br><small style="color:#94a3b8;">${inv.murosObs && inv.murosObs !== 'N/A' ? inv.murosObs : ''}</small></div>
-                    </div>
-
-                    <div class="info-section-title">🗝️ Acceso y Orientación</div>
-                    <div class="info-group">
-                        <div class="info-label">Orientación del Espacio:</div>
-                        <div class="info-val">${inv.orientacion || 'N/A'}</div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Acceso / Responsable:</div>
-                        <div class="info-val">Libre: ${inv.accesoLibre || 'N/A'} | Control: ${inv.tipoControl || 'N/A'}<br>Responsable: ${inv.responsableAcceso || 'N/A'}</div>
-                    </div>
-
-                    <div class="info-section-title">⚠️ Patología y Diagnóstico</div>
-                    <div class="info-group">
-                        <div class="info-label">Tipo de Patología:</div>
-                        <div class="info-val" style="color: #eab308; font-weight:700;">${inv.tipoPatologia || 'Ninguna'}</div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Ubicación Patología:</div>
-                        <div class="info-val">${inv.ubicacionPatologia || 'N/A'}</div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Estado General y Observaciones:</div>
-                        <div class="info-val" style="font-size:11px; color:#cbd5e1;">
-                            <strong>Estado:</strong> ${inv.estadoGeneral || 'N/A'}<br>
-                            ${inv.observacionesPatologia || 'Sin novedades'}
+                if(panelContenido) {
+                    panelContenido.innerHTML = `
+                        <div class="info-section-title">📐 Dimensiones y Uso</div>
+                        <div class="info-group">
+                            <div class="info-label">Categoría / Subcategoría:</div>
+                            <div class="info-val">${inv.categoria || 'N/A'} - ${inv.subcategoria || 'N/A'}</div>
                         </div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">📅 Fecha Registro:</div>
-                        <div class="info-val" style="font-size:11px; color:#94a3b8;">${inv.fechaRegistro || 'N/A'}</div>
-                    </div>
-                `;
+                        <div class="info-group">
+                            <div class="info-label">Uso Actual:</div>
+                            <div class="info-val">${inv.uso || 'N/A'}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Área / Altura Techo:</div>
+                            <div class="info-val">${inv.area && inv.area !== 'N/A' ? inv.area + ' m²' : 'N/A'} | H: ${inv.altura && inv.altura !== 'N/A' ? inv.altura + ' m' : 'N/A'}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Capacidad Observada:</div>
+                            <div class="info-val">👥 Estudiantes: <strong>${inv.capEstudiantes || 'N/A'}</strong> | 👨‍🏫 Docente: <strong>${inv.capDocente || 'N/A'}</strong></div>
+                        </div>
+
+                        <div class="info-section-title">🚪 Puertas y Ventanas</div>
+                        <div class="info-group">
+                            <div class="info-label">Puertas (N.º ${inv.puertasNum || '0'}):</div>
+                            <div class="info-val">Estado: ${inv.puertasEstado || 'N/A'}<br><small style="color:#94a3b8;">${inv.puertasObs && inv.puertasObs !== 'N/A' ? inv.puertasObs : ''}</small></div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Ventanas (N.º ${inv.ventanasNum || '0'}):</div>
+                            <div class="info-val">Estado: ${inv.ventanasEstado || 'N/A'}<br><small style="color:#94a3b8;">${inv.ventanasObs && inv.ventanasObs !== 'N/A' ? inv.ventanasObs : ''}</small></div>
+                        </div>
+
+                        <div class="info-section-title">🧱 Cielo Raso y Muros</div>
+                        <div class="info-group">
+                            <div class="info-label">Cielo Raso:</div>
+                            <div class="info-val">Estado: ${inv.cieloEstado || 'N/A'} ${inv.cieloObs && inv.cieloObs !== 'N/A' ? '(' + inv.cieloObs + ')' : ''}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Acabado y Estado de Muros:</div>
+                            <div class="info-val">${inv.murosAcabado || 'N/A'} (Estado: ${inv.murosEstado || 'N/A'})<br><small style="color:#94a3b8;">${inv.murosObs && inv.murosObs !== 'N/A' ? inv.murosObs : ''}</small></div>
+                        </div>
+
+                        <div class="info-section-title">🗝️ Acceso y Orientación</div>
+                        <div class="info-group">
+                            <div class="info-label">Orientación del Espacio:</div>
+                            <div class="info-val">${inv.orientacion || 'N/A'}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Acceso / Responsable:</div>
+                            <div class="info-val">Libre: ${inv.accesoLibre || 'N/A'} | Control: ${inv.tipoControl || 'N/A'}<br>Responsable: ${inv.responsableAcceso || 'N/A'}</div>
+                        </div>
+
+                        <div class="info-section-title">⚠️ Patología y Diagnóstico</div>
+                        <div class="info-group">
+                            <div class="info-label">Tipo de Patología:</div>
+                            <div class="info-val" style="color: #eab308; font-weight:700;">${inv.tipoPatologia || 'Ninguna'}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Ubicación Patología:</div>
+                            <div class="info-val">${inv.ubicacionPatologia || 'N/A'}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Estado General y Observaciones:</div>
+                            <div class="info-val" style="font-size:11px; color:#cbd5e1;">
+                                <strong>Estado:</strong> ${inv.estadoGeneral || 'N/A'}<br>
+                                ${inv.observacionesPatologia || 'Sin novedades'}
+                            </div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">📅 Fecha Registro:</div>
+                            <div class="info-val" style="font-size:11px; color:#94a3b8;">${inv.fechaRegistro || 'N/A'}</div>
+                        </div>
+                    `;
+                }
             } else if (modo === "mobiliario") {
-                document.getElementById('hoja-excel-indicador').innerHTML = `<strong>Hoja:</strong> ${nombreHojaMobiliarioReal}`;
+                if(hojaIndicador) hojaIndicador.innerHTML = `<strong>Hoja:</strong> ${nombreHojaMobiliarioReal}`;
                 const mob = buscarRegistroPorCodigo(registrosMobiliarioExcel, codigoAula) || {};
-                panelContenido.innerHTML = `
-                    <div class="info-group">
-                        <div class="info-label">Sillas Disponibles / Buen Estado:</div>
-                        <div class="info-val">${mob.numSillas || 'N/A'} totales / ${mob.sillasBuenas || 'N/A'} buenas</div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Escritorio Docente:</div>
-                        <div class="info-val">${mob.escritorioDocente || 'N/A'}</div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Tableros & Proyección:</div>
-                        <div class="info-val">${mob.numTableros || '0'} ${mob.tipoTablero || ''} | Beam: ${mob.videoBeam || 'No'}</div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Iluminación & Tomas:</div>
-                        <div class="info-val">${mob.tipoIluminacion || 'N/A'} (${mob.luminariasFunc || '0'}/${mob.luminariasTotal || '0'}) | ${mob.tomacorrientes || '0'} tomas</div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Observaciones Mobiliario:</div>
-                        <div class="info-val" style="font-size:11px; color:#cbd5e1;">${mob.obsElectricas || mob.observacionesMob || 'Sin novedad'}</div>
-                    </div>
-                `;
+                if(panelContenido) {
+                    panelContenido.innerHTML = `
+                        <div class="info-group">
+                            <div class="info-label">Sillas Disponibles / Buen Estado:</div>
+                            <div class="info-val">${mob.numSillas || 'N/A'} totales / ${mob.sillasBuenas || 'N/A'} buenas</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Escritorio Docente:</div>
+                            <div class="info-val">${mob.escritorioDocente || 'N/A'}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Tableros & Proyección:</div>
+                            <div class="info-val">${mob.numTableros || '0'} ${mob.tipoTablero || ''} | Beam: ${mob.videoBeam || 'No'}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Iluminación & Tomas:</div>
+                            <div class="info-val">${mob.tipoIluminacion || 'N/A'} (${mob.luminariasFunc || '0'}/${mob.luminariasTotal || '0'}) | ${mob.tomacorrientes || '0'} tomas</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Observaciones Mobiliario:</div>
+                            <div class="info-val" style="font-size:11px; color:#cbd5e1;">${mob.obsElectricas || mob.observacionesMob || 'Sin novedad'}</div>
+                        </div>
+                    `;
+                }
             } else if (modo === "horarios") {
-                document.getElementById('hoja-excel-indicador').innerHTML = `<strong>Hoja:</strong> ${nombreHojaHorariosReal}`;
-                const info = consultarHorarioAula(codigoAula, document.getElementById('select-dia').value, document.getElementById('select-franja').value);
+                if(hojaIndicador) hojaIndicador.innerHTML = `<strong>Hoja:</strong> ${nombreHojaHorariosReal}`;
+                const selDia = document.getElementById('select-dia');
+                const selFranja = document.getElementById('select-franja');
+                const info = consultarHorarioAula(codigoAula, selDia ? selDia.value : "Lunes", selFranja ? selFranja.value : "7 -8");
                 const badgeClase = info.estado === "Ocupado" ? "badge-ocupado" : "badge-libre";
 
-                panelContenido.innerHTML = `
-                    <div class="info-group">
-                        <div class="info-label">Estado Actual:</div>
-                        <div class="info-val"><span class="badge-estado ${badgeClase}">${info.estado}</span></div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Planta:</div>
-                        <div class="info-val">${pisoActual2D}</div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Actividad / Asignatura:</div>
-                        <div class="info-val">${info.detalle}</div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Franja Horaria:</div>
-                        <div class="info-val">${info.franja}</div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Día:</div>
-                        <div class="info-val">${document.getElementById('select-dia').value}</div>
-                    </div>
-                `;
+                if(panelContenido) {
+                    panelContenido.innerHTML = `
+                        <div class="info-group">
+                            <div class="info-label">Estado Actual:</div>
+                            <div class="info-val"><span class="badge-estado ${badgeClase}">${info.estado}</span></div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Planta:</div>
+                            <div class="info-val">${pisoActual2D}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Actividad / Asignatura:</div>
+                            <div class="info-val">${info.detalle}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Franja Horaria:</div>
+                            <div class="info-val">${info.franja}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Día:</div>
+                            <div class="info-val">${selDia ? selDia.value : "Lunes"}</div>
+                        </div>
+                    `;
+                }
             }
         }
 
@@ -1430,7 +1472,7 @@ let nombreHojaHorariosReal = "Horarios de Uso";
                             elHunza.addEventListener('mouseenter', () => {
                                 elHunza.style.opacity = '0.7';
                                 elHunza.style.filter = 'drop-shadow(0px 0px 8px #00b4d8)';
-                                if (vistaActualGlobal === 'vista-mapa') {
+                                if (vistaActualGlobal === 'vista-mapa' && sidebarDerecha) {
                                     sidebarDerecha.classList.add('visible');
                                     restablecerPanelEdificio();
                                 }
@@ -1439,7 +1481,7 @@ let nombreHojaHorariosReal = "Horarios de Uso";
                             elHunza.addEventListener('mouseleave', () => {
                                 elHunza.style.opacity = '1';
                                 elHunza.style.filter = 'none';
-                                if (vistaActualGlobal === 'vista-mapa') {
+                                if (vistaActualGlobal === 'vista-mapa' && sidebarDerecha) {
                                     sidebarDerecha.classList.remove('visible');
                                 }
                             });
