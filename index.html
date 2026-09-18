@@ -315,7 +315,7 @@
                 </div>
             </div>
 
-            <div class="panel-title" id="panel-derecho-titulo">📊 Resumen de Planta</div>
+            <div class="panel-title" id="panel-derecho-titulo">📊 Datos del Edificio</div>
 
             <!-- CONTENIDO DINÁMICO DEL PANEL DERECHO -->
             <div id="panel-contenido">
@@ -330,17 +330,19 @@
 
             <div class="excel-box">
                 <div><strong>Archivo:</strong> Plantilla_Levantamiento_Edificio.xlsx</div>
-                <div id="hoja-excel-indicador"><strong>Hoja:</strong> Inventario Espacios</div>
+                <div id="hoja-excel-indicador"><strong>Hoja:</strong> Datos Generales</div>
             </div>
         </div>
     </div>
 
     <!-- MOTOR LECTOR DE EXCEL REFINADO Y RUTEO -->
     <script>
+        let registrosDatosGeneralesExcel = {};
         let registrosHorariosExcel = [];
         let registrosInventarioExcel = {};
         let registrosMobiliarioExcel = {};
 
+        let nombreHojaDatosGeneralesReal = "Datos Generales";
         let nombreHojaInventarioReal = "Inventario Espacios";
         let nombreHojaHorariosReal = "Horarios de Uso";
         let nombreHojaMobiliarioReal = "Mobiliario y Equipo";
@@ -426,6 +428,9 @@
                 const workbook = XLSX.read(arrayBuffer, { type: 'array' });
                 const sheetNames = Object.keys(workbook.Sheets);
 
+                const hGen = sheetNames.find(n => normalizarTextoSimple(n).includes("DATOS GENERALES") || normalizarTextoSimple(n).includes("GENERALES"));
+                if (hGen) nombreHojaDatosGeneralesReal = hGen;
+
                 const hInv = sheetNames.find(n => normalizarTextoSimple(n).includes("INVENTARIO"));
                 if (hInv) nombreHojaInventarioReal = hInv;
 
@@ -435,9 +440,43 @@
                 const hMob = sheetNames.find(n => normalizarTextoSimple(n).includes("MOBILIARIO"));
                 if (hMob) nombreHojaMobiliarioReal = hMob;
 
-                document.getElementById('hoja-excel-indicador').innerHTML = `<strong>Hoja:</strong> ${nombreHojaInventarioReal}`;
+                // 1. HOJA: Datos Generales
+                if (workbook.Sheets[nombreHojaDatosGeneralesReal]) {
+                    const matrixGen = obtenerMatrizConMerges(workbook.Sheets[nombreHojaDatosGeneralesReal]);
+                    registrosDatosGeneralesExcel = {};
 
-                // 1. HOJA: Horarios
+                    for (let r = 0; r < matrixGen.length; r++) {
+                        const row = matrixGen[r];
+                        if (!row || row.length < 2) continue;
+
+                        const campo = String(row[0] || "").trim();
+                        const valor = String(row[1] || "").trim();
+                        const notas = row[2] !== undefined ? String(row[2] || "").trim() : "";
+
+                        if (campo !== "") {
+                            const campoNorm = normalizarTextoSimple(campo);
+                            registrosDatosGeneralesExcel[campoNorm] = { campo, valor, notas };
+
+                            // Mapeo flexible para busquedas por claves sencillas
+                            if (campoNorm.includes("NOMBRE DEL EDIFICIO")) registrosDatosGeneralesExcel["NOMBRE"] = valor;
+                            if (campoNorm.includes("CODIGO") || campoNorm.includes("IDENTIFICADOR")) registrosDatosGeneralesExcel["CODIGO"] = valor;
+                            if (campoNorm.includes("INSTITUCION") || campoNorm.includes("CAMPUS")) registrosDatosGeneralesExcel["INSTITUCION"] = valor;
+                            if (campoNorm.includes("DIRECCION")) registrosDatosGeneralesExcel["DIRECCION"] = valor;
+                            if (campoNorm.includes("CIUDAD")) registrosDatosGeneralesExcel["CIUDAD"] = valor;
+                            if (campoNorm.includes("COORDENADAS")) registrosDatosGeneralesExcel["COORDENADAS"] = valor;
+                            if (campoNorm.includes("USO PRINCIPAL")) registrosDatosGeneralesExcel["USO_PRINCIPAL"] = valor;
+                            if (campoNorm.includes("ANO DE CONSTRUCCION")) registrosDatosGeneralesExcel["ANO_CONSTRUCCION"] = valor;
+                            if (campoNorm.includes("NUMERO DE PISOS")) registrosDatosGeneralesExcel["NUM_PISOS"] = valor;
+                            if (campoNorm.includes("AREA TOTAL APROXIMADA")) registrosDatosGeneralesExcel["AREA_TOTAL"] = valor;
+                            if (campoNorm.includes("AREA APROXIMADA POR PISO")) registrosDatosGeneralesExcel["AREA_PISO"] = valor;
+                            if (campoNorm.includes("NUMERO DE ESCALERAS")) registrosDatosGeneralesExcel["ESCALERAS"] = { valor, notas };
+                            if (campoNorm.includes("ESTADO DE LAS ESCALERAS")) registrosDatosGeneralesExcel["ESTADO_ESCALERAS"] = valor;
+                            if (campoNorm.includes("NUMERO DE ASCENSORES")) registrosDatosGeneralesExcel["ASCENSORES"] = valor;
+                        }
+                    }
+                }
+
+                // 2. HOJA: Horarios
                 if (workbook.Sheets[nombreHojaHorariosReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaHorariosReal]);
                     let headerRowIdx = -1;
@@ -497,7 +536,7 @@
                     }
                 }
 
-                // 2. HOJA COMPLETA: Inventario Espacios (Mapeo de los 29 campos de Excel)
+                // 3. HOJA COMPLETA: Inventario Espacios (Mapeo de los 29 campos de Excel)
                 if (workbook.Sheets[nombreHojaInventarioReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaInventarioReal]);
                     registrosInventarioExcel = {};
@@ -505,7 +544,6 @@
                     let colMap = {};
                     let codigoColIdx = -1;
 
-                    // Mapeo inteligente de encabezados buscando palabras clave
                     for (let r = 0; r < Math.min(10, matrix.length); r++) {
                         const row = matrix[r];
                         if (!row) continue;
@@ -559,14 +597,12 @@
                         }
                     }
 
-                    // Lectura de cada fila de espacio
                     for (let r = 0; r < matrix.length; r++) {
                         const row = matrix[r];
                         if (!row) continue;
 
                         let codigoVal = "";
 
-                        // Búsqueda del código del espacio en la fila
                         for (let c = 0; c < Math.min(5, row.length); c++) {
                             const candidate = String(row[c] || "").trim().toUpperCase();
                             if (/^(A|L|HUNZA|SALA|ESPACIO)[-\s]?\d+/i.test(candidate) || /^A-\d+/i.test(candidate)) {
@@ -585,7 +621,6 @@
                                 return "N/A";
                             };
 
-                            // Objeto estricto con los 29 campos ordenados por columna de Excel
                             const objData = {
                                 piso: getCell(colMap.piso, 0),
                                 codigo: codigoVal,
@@ -626,7 +661,7 @@
                     }
                 }
 
-                // 3. HOJA: Mobiliario
+                // 4. HOJA: Mobiliario
                 if (workbook.Sheets[nombreHojaMobiliarioReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaMobiliarioReal]);
                     registrosMobiliarioExcel = {};
@@ -684,6 +719,7 @@
                 }
 
                 statusTag.innerHTML = `<span class="dot"></span> Excel Conectado`;
+                restablecerPanelEdificio();
                 actualizarEstadoAulas2D();
 
             } catch (err) {
@@ -931,7 +967,88 @@
             document.getElementById('panel-contenido').innerHTML = htmlContenido;
         }
 
-        // Muestra todos los campos mapeados desde Excel en el Panel Lateral
+        // Muestra los datos mapeados desde la hoja Datos Generales
+        function restablecerPanelEdificio() {
+            aulaSeleccionadaActual = null;
+            document.getElementById('panel-derecho-titulo').innerHTML = `🏢 DATOS DEL EDIFICIO`;
+            document.getElementById('hoja-excel-indicador').innerHTML = `<strong>Hoja:</strong> ${nombreHojaDatosGeneralesReal}`;
+
+            const nombre = registrosDatosGeneralesExcel["NOMBRE"] || "Edificio de Aula Hunza";
+            const codigo = registrosDatosGeneralesExcel["CODIGO"] || "30";
+            const institucion = registrosDatosGeneralesExcel["INSTITUCION"] || "UPTC";
+            const direccion = registrosDatosGeneralesExcel["DIRECCION"] || "Cl. 37a #6-36";
+            const ciudad = registrosDatosGeneralesExcel["CIUDAD"] || "Tunja Boyacá";
+            const gps = registrosDatosGeneralesExcel["COORDENADAS"] || "5.54956728471359, -73.35647132167078";
+            const uso = registrosDatosGeneralesExcel["USO_PRINCIPAL"] || "Aulas de clase y auditorios";
+            const anioConst = registrosDatosGeneralesExcel["ANO_CONSTRUCCION"] || "2014";
+            const numPisos = registrosDatosGeneralesExcel["NUM_PISOS"] || "5";
+            const areaTotal = registrosDatosGeneralesExcel["AREA_TOTAL"] || "7150";
+            const areaPiso = registrosDatosGeneralesExcel["AREA_PISO"] || "1430";
+            
+            const escalerasObj = registrosDatosGeneralesExcel["ESCALERAS"] || {};
+            const numEscaleras = typeof escalerasObj === "object" ? (escalerasObj.valor || "3") : escalerasObj;
+            const notasEscaleras = typeof escalerasObj === "object" ? (escalerasObj.notas || "1 escalera de emergencia") : "";
+            
+            const estadoEscaleras = registrosDatosGeneralesExcel["ESTADO_ESCALERAS"] || "Bueno";
+            const ascensores = registrosDatosGeneralesExcel["ASCENSORES"] || "1";
+
+            document.getElementById('panel-contenido').innerHTML = `
+                <div class="info-section-title">📍 1. Identificación del Edificio</div>
+                <div class="info-group">
+                    <div class="info-label">Nombre del Edificio:</div>
+                    <div class="info-val">${nombre}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Código / Identificador:</div>
+                    <div class="info-val">${codigo}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Institución / Sede:</div>
+                    <div class="info-val">${institucion} - ${ciudad}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Dirección:</div>
+                    <div class="info-val">${direccion}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Coordenadas GPS:</div>
+                    <div class="info-val" style="font-size:11px; color:#cbd5e1;">${gps}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Uso Principal:</div>
+                    <div class="info-val">${uso}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Año de Construcción:</div>
+                    <div class="info-val">${anioConst}</div>
+                </div>
+
+                <div class="info-section-title">🧱 2. Datos Constructivos Generales</div>
+                <div class="info-group">
+                    <div class="info-label">Número de Pisos:</div>
+                    <div class="info-val">${numPisos}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Área Total Construida:</div>
+                    <div class="info-val">${areaTotal} m²</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Área por Piso:</div>
+                    <div class="info-val">${areaPiso} m²</div>
+                </div>
+
+                <div class="info-section-title">🚶 2.2 Circulación Vertical</div>
+                <div class="info-group">
+                    <div class="info-label">Escaleras:</div>
+                    <div class="info-val">${numEscaleras} ${notasEscaleras ? '(' + notasEscaleras + ')' : ''} | Estado: ${estadoEscaleras}</div>
+                </div>
+                <div class="info-group">
+                    <div class="info-label">Ascensores:</div>
+                    <div class="info-val">${ascensores}</div>
+                </div>
+            `;
+        }
+
         function mostrarDetalleAulaPanel(codigoAula) {
             const modo = document.getElementById('select-modo-consulta').value;
             const panelTitulo = document.getElementById('panel-derecho-titulo');
@@ -941,6 +1058,7 @@
             panelTitulo.innerHTML = `📌 ESPACIO ${codigoMostrado}`;
 
             if (modo === "inventario") {
+                document.getElementById('hoja-excel-indicador').innerHTML = `<strong>Hoja:</strong> ${nombreHojaInventarioReal}`;
                 const inv = buscarRegistroPorCodigo(registrosInventarioExcel, codigoAula) || {};
                 
                 panelContenido.innerHTML = `
@@ -1014,6 +1132,7 @@
                     </div>
                 `;
             } else if (modo === "mobiliario") {
+                document.getElementById('hoja-excel-indicador').innerHTML = `<strong>Hoja:</strong> ${nombreHojaMobiliarioReal}`;
                 const mob = buscarRegistroPorCodigo(registrosMobiliarioExcel, codigoAula) || {};
                 panelContenido.innerHTML = `
                     <div class="info-group">
@@ -1038,6 +1157,7 @@
                     </div>
                 `;
             } else if (modo === "horarios") {
+                document.getElementById('hoja-excel-indicador').innerHTML = `<strong>Hoja:</strong> ${nombreHojaHorariosReal}`;
                 const info = consultarHorarioAula(codigoAula, document.getElementById('select-dia').value, document.getElementById('select-franja').value);
                 const badgeClase = info.estado === "Ocupado" ? "badge-ocupado" : "badge-libre";
 
@@ -1064,33 +1184,6 @@
                     </div>
                 `;
             }
-        }
-
-        function restablecerPanelEdificio() {
-            aulaSeleccionadaActual = null;
-            document.getElementById('panel-derecho-titulo').innerHTML = `📊 Datos del Edificio`;
-            document.getElementById('panel-contenido').innerHTML = `
-                <div class="info-group">
-                    <div class="info-label">Edificio:</div>
-                    <div class="info-val">Edificio 30 - Aulas Hunza</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Código:</div>
-                    <div class="info-val">30</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Sede:</div>
-                    <div class="info-val">UPTC - Sede Central Tunja</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Uso Principal:</div>
-                    <div class="info-val">Aulas de Clase y Laboratorios</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Nº Pisos:</div>
-                    <div class="info-val">5</div>
-                </div>
-            `;
         }
 
         window.addEventListener('load', () => {
@@ -1130,6 +1223,7 @@
                                 elHunza.style.filter = 'drop-shadow(0px 0px 8px #00b4d8)';
                                 if (vistaActualGlobal === 'vista-mapa') {
                                     sidebarDerecha.classList.add('visible');
+                                    restablecerPanelEdificio();
                                 }
                             });
 
