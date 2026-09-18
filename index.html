@@ -259,7 +259,7 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <div>
                         <h2 id="titulo-vista-2d" style="color: #0284c7; font-size: 16px;">Planta 2D - Piso 1</h2>
-                        <p style="color: #64748b; font-size: 12px;">Haz clic en un aula para consultar el horario activo en Excel.</p>
+                        <p style="color: #64748b; font-size: 12px;">Haz clic en un aula para consultar el detalle de la misma.</p>
                     </div>
                     <button class="btn-regresar" style="display:inline-block; margin-bottom: 0; width: auto;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
                 </div>
@@ -273,50 +273,41 @@
         <div class="sidebar-right" id="sidebar-derecha">
             <button id="btn-volver-mapa" class="btn-regresar" onclick="irAVista('vista-mapa')">🗺️ Volver al Mapa General</button>
 
-            <!-- CONTENEDOR FILTROS DÍA Y FRANJA -->
+            <!-- CONTENEDOR FILTROS Y MODO DE CONSULTA (VISUALIZACIÓN EN PLANO 2D) -->
             <div class="panel-filtros-container" id="panel-filtros-horario">
                 <div class="filter-group">
-                    <span>🗓️ Día:</span>
-                    <select id="select-dia" class="filter-select" onchange="actualizarEstadoAulas2D()">
-                        <option value="Lunes">Lunes</option>
-                        <option value="Martes">Martes</option>
-                        <option value="Miércoles">Miércoles</option>
-                        <option value="Jueves">Jueves</option>
-                        <option value="Viernes">Viernes</option>
-                        <option value="Sábado">Sábado</option>
+                    <span>📋 Consulta:</span>
+                    <select id="select-modo-consulta" class="filter-select" onchange="cambiarModoConsulta()">
+                        <option value="horarios">Horarios de Uso (Disponibilidad)</option>
+                        <option value="aforo">Muestreo de Aforo / Silletería</option>
+                        <option value="tipo_espacio">Caracterización de Espacios</option>
                     </select>
                 </div>
-                <div class="filter-group">
-                    <span>⏰ Franja:</span>
-                    <select id="select-franja" class="filter-select" onchange="actualizarEstadoAulas2D()">
-                    </select>
+
+                <div id="grupo-controles-horario">
+                    <div class="filter-group" style="margin-bottom: 8px;">
+                        <span>🗓️ Día:</span>
+                        <select id="select-dia" class="filter-select" onchange="actualizarEstadoAulas2D()">
+                            <option value="Lunes">Lunes</option>
+                            <option value="Martes">Martes</option>
+                            <option value="Miércoles">Miércoles</option>
+                            <option value="Jueves">Jueves</option>
+                            <option value="Viernes">Viernes</option>
+                            <option value="Sábado">Sábado</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <span>⏰ Franja:</span>
+                        <select id="select-franja" class="filter-select" onchange="actualizarEstadoAulas2D()">
+                        </select>
+                    </div>
                 </div>
             </div>
 
-            <div class="panel-title" id="panel-derecho-titulo">📊 Datos del Edificio</div>
+            <div class="panel-title" id="panel-derecho-titulo">📊 Resumen de Planta</div>
 
             <!-- CONTENIDO DINÁMICO DEL PANEL DERECHO -->
             <div id="panel-contenido">
-                <div class="info-group">
-                    <div class="info-label">Edificio:</div>
-                    <div class="info-val" id="info-edificio">Edificio 30 - Aulas Hunza</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Código:</div>
-                    <div class="info-val">30</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Sede:</div>
-                    <div class="info-val">UPTC - Sede Central Tunja</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Uso Principal:</div>
-                    <div class="info-val">Aulas de Clase y Laboratorios</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Nº Pisos:</div>
-                    <div class="info-val">5</div>
-                </div>
             </div>
 
             <!-- SECCIÓN CORTES BIM (SOLO VISIBLE EN 3D) -->
@@ -328,7 +319,7 @@
 
             <div class="excel-box">
                 <div><strong>Archivo:</strong> Plantilla_Levantamiento_Edificio_2.xlsx</div>
-                <div><strong>Hoja:</strong> Horarios de Uso</div>
+                <div id="hoja-excel-indicador"><strong>Hoja:</strong> Horarios de Uso</div>
             </div>
         </div>
     </div>
@@ -422,7 +413,7 @@
                     if (!row) continue;
 
                     const valEspacio = String(row[colEspacio] || "").trim();
-                    if (valEspacio && valEspacio.toUpperCase().startsWith("A-")) {
+                    if (valEspacio && (valEspacio.toUpperCase().startsWith("A-") || valEspacio.toUpperCase().startsWith("L-"))) {
                         espacioActual = valEspacio.toUpperCase();
                     }
 
@@ -523,6 +514,8 @@
                 document.getElementById('titulo-vista-2d').innerText = `Planta 2D - ${pisoActual2D}`;
                 breadcrumb.innerText = `Edificio 30 Hunza (${pisoActual2D})`;
                 
+                aulaSeleccionadaActual = null;
+                mostrarResumenPlanta2D();
                 setTimeout(actualizarEstadoAulas2D, 150);
             } else {
                 sidebarDerecha.classList.remove('visible');
@@ -544,6 +537,8 @@
                 
                 const nuevoSvgObj = document.getElementById('svg-2d-object');
                 nuevoSvgObj.addEventListener('load', () => {
+                    aulaSeleccionadaActual = null;
+                    mostrarResumenPlanta2D();
                     setTimeout(actualizarEstadoAulas2D, 100);
                 });
             }
@@ -551,6 +546,27 @@
             document.getElementById('titulo-vista-2d').innerText = `Planta 2D - ${pisoActual2D}`;
             irAVista('vista-2d');
         };
+
+        function cambiarModoConsulta() {
+            const modo = document.getElementById('select-modo-consulta').value;
+            const grupoHorario = document.getElementById('grupo-controles-horario');
+            const hojaIndicador = document.getElementById('hoja-excel-indicador');
+
+            if (modo === "horarios") {
+                grupoHorario.style.display = "block";
+                hojaIndicador.innerHTML = "<strong>Hoja:</strong> Horarios de Uso";
+            } else if (modo === "aforo") {
+                grupoHorario.style.display = "none";
+                hojaIndicador.innerHTML = "<strong>Hoja:</strong> Muestreo";
+            } else {
+                grupoHorario.style.display = "none";
+                hojaIndicador.innerHTML = "<strong>Hoja:</strong> Tipo de Espacio";
+            }
+
+            aulaSeleccionadaActual = null;
+            mostrarResumenPlanta2D();
+            actualizarEstadoAulas2D();
+        }
 
         function actualizarEstadoAulas2D() {
             const svg2d = document.getElementById('svg-2d-object');
@@ -561,70 +577,166 @@
 
             const diaSeleccionado = document.getElementById('select-dia').value;
             const franjaSeleccionada = document.getElementById('select-franja').value;
+            const modoConsulta = document.getElementById('select-modo-consulta').value;
 
-            const elementosAulas = svgDoc.querySelectorAll('[id^="A-"], [id^="a-"]');
+            const elementosAulas = svgDoc.querySelectorAll('[id^="A-"], [id^="a-"], [id^="L-"], [id^="l-"]');
 
             elementosAulas.forEach(elAula => {
                 const codigoAula = elAula.id.toUpperCase();
                 elAula.style.cursor = 'pointer';
                 elAula.style.transition = 'all 0.3s';
 
-                const infoHorario = consultarHorarioAula(codigoAula, diaSeleccionado, franjaSeleccionada);
-
-                if (infoHorario.estado === "Ocupado") {
-                    elAula.style.fill = 'rgba(239, 68, 68, 0.45)';
-                    elAula.style.stroke = '#ef4444';
-                    elAula.style.strokeWidth = '2px';
+                if (modoConsulta === "horarios") {
+                    const infoHorario = consultarHorarioAula(codigoAula, diaSeleccionado, franjaSeleccionada);
+                    if (infoHorario.estado === "Ocupado") {
+                        elAula.style.fill = 'rgba(239, 68, 68, 0.45)';
+                        elAula.style.stroke = '#ef4444';
+                        elAula.style.strokeWidth = '2px';
+                    } else {
+                        elAula.style.fill = 'rgba(16, 185, 129, 0.25)';
+                        elAula.style.stroke = '#10b981';
+                        elAula.style.strokeWidth = '1px';
+                    }
+                } else if (modoConsulta === "aforo") {
+                    elAula.style.fill = 'rgba(2, 132, 199, 0.35)';
+                    elAula.style.stroke = '#0284c7';
+                    elAula.style.strokeWidth = '1.5px';
                 } else {
-                    elAula.style.fill = 'rgba(16, 185, 129, 0.25)';
-                    elAula.style.stroke = '#10b981';
-                    elAula.style.strokeWidth = '1px';
+                    elAula.style.fill = 'rgba(168, 85, 247, 0.35)';
+                    elAula.style.stroke = '#a855f7';
+                    elAula.style.strokeWidth = '1.5px';
                 }
 
                 elAula.onclick = (e) => {
                     e.stopPropagation();
                     aulaSeleccionadaActual = codigoAula;
-                    const infoAlMomento = consultarHorarioAula(codigoAula, document.getElementById('select-dia').value, document.getElementById('select-franja').value);
-                    mostrarDetalleAulaPanel(codigoAula, infoAlMomento);
+                    mostrarDetalleAulaPanel(codigoAula);
                 };
             });
 
             if (aulaSeleccionadaActual) {
-                const infoActualizada = consultarHorarioAula(aulaSeleccionadaActual, diaSeleccionado, franjaSeleccionada);
-                mostrarDetalleAulaPanel(aulaSeleccionadaActual, infoActualizada);
+                mostrarDetalleAulaPanel(aulaSeleccionadaActual);
+            } else {
+                mostrarResumenPlanta2D();
             }
         }
 
-        function mostrarDetalleAulaPanel(codigoAula, info) {
-            const panelTitulo = document.getElementById('panel-derecho-titulo');
-            const panelContenido = document.getElementById('panel-contenido');
+        function mostrarResumenPlanta2D() {
+            const svg2d = document.getElementById('svg-2d-object');
+            let totalAulas = 0;
+            let ocupadas = 0;
+            let libres = 0;
 
-            panelTitulo.innerHTML = `📌 Aula ${codigoAula}`;
+            if (svg2d && svg2d.contentDocument) {
+                const elementosAulas = svg2d.contentDocument.querySelectorAll('[id^="A-"], [id^="a-"], [id^="L-"], [id^="l-"]');
+                totalAulas = elementosAulas.length;
 
-            const badgeClase = info.estado === "Ocupado" ? "badge-ocupado" : "badge-libre";
+                const diaSeleccionado = document.getElementById('select-dia').value;
+                const franjaSeleccionada = document.getElementById('select-franja').value;
 
-            panelContenido.innerHTML = `
+                elementosAulas.forEach(el => {
+                    const info = consultarHorarioAula(el.id.toUpperCase(), diaSeleccionado, franjaSeleccionada);
+                    if (info.estado === "Ocupado") ocupadas++;
+                    else libres++;
+                });
+            }
+
+            const modo = document.getElementById('select-modo-consulta').value;
+            document.getElementById('panel-derecho-titulo').innerHTML = `📊 ${pisoActual2D} - Resumen`;
+
+            let htmlContenido = `
                 <div class="info-group">
-                    <div class="info-label">Estado Actual:</div>
-                    <div class="info-val"><span class="badge-estado ${badgeClase}">${info.estado}</span></div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Planta:</div>
+                    <div class="info-label">Planta Seleccionada:</div>
                     <div class="info-val">${pisoActual2D}</div>
                 </div>
                 <div class="info-group">
-                    <div class="info-label">Actividad / Asignatura:</div>
-                    <div class="info-val">${info.detalle}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Franja Horaria:</div>
-                    <div class="info-val">${info.franja}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Día:</div>
-                    <div class="info-val">${document.getElementById('select-dia').value}</div>
+                    <div class="info-label">Espacios Registrados:</div>
+                    <div class="info-val">${totalAulas || 'Calculando...'}</div>
                 </div>
             `;
+
+            if (modo === "horarios") {
+                htmlContenido += `
+                    <div class="info-group">
+                        <div class="info-label">Ocupadas en esta Franja:</div>
+                        <div class="info-val" style="color: #f87171;">${ocupadas}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Libres en esta Franja:</div>
+                        <div class="info-val" style="color: #34d399;">${libres}</div>
+                    </div>
+                `;
+            }
+
+            htmlContenido += `
+                <div style="margin-top: 15px; font-size: 11px; color: var(--text-muted); border-top: 1px solid #1e293b; padding-top: 10px;">
+                    💡 <em>Haz clic sobre cualquier aula en el plano interactivo para consultar sus detalles.</em>
+                </div>
+            `;
+
+            document.getElementById('panel-contenido').innerHTML = htmlContenido;
+        }
+
+        function mostrarDetalleAulaPanel(codigoAula) {
+            const modo = document.getElementById('select-modo-consulta').value;
+            const panelTitulo = document.getElementById('panel-derecho-titulo');
+            const panelContenido = document.getElementById('panel-contenido');
+
+            panelTitulo.innerHTML = `📌 Aula / Espacio ${codigoAula}`;
+
+            if (modo === "horarios") {
+                const info = consultarHorarioAula(codigoAula, document.getElementById('select-dia').value, document.getElementById('select-franja').value);
+                const badgeClase = info.estado === "Ocupado" ? "badge-ocupado" : "badge-libre";
+
+                panelContenido.innerHTML = `
+                    <div class="info-group">
+                        <div class="info-label">Estado Actual:</div>
+                        <div class="info-val"><span class="badge-estado ${badgeClase}">${info.estado}</span></div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Planta:</div>
+                        <div class="info-val">${pisoActual2D}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Actividad / Asignatura:</div>
+                        <div class="info-val">${info.detalle}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Franja Horaria:</div>
+                        <div class="info-val">${info.franja}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Día:</div>
+                        <div class="info-val">${document.getElementById('select-dia').value}</div>
+                    </div>
+                `;
+            } else if (modo === "aforo") {
+                panelContenido.innerHTML = `
+                    <div class="info-group">
+                        <div class="info-label">Tipo de Silletería:</div>
+                        <div class="info-val">Sillas Universitarias / Mesas</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Capacidad de Puestos:</div>
+                        <div class="info-val">40 a 45 estudiantes</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Recursos Disponibles:</div>
+                        <div class="info-val">Tablero Acrílico + Video Beam</div>
+                    </div>
+                `;
+            } else {
+                panelContenido.innerHTML = `
+                    <div class="info-group">
+                        <div class="info-label">Clasificación de Uso:</div>
+                        <div class="info-val">Aula de Cátedra Presencial</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Nivel / Piso:</div>
+                        <div class="info-val">${pisoActual2D}</div>
+                    </div>
+                `;
+            }
         }
 
         function restablecerPanelEdificio() {
@@ -708,7 +820,10 @@
 
             const svg2dObj = document.getElementById('svg-2d-object');
             if (svg2dObj) {
-                svg2dObj.addEventListener('load', actualizarEstadoAulas2D);
+                svg2dObj.addEventListener('load', () => {
+                    mostrarResumenPlanta2D();
+                    actualizarEstadoAulas2D();
+                });
             }
         });
     </script>
@@ -760,41 +875,32 @@
 
             container.appendChild(renderer.domElement);
 
-            /* ==============================================================
-               CONFIGURACIÓN CORREGIDA 100% SUAVE PARA ZOOM Y ÓRBITA
-               ============================================================== */
+            /* CONFIGURACIÓN SUAVE ZOOM */
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.dampingFactor = 0.025;      // Inercia progresiva y suave
-            controls.enableZoom = false;         // Desactivamos el zoom nativo de OrbitControls para controlarlo manualmente
+            controls.dampingFactor = 0.025;
+            controls.enableZoom = false;
             controls.rotateSpeed = 0.4;
             controls.panSpeed = 0.4;
             controls.minDistance = 2.0;
             controls.maxDistance = 1000.0;
 
-            // CONTROL MANUAL DEL SCROLL: Normaliza el impulso del ratón/trackpad para evitar saltos bruscos
             renderer.domElement.addEventListener('wheel', (event) => {
                 event.preventDefault();
                 event.stopPropagation();
 
-                // Obtenemos el vector de dirección desde la cámara hacia el objetivo (target)
                 const direction = new THREE.Vector3();
                 camera.getWorldDirection(direction);
 
-                // Normalizamos el delta de la rueda (solo dirección +1 o -1)
                 const dir = Math.sign(event.deltaY);
-
-                // Calculamos la distancia actual al target para un movimiento proporcional
                 const dist = camera.position.distanceTo(controls.target);
-                const step = Math.max(0.5, dist * 0.05); // Paso de zoom fino y progresivo (5% de la distancia actual)
+                const step = Math.max(0.5, dist * 0.05);
 
                 if (dir > 0) {
-                    // Alejar cámara
                     if (dist < controls.maxDistance) {
                         camera.position.addScaledVector(direction, -step);
                     }
                 } else {
-                    // Acercar cámara
                     if (dist > controls.minDistance) {
                         camera.position.addScaledVector(direction, step);
                     }
@@ -904,11 +1010,10 @@
                 }
             });
 
-            /* BUCLE DE ANIMACIÓN CONTINUO CON ACTUALIZACIÓN CONSTANTE DE ORBIT CONTROLS */
             function animate() {
                 animFrameId = requestAnimationFrame(animate);
-                clock.getDelta(); // Sincronización continua de tiempo
-                controls.update(); // Actualización fluida de la cámara con damping
+                clock.getDelta();
+                controls.update();
                 renderer.render(scene, camera);
             }
 
