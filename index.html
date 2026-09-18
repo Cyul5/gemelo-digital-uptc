@@ -226,7 +226,7 @@
 
         <div class="header-right">
             <div class="search-box">
-                <input type="text" placeholder="Buscar edificio, aula o docente...">
+                <input type="text" id="input-busqueda-global" placeholder="Buscar edificio, aula o docente...">
             </div>
             <div class="excel-status" id="excel-status-tag">
                 <span class="dot" style="background:#eab308;"></span> Leyendo Excel...
@@ -342,6 +342,37 @@
             "Piso 5 / Cubierta": "PLANTA_5_HUNZA.svg"
         };
 
+        // --- FUNCIONES UTILITARIAS DE NORMALIZACIÓN Y BÚSQUEDA ROBUSTA ---
+        function normalizarTextoSimple(txt) {
+            if (txt === null || txt === undefined) return "";
+            return String(txt).trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        }
+
+        function normalizarCodigoEspacio(cadena) {
+            if (!cadena) return "";
+            return String(cadena)
+                .trim()
+                .toUpperCase()
+                .replace(/^ESPACIO\s+/i, "")
+                .replace(/[^A-Z0-9]/g, ""); // Convierte "A-101", "ESPACIO A-101", "A 101" -> "A101"
+        }
+
+        function buscarRegistroPorCodigo(diccionario, codigoBuscado) {
+            if (!diccionario || !codigoBuscado) return null;
+            if (diccionario[codigoBuscado]) return diccionario[codigoBuscado];
+
+            const codLimpio = normalizarCodigoEspacio(codigoBuscado);
+            if (!codLimpio) return null;
+
+            for (const key of Object.keys(diccionario)) {
+                const keyLimpio = normalizarCodigoEspacio(key);
+                if (keyLimpio === codLimpio || keyLimpio.endsWith(codLimpio) || codLimpio.endsWith(keyLimpio)) {
+                    return diccionario[key];
+                }
+            }
+            return null;
+        }
+
         function inicializarFranjasHorarias() {
             const selectFranja = document.getElementById('select-franja');
             selectFranja.innerHTML = '';
@@ -415,7 +446,7 @@
                         if (!row) continue;
 
                         const valEspacio = String(row[1] || "").trim();
-                        if (valEspacio && (valEspacio.toUpperCase().startsWith("A-") || valEspacio.toUpperCase().startsWith("L-"))) {
+                        if (valEspacio && (valEspacio.toUpperCase().startsWith("A-") || valEspacio.toUpperCase().startsWith("L-") || valEspacio.toUpperCase().startsWith("HUNZA") || valEspacio.toUpperCase().startsWith("ESPACIO"))) {
                             espacioActual = valEspacio.toUpperCase();
                         }
 
@@ -440,60 +471,108 @@
                     }
                 }
 
-                // 2. CARGA HOJA: Inventario de Espacios (CORREGIDO PARA DETECTAR CÓDIGOS Y COLUMNAS)
+                // 2. CARGA HOJA: Inventario de Espacios (CON DETECCIÓN DINÁMICA DE ENCABEZADOS)
                 if (workbook.Sheets["Inventario de Espacios"]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets["Inventario de Espacios"]);
                     registrosInventarioExcel = {};
 
-                    // Buscar en qué columna se encuentra la palabra "Código" o códigos de espacio
-                    let colCodigo = 1; 
+                    let headerRowIdx = -1;
+                    let mapCols = {};
 
-                    for (let r = 0; r < matrix.length; r++) {
+                    for (let r = 0; r < Math.min(15, matrix.length); r++) {
+                        const row = matrix[r];
+                        if (!row) continue;
+                        for (let c = 0; c < row.length; c++) {
+                            const cellText = normalizarTextoSimple(row[c]);
+                            if (cellText.includes("CODIGO") || cellText.includes("ESPACIO") || cellText.includes("AULA")) {
+                                headerRowIdx = r;
+                                break;
+                            }
+                        }
+                        if (headerRowIdx !== -1) break;
+                    }
+
+                    if (headerRowIdx !== -1) {
+                        const hRow = matrix[headerRowIdx];
+                        for (let c = 0; c < hRow.length; c++) {
+                            const head = normalizarTextoSimple(hRow[c]);
+                            if (head.includes("CODIGO") || head.includes("ESPACIO") || head.includes("AULA")) mapCols.codigo = c;
+                            else if (head.includes("CATEGOR")) mapCols.categoria = c;
+                            else if (head.includes("SUB")) mapCols.subcategoria = c;
+                            else if (head.includes("USO")) mapCols.uso = c;
+                            else if (head.includes("AREA") || head.includes("ÁREA")) mapCols.area = c;
+                            else if (head.includes("ALTURA") || head.includes("ALTO")) mapCols.altura = c;
+                            else if (head.includes("CAPACIDAD") || head.includes("AFORO") || head.includes("PUESTOS")) mapCols.capacidadEstud = c;
+                            else if (head.includes("ACABADO") || head.includes("PARED")) mapCols.acabadoMuros = c;
+                            else if (head.includes("ESTADO MUROS") || head.includes("ESTADO DE MUROS")) mapCols.estadoMuros = c;
+                            else if (head.includes("PATOLOGI") || head.includes("DAÑO")) mapCols.tipoPatologia = c;
+                            else if (head.includes("UBICACIO") || head.includes("UBICACIÓN")) mapCols.ubicacionPatologia = c;
+                            else if (head.includes("OBSERVAC") || head.includes("DIAGNOST")) mapCols.observacionesPatologia = c;
+                        }
+                    }
+
+                    const startRow = headerRowIdx !== -1 ? headerRowIdx + 1 : 0;
+
+                    for (let r = startRow; r < matrix.length; r++) {
                         const row = matrix[r];
                         if (!row) continue;
 
-                        // Buscar código en las primeras celdas de la fila por flexibilidad
                         let codigo = "";
-                        for (let c = 0; c < Math.min(5, row.length); c++) {
-                            const cellVal = String(row[c] || "").trim().toUpperCase();
-                            if (cellVal.startsWith("A-") || cellVal.startsWith("L-") || cellVal.startsWith("HUNZA") || cellVal.startsWith("SALA")) {
-                                codigo = cellVal;
-                                break;
+                        if (mapCols.codigo !== undefined && row[mapCols.codigo]) {
+                            const val = String(row[mapCols.codigo]).trim().toUpperCase();
+                            if (val && val !== "CÓDIGO" && val !== "CODIGO" && val !== "N/A") {
+                                codigo = val;
+                            }
+                        }
+
+                        if (!codigo) {
+                            for (let c = 0; c < Math.min(5, row.length); c++) {
+                                const cellVal = String(row[c] || "").trim().toUpperCase();
+                                if (cellVal.startsWith("A-") || cellVal.startsWith("L-") || cellVal.startsWith("HUNZA") || cellVal.startsWith("SALA") || cellVal.startsWith("ESPACIO")) {
+                                    codigo = cellVal;
+                                    break;
+                                }
                             }
                         }
 
                         if (codigo) {
-                            // Extraer con fallback de seguridad a celdas no vacías
-                            const getCell = (idx) => (row[idx] !== undefined && row[idx] !== null && String(row[idx]).trim() !== "") ? row[idx] : "N/A";
+                            const getVal = (colIdx, fallbackIdx) => {
+                                let idx = (colIdx !== undefined) ? colIdx : fallbackIdx;
+                                if (idx !== undefined && row[idx] !== undefined && row[idx] !== null) {
+                                    const str = String(row[idx]).trim();
+                                    if (str !== "" && str !== "undefined") return str;
+                                }
+                                return "N/A";
+                            };
 
                             registrosInventarioExcel[codigo] = {
-                                categoria: getCell(2),
-                                subcategoria: getCell(3),
-                                uso: getCell(4),
-                                area: getCell(5),
-                                altura: getCell(6),
-                                capacidadEstud: getCell(7),
-                                capacidadDoc: getCell(8),
-                                puertas: getCell(9),
-                                estadoPuertas: getCell(10),
-                                obsPuertas: getCell(11),
-                                ventanas: getCell(12),
-                                estadoVentanas: getCell(13),
-                                obsVentanas: getCell(14),
-                                cieloRaso: getCell(15),
-                                obsCieloRaso: getCell(16),
-                                acabadoMuros: getCell(17),
-                                estadoMuros: getCell(18),
-                                obsMuros: getCell(19),
-                                orientacion: getCell(20),
-                                accesoLibre: getCell(21),
-                                tipoAcceso: getCell(22),
-                                responsable: getCell(23),
-                                tipoPatologia: getCell(24) !== "N/A" ? getCell(24) : "Ninguna",
-                                ubicacionPatologia: getCell(25),
-                                estadoGeneral: getCell(26) !== "N/A" ? getCell(26) : "Bueno",
-                                observacionesPatologia: getCell(27) !== "N/A" ? getCell(27) : "Sin novedades registradas",
-                                fechaRegistro: getCell(28)
+                                categoria: getVal(mapCols.categoria, 2),
+                                subcategoria: getVal(mapCols.subcategoria, 3),
+                                uso: getVal(mapCols.uso, 4),
+                                area: getVal(mapCols.area, 5),
+                                altura: getVal(mapCols.altura, 6),
+                                capacidadEstud: getVal(mapCols.capacidadEstud, 7),
+                                capacidadDoc: getVal(mapCols.capacidadDoc, 8),
+                                puertas: getVal(mapCols.puertas, 9),
+                                estadoPuertas: getVal(mapCols.estadoPuertas, 10),
+                                obsPuertas: getVal(mapCols.obsPuertas, 11),
+                                ventanas: getVal(mapCols.ventanas, 12),
+                                estadoVentanas: getVal(mapCols.estadoVentanas, 13),
+                                obsVentanas: getVal(mapCols.obsVentanas, 14),
+                                cieloRaso: getVal(mapCols.cieloRaso, 15),
+                                obsCieloRaso: getVal(mapCols.obsCieloRaso, 16),
+                                acabadoMuros: getVal(mapCols.acabadoMuros, 17),
+                                estadoMuros: getVal(mapCols.estadoMuros, 18),
+                                obsMuros: getVal(mapCols.obsMuros, 19),
+                                orientacion: getVal(mapCols.orientacion, 20),
+                                accesoLibre: getVal(mapCols.accesoLibre, 21),
+                                tipoAcceso: getVal(mapCols.tipoAcceso, 22),
+                                responsable: getVal(mapCols.responsable, 23),
+                                tipoPatologia: getVal(mapCols.tipoPatologia, 24) !== "N/A" ? getVal(mapCols.tipoPatologia, 24) : "Ninguna",
+                                ubicacionPatologia: getVal(mapCols.ubicacionPatologia, 25),
+                                estadoGeneral: getVal(mapCols.estadoGeneral, 26) !== "N/A" ? getVal(mapCols.estadoGeneral, 26) : "Bueno",
+                                observacionesPatologia: getVal(mapCols.observacionesPatologia, 27) !== "N/A" ? getVal(mapCols.observacionesPatologia, 27) : "Sin novedades registradas",
+                                fechaRegistro: getVal(mapCols.fechaRegistro, 28)
                             };
                         }
                     }
@@ -511,7 +590,7 @@
                         let codigo = "";
                         for (let c = 0; c < Math.min(5, row.length); c++) {
                             const cellVal = String(row[c] || "").trim().toUpperCase();
-                            if (cellVal.startsWith("A-") || cellVal.startsWith("L-") || cellVal.startsWith("HUNZA") || cellVal.startsWith("SALA")) {
+                            if (cellVal.startsWith("A-") || cellVal.startsWith("L-") || cellVal.startsWith("HUNZA") || cellVal.startsWith("SALA") || cellVal.startsWith("ESPACIO")) {
                                 codigo = cellVal;
                                 break;
                             }
@@ -556,9 +635,11 @@
 
         function consultarHorarioAula(aula, dia, franjaSeleccionada) {
             const franjaBuscada = franjaSeleccionada.replace(/\s+/g, '');
+            const codAulaNorm = normalizarCodigoEspacio(aula);
 
             const encontrado = registrosHorariosExcel.find(r => {
-                const aulaMatch = r.aula.toUpperCase() === aula.toUpperCase();
+                const rAulaNorm = normalizarCodigoEspacio(r.aula);
+                const aulaMatch = rAulaNorm === codAulaNorm || rAulaNorm.endsWith(codAulaNorm) || codAulaNorm.endsWith(rAulaNorm);
                 const diaMatch = r.dia.toLowerCase() === dia.toLowerCase();
                 const horaMatch = r.hora.replace(/\s+/g, '') === franjaBuscada;
 
@@ -687,7 +768,7 @@
             const franjaSeleccionada = document.getElementById('select-franja').value;
             const modoConsulta = document.getElementById('select-modo-consulta').value;
 
-            const elementosAulas = svgDoc.querySelectorAll('[id^="A-"], [id^="a-"], [id^="L-"], [id^="l-"]');
+            const elementosAulas = svgDoc.querySelectorAll('[id^="A-"], [id^="a-"], [id^="L-"], [id^="l-"], [id*="HUNZA"]');
 
             elementosAulas.forEach(elAula => {
                 const codigoAula = elAula.id.toUpperCase();
@@ -706,7 +787,7 @@
                         elAula.style.strokeWidth = '1px';
                     }
                 } else if (modoConsulta === "inventario") {
-                    const inv = registrosInventarioExcel[codigoAula];
+                    const inv = buscarRegistroPorCodigo(registrosInventarioExcel, codigoAula);
                     if (inv && String(inv.estadoGeneral).toLowerCase().includes("regular")) {
                         elAula.style.fill = 'rgba(234, 179, 8, 0.4)';
                         elAula.style.stroke = '#eab308';
@@ -742,7 +823,7 @@
             let libres = 0;
 
             if (svg2d && svg2d.contentDocument) {
-                const elementosAulas = svg2d.contentDocument.querySelectorAll('[id^="A-"], [id^="a-"], [id^="L-"], [id^="l-"]');
+                const elementosAulas = svg2d.contentDocument.querySelectorAll('[id^="A-"], [id^="a-"], [id^="L-"], [id^="l-"], [id*="HUNZA"]');
                 totalAulas = elementosAulas.length;
 
                 const diaSeleccionado = document.getElementById('select-dia').value;
@@ -796,10 +877,11 @@
             const panelTitulo = document.getElementById('panel-derecho-titulo');
             const panelContenido = document.getElementById('panel-contenido');
 
-            panelTitulo.innerHTML = `📌 Espacio ${codigoAula}`;
+            const codigoMostrado = codigoAula.toUpperCase().replace(/^ESPACIO\s+/i, "");
+            panelTitulo.innerHTML = `📌 ESPACIO ${codigoMostrado}`;
 
             if (modo === "inventario") {
-                const inv = registrosInventarioExcel[codigoAula] || {};
+                const inv = buscarRegistroPorCodigo(registrosInventarioExcel, codigoAula) || {};
                 panelContenido.innerHTML = `
                     <div class="info-group">
                         <div class="info-label">Categoría / Uso:</div>
@@ -831,7 +913,7 @@
                     </div>
                 `;
             } else if (modo === "mobiliario") {
-                const mob = registrosMobiliarioExcel[codigoAula] || {};
+                const mob = buscarRegistroPorCodigo(registrosMobiliarioExcel, codigoAula) || {};
                 panelContenido.innerHTML = `
                     <div class="info-group">
                         <div class="info-label">Sillas Disponibles / Buen Estado:</div>
@@ -913,6 +995,17 @@
         window.addEventListener('load', () => {
             inicializarFranjasHorarias();
             cargarExcelRealRepo();
+
+            const inputBuscarGlobal = document.getElementById('input-busqueda-global');
+            if (inputBuscarGlobal) {
+                inputBuscarGlobal.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && e.target.value.trim() !== '') {
+                        const busqueda = e.target.value.trim();
+                        aulaSeleccionadaActual = busqueda;
+                        mostrarDetalleAulaPanel(busqueda);
+                    }
+                });
+            }
 
             const svgObj = document.getElementById('svg-object');
             const sidebarDerecha = document.getElementById('sidebar-derecha');
