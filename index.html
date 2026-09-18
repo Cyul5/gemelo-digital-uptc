@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UPTC SIG - Gestor de Información</title>
     
-    <!-- LECTURA REAL DE EXCEL (SheetJS) -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- LECTURA REAL DE EXCEL (SheetJS Actualizado) -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
     <!-- Import Maps para Three.js -->
     <script type="importmap">
@@ -727,7 +727,7 @@
                     }
                 }
 
-                // 5. HOJA: Accesibilidad y Seguridad (Procesamiento Matricial Robusto)
+                // 5. HOJA: Accesibilidad y Seguridad
                 if (workbook.Sheets[nombreHojaAccesibilidadReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaAccesibilidadReal]);
                     registrosAccesibilidadExcel = [];
@@ -768,7 +768,7 @@
                     }
                 }
 
-                // 6. HOJA: Instalaciones por Piso (Procesamiento Matricial Robusto)
+                // 6. HOJA: Instalaciones por Piso
                 if (workbook.Sheets[nombreHojaInstalacionesReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaInstalacionesReal]);
                     registrosInstalacionesExcel = [];
@@ -1167,7 +1167,6 @@
 
             panelTitulo.innerHTML = `🏢 ${nombrePiso.toUpperCase()}`;
 
-            // Extraer solo el número de piso (ej. "Piso 1" -> "1", "Piso 5 / Cubierta" -> "5")
             const numeroPisoStr = String(nombrePiso).replace(/[^0-9]/g, '');
 
             const esFilaDePiso = (row) => {
