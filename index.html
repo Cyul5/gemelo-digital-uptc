@@ -374,7 +374,6 @@
         async function cargarExcelRealRepo() {
             const statusTag = document.getElementById('excel-status-tag');
             try {
-                // NOMBRE DE ARCHIVO ACTUALIZADO
                 const response = await fetch('Plantilla_Levantamiento_Edificio.xlsx');
                 if (!response.ok) throw new Error("No se pudo cargar el archivo Excel.");
 
@@ -441,45 +440,60 @@
                     }
                 }
 
-                // 2. CARGA HOJA: Inventario de Espacios
+                // 2. CARGA HOJA: Inventario de Espacios (CORREGIDO PARA DETECTAR CÓDIGOS Y COLUMNAS)
                 if (workbook.Sheets["Inventario de Espacios"]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets["Inventario de Espacios"]);
                     registrosInventarioExcel = {};
+
+                    // Buscar en qué columna se encuentra la palabra "Código" o códigos de espacio
+                    let colCodigo = 1; 
 
                     for (let r = 0; r < matrix.length; r++) {
                         const row = matrix[r];
                         if (!row) continue;
 
-                        const codigo = String(row[1] || "").trim().toUpperCase();
-                        if (codigo && (codigo.startsWith("A-") || codigo.startsWith("L-") || codigo.startsWith("HUNZA") || codigo.startsWith("SALA"))) {
+                        // Buscar código en las primeras celdas de la fila por flexibilidad
+                        let codigo = "";
+                        for (let c = 0; c < Math.min(5, row.length); c++) {
+                            const cellVal = String(row[c] || "").trim().toUpperCase();
+                            if (cellVal.startsWith("A-") || cellVal.startsWith("L-") || cellVal.startsWith("HUNZA") || cellVal.startsWith("SALA")) {
+                                codigo = cellVal;
+                                break;
+                            }
+                        }
+
+                        if (codigo) {
+                            // Extraer con fallback de seguridad a celdas no vacías
+                            const getCell = (idx) => (row[idx] !== undefined && row[idx] !== null && String(row[idx]).trim() !== "") ? row[idx] : "N/A";
+
                             registrosInventarioExcel[codigo] = {
-                                categoria: row[2] || "N/A",
-                                subcategoria: row[3] || "N/A",
-                                uso: row[4] || "N/A",
-                                area: row[5] || "N/A",
-                                altura: row[6] || "N/A",
-                                capacidadEstud: row[7] || "N/A",
-                                capacidadDoc: row[8] || "N/A",
-                                puertas: row[9] || "N/A",
-                                estadoPuertas: row[10] || "N/A",
-                                obsPuertas: row[11] || "N/A",
-                                ventanas: row[12] || "N/A",
-                                estadoVentanas: row[13] || "N/A",
-                                obsVentanas: row[14] || "N/A",
-                                cieloRaso: row[15] || "N/A",
-                                obsCieloRaso: row[16] || "N/A",
-                                acabadoMuros: row[17] || "N/A",
-                                estadoMuros: row[18] || "N/A",
-                                obsMuros: row[19] || "N/A",
-                                orientacion: row[20] || "N/A",
-                                accesoLibre: row[21] || "N/A",
-                                tipoAcceso: row[22] || "N/A",
-                                responsable: row[23] || "N/A",
-                                tipoPatologia: row[24] || "Ninguna",
-                                ubicacionPatologia: row[25] || "N/A",
-                                estadoGeneral: row[26] || "Bueno",
-                                observacionesPatologia: row[27] || "Sin novedades registradas",
-                                fechaRegistro: row[28] || "N/A"
+                                categoria: getCell(2),
+                                subcategoria: getCell(3),
+                                uso: getCell(4),
+                                area: getCell(5),
+                                altura: getCell(6),
+                                capacidadEstud: getCell(7),
+                                capacidadDoc: getCell(8),
+                                puertas: getCell(9),
+                                estadoPuertas: getCell(10),
+                                obsPuertas: getCell(11),
+                                ventanas: getCell(12),
+                                estadoVentanas: getCell(13),
+                                obsVentanas: getCell(14),
+                                cieloRaso: getCell(15),
+                                obsCieloRaso: getCell(16),
+                                acabadoMuros: getCell(17),
+                                estadoMuros: getCell(18),
+                                obsMuros: getCell(19),
+                                orientacion: getCell(20),
+                                accesoLibre: getCell(21),
+                                tipoAcceso: getCell(22),
+                                responsable: getCell(23),
+                                tipoPatologia: getCell(24) !== "N/A" ? getCell(24) : "Ninguna",
+                                ubicacionPatologia: getCell(25),
+                                estadoGeneral: getCell(26) !== "N/A" ? getCell(26) : "Bueno",
+                                observacionesPatologia: getCell(27) !== "N/A" ? getCell(27) : "Sin novedades registradas",
+                                fechaRegistro: getCell(28)
                             };
                         }
                     }
@@ -494,28 +508,38 @@
                         const row = matrix[r];
                         if (!row) continue;
 
-                        const codigo = String(row[1] || "").trim().toUpperCase();
-                        if (codigo && (codigo.startsWith("A-") || codigo.startsWith("L-") || codigo.startsWith("HUNZA") || codigo.startsWith("SALA"))) {
+                        let codigo = "";
+                        for (let c = 0; c < Math.min(5, row.length); c++) {
+                            const cellVal = String(row[c] || "").trim().toUpperCase();
+                            if (cellVal.startsWith("A-") || cellVal.startsWith("L-") || cellVal.startsWith("HUNZA") || cellVal.startsWith("SALA")) {
+                                codigo = cellVal;
+                                break;
+                            }
+                        }
+
+                        if (codigo) {
+                            const getCell = (idx) => (row[idx] !== undefined && row[idx] !== null && String(row[idx]).trim() !== "") ? row[idx] : "N/A";
+
                             registrosMobiliarioExcel[codigo] = {
-                                numSillas: row[2] || "N/A",
-                                sillasProg: row[3] || "N/A",
-                                sillasBuenas: row[4] || "N/A",
-                                escritorioDocente: row[5] || "N/A",
-                                numTableros: row[6] || "N/A",
-                                tipoTablero: row[7] || "N/A",
-                                videoBeam: row[8] || "N/A",
-                                pantallaInteligente: row[9] || "N/A",
-                                numComputadores: row[10] || "N/A",
-                                tomacorrientes: row[11] || "N/A",
-                                luminariasTotal: row[12] || "N/A",
-                                luminariasFunc: row[13] || "N/A",
-                                tipoIluminacion: row[14] || "N/A",
-                                obsElectricas: row[15] || "N/A",
-                                cortinas: row[16] || "N/A",
-                                estadoMobiliario: row[17] || "N/A",
-                                sistemaAudio: row[18] || "N/A",
-                                extintor: row[19] || "N/A",
-                                observacionesMob: row[20] || "Sin observaciones adicionales"
+                                numSillas: getCell(2),
+                                sillasProg: getCell(3),
+                                sillasBuenas: getCell(4),
+                                escritorioDocente: getCell(5),
+                                numTableros: getCell(6),
+                                tipoTablero: getCell(7),
+                                videoBeam: getCell(8),
+                                pantallaInteligente: getCell(9),
+                                numComputadores: getCell(10),
+                                tomacorrientes: getCell(11),
+                                luminariasTotal: getCell(12),
+                                luminariasFunc: getCell(13),
+                                tipoIluminacion: getCell(14),
+                                obsElectricas: getCell(15),
+                                cortinas: getCell(16),
+                                estadoMobiliario: getCell(17),
+                                sistemaAudio: getCell(18),
+                                extintor: getCell(19),
+                                observacionesMob: getCell(20) !== "N/A" ? getCell(20) : "Sin observaciones adicionales"
                             };
                         }
                     }
