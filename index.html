@@ -1547,7 +1547,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
             container.innerHTML = '';
 
-            // Crear el elemento HTML del menú flotante dentro del contenedor si no existe
+// Crear el elemento HTML del menú flotante una sola vez de forma segura
             let menuFlotante = document.getElementById('menu-opciones-piso');
             if (!menuFlotante) {
                 menuFlotante = document.createElement('div');
@@ -1572,6 +1572,32 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                 `;
                 container.style.position = 'relative';
                 container.appendChild(menuFlotante);
+
+                // Evitar que los clics del menú afecten al visor 3D
+                menuFlotante.addEventListener('click', (e) => { e.stopPropagation(); });
+                menuFlotante.addEventListener('pointerup', (e) => { e.stopPropagation(); });
+
+                document.getElementById('btn-opcion-2d').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (pisoSeleccionadoParaMenu !== null) {
+                        const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
+                        if (window.irAVista2DPiso) {
+                            window.irAVista2DPiso(nombresPisos[pisoSeleccionadoParaMenu]);
+                        }
+                    }
+                    ocultarMenuFlotante();
+                });
+
+                document.getElementById('btn-opcion-aforo').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (pisoSeleccionadoParaMenu !== null) {
+                        activarMapaCalorPiso(pisoSeleccionadoParaMenu);
+                    }
+                    ocultarMenuFlotante();
+                });
+            } else {
+                container.appendChild(menuFlotante);
+            }
 
                 // Eventos de los botones del menú
                 document.getElementById('btn-opcion-2d').addEventListener('click', () => {
