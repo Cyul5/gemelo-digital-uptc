@@ -398,11 +398,11 @@
             selectFranja.innerHTML = '';
             for (let h = 7; h < 23; h++) {
                 const opt = document.createElement('option');
-                opt.value = `${h} -${h + 1}`; 
+                opt.value = `${h} - ${h + 1}`; 
                 
                 const inicio = h < 10 ? `0${h}:00` : `${h}:00`;
                 const fin = (h + 1) < 10 ? `0${h + 1}:00` : `${h + 1}:00`;
-                opt.innerText = `${inicio} -${fin}`;
+                opt.innerText = `${inicio} - ${fin}`;
                 
                 selectFranja.appendChild(opt);
             }
@@ -545,7 +545,7 @@
                     }
                 }
 
-                // 3. HOJA COMPLETA: Inventario Espacios
+                // 3. HOJA: Inventario Espacios
                 if (workbook.Sheets[nombreHojaInventarioReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaInventarioReal]);
                     registrosInventarioExcel = {};
@@ -727,12 +727,12 @@
                     }
                 }
 
-                // 5. HOJA: Accesibilidad y Seguridad
+                // 5. HOJA: Accesibilidad y Seguridad (Lecutra flexible por número de piso)
                 if (workbook.Sheets[nombreHojaAccesibilidadReal]) {
                     registrosAccesibilidadExcel = XLSX.utils.sheet_to_json(workbook.Sheets[nombreHojaAccesibilidadReal], { defval: "N/A" });
                 }
 
-                // 6. HOJA: Instalaciones por Piso
+                // 6. HOJA: Instalaciones por Piso (Lectura flexible por número de piso)
                 if (workbook.Sheets[nombreHojaInstalacionesReal]) {
                     registrosInstalacionesExcel = XLSX.utils.sheet_to_json(workbook.Sheets[nombreHojaInstalacionesReal], { defval: "N/A" });
                 }
@@ -1095,39 +1095,50 @@
 
             panelTitulo.innerHTML = `🏢 ${nombrePiso.toUpperCase()}`;
 
-            const floorKey = normalizarTextoSimple(nombrePiso);
+            // Extraer solo el número de piso (ej. "Piso 1" -> "1")
+            const numeroPisoStr = String(nombrePiso).replace(/[^0-9]/g, '');
 
             const accMatch = registrosAccesibilidadExcel.find(row => {
-                const p = normalizarTextoSimple(row['Piso'] || row['PISO'] || row['piso'] || '');
-                return p !== '' && (p.includes(floorKey) || floorKey.includes(p) || p.replace(/[^0-9]/g, '') === floorKey.replace(/[^0-9]/g, ''));
+                const keys = Object.keys(row);
+                // Buscar la columna que representa el piso (usualmente la primera)
+                const valPiso = String(row[keys[0]] || '').trim();
+                return valPiso === numeroPisoStr || valPiso.includes(numeroPisoStr);
             }) || {};
 
             const instMatches = registrosInstalacionesExcel.filter(row => {
-                const p = normalizarTextoSimple(row['Piso'] || row['PISO'] || row['piso'] || '');
-                return p !== '' && (p.includes(floorKey) || floorKey.includes(p) || p.replace(/[^0-9]/g, '') === floorKey.replace(/[^0-9]/g, ''));
+                const keys = Object.keys(row);
+                const valPiso = String(row[keys[0]] || '').trim();
+                return valPiso === numeroPisoStr || valPiso.includes(numeroPisoStr);
             });
 
             let html = ``;
 
             html += `<div class="info-section-title">♿ ACCESIBILIDAD Y SEGURIDAD</div>`;
             if (Object.keys(accMatch).length > 0) {
+                const keys = Object.keys(accMatch);
+                // Mapear de manera segura según las llaves encontradas
+                const getValAcc = (keyword) => {
+                    const foundKey = keys.find(k => normalizarTextoSimple(k).includes(normalizarTextoSimple(keyword)));
+                    return foundKey ? accMatch[foundKey] : 'N/A';
+                };
+
                 html += `
                     <div class="info-group">
                         <div class="info-label">Accesibilidad Universal:</div>
                         <div class="info-val" style="font-size:11px;">
-                            • Acceso Silla Ruedas: <strong>${accMatch['Acceso para silla de ruedas'] || accMatch['Acceso silla de ruedas'] || accMatch['Acceso'] || 'N/A'}</strong><br>
-                            • Rampa Cercana: <strong>${accMatch['Rampa de acceso cercana'] || accMatch['Rampa cercana'] || 'N/A'}</strong><br>
-                            • Ascensor Accesible: <strong>${accMatch['Ascensor accesible a este piso'] || accMatch['Ascensor accesible'] || 'N/A'}</strong><br>
-                            • Baño Accesible: <strong>${accMatch['Baño accesible cercano'] || accMatch['Baño accesible'] || 'N/A'}</strong>
+                            • Acceso Silla Ruedas: <strong>${getValAcc('silla de ruedas')}</strong><br>
+                            • Rampa Cercana: <strong>${getValAcc('rampa')}</strong><br>
+                            • Ascensor Accesible: <strong>${getValAcc('ascensor')}</strong><br>
+                            • Baño Accesible: <strong>${getValAcc('baño accesible')}</strong>
                         </div>
                     </div>
                     <div class="info-group">
                         <div class="info-label">Seguridad y Emergencia:</div>
                         <div class="info-val" style="font-size:11px;">
-                            • Extintor Cercano: <strong>${accMatch['Extintor cercano'] || accMatch['Extintores'] || 'N/A'}</strong><br>
-                            • Detector de Humo: <strong>${accMatch['Detector de humo'] || 'N/A'}</strong><br>
-                            • Alarma Incendios: <strong>${accMatch['Alarma contra incendios auditiva'] || accMatch['Alarma auditiva'] || 'N/A'}</strong><br>
-                            • Ruta Evacuación: <strong>${accMatch['Ruta de evacuación señalizada'] || accMatch['Ruta evacuación'] || 'N/A'}</strong>
+                            • Extintor Cercano: <strong>${getValAcc('extintor')}</strong><br>
+                            • Detector de Humo: <strong>${getValAcc('detector de humo')}</strong><br>
+                            • Alarma Incendios: <strong>${getValAcc('alarma')}</strong><br>
+                            • Ruta Evacuación: <strong>${getValAcc('ruta de evacuacion')}</strong>
                         </div>
                     </div>
                 `;
@@ -1138,25 +1149,33 @@
             html += `<div class="info-section-title" style="margin-top:12px;">🔧 INSTALACIONES Y ACABADOS</div>`;
             if (instMatches.length > 0) {
                 instMatches.forEach(item => {
+                    const keysInst = Object.keys(item);
+                    const getValInst = (keyword) => {
+                        const foundKey = keysInst.find(k => normalizarTextoSimple(k).includes(normalizarTextoSimple(keyword)));
+                        return foundKey ? item[foundKey] : 'N/A';
+                    };
+
+                    const tipoBaño = item[keysInst[1]] || 'Servicio';
+
                     html += `
                         <div class="info-group">
-                            <div class="info-label">Servicios Sanitarios (${item['Baños'] || item['Baños'] || 'General'}):</div>
+                            <div class="info-label">Servicios Sanitarios (${tipoBaño}):</div>
                             <div class="info-val" style="font-size:11px;">
-                                • Cantidad: <strong>${item['Cantidad'] || 'N/A'}</strong> | Lavamanos: <strong>${item['N.º de lavamanos'] || item['Lavamanos'] || 'N/A'}</strong>
+                                • Cantidad: <strong>${getValInst('Cantidad')}</strong> | Lavamanos: <strong>${getValInst('lavamanos')}</strong>
                             </div>
                         </div>
                         <div class="info-group">
                             <div class="info-label">Estado de Acabados:</div>
                             <div class="info-val" style="font-size:11px;">
-                                • Pisos: <strong>${item['Estado de pisos'] || 'N/A'}</strong> | Muros: <strong>${item['Estado de muros'] || 'N/A'}</strong><br>
-                                • Cielo Raso: <strong>${item['Estado de cielo raso'] || 'N/A'}</strong><br>
-                                • Filtraciones: <strong style="color:${String(item['Filtraciones de agua visibles']).toLowerCase().includes('sí') || String(item['Filtraciones de agua visibles']).toLowerCase().includes('si') ? '#ef4444' : '#34d399'}">${item['Filtraciones de agua visibles'] || 'No'}</strong>
+                                • Pisos: <strong>${getValInst('Estado de pisos')}</strong> | Muros: <strong>${getValInst('Estado de muros')}</strong><br>
+                                • Cielo Raso: <strong>${getValInst('Estado de cielo raso')}</strong><br>
+                                • Filtraciones: <strong style="color:${String(getValInst('Filtraciones')).toLowerCase().includes('si') || String(getValInst('Filtraciones')).toLowerCase().includes('sí') ? '#ef4444' : '#34d399'}">${getValInst('Filtraciones')}</strong>
                             </div>
                         </div>
-                        ${item['Observaciones general acabados'] && item['Observaciones general acabados'] !== 'N/A' ? `
+                        ${getValInst('Observaciones') !== 'N/A' ? `
                             <div class="info-group">
                                 <div class="info-label">Observaciones:</div>
-                                <div class="info-val" style="font-size:10px; color:#cbd5e1; font-style:italic;">${item['Observaciones general acabados']}</div>
+                                <div class="info-val" style="font-size:10px; color:#cbd5e1; font-style:italic;">${getValInst('Observaciones')}</div>
                             </div>
                         ` : ''}
                     `;
