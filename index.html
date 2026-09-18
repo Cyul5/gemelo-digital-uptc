@@ -1599,7 +1599,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                     container.appendChild(menuFlotante);
                 }
             }
-            // Evento de Clic: Muestra el menú flotante en lugar de saltar de una
+// Evento de Clic: Muestra el menú flotante en lugar de saltar de una
             container.addEventListener('pointerup', (e) => {
                 const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
                 if (dist > 5) return;
@@ -1627,44 +1627,10 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                 }
 
                 if (indicePisoFinal !== -1) {
-                    pisoSeleccionadoParaMenu = indicePisoFinal;
+                    window.pisoSeleccionadoParaMenu = indicePisoFinal;
                     mostrarMenuFlotante(e.clientX, e.clientY, nombresPisos[indicePisoFinal]);
                 }
             });
-
-            window.addEventListener('resize', () => {
-                if (container && container.clientWidth > 0) {
-                    camera.aspect = container.clientWidth / container.clientHeight;
-                    camera.updateProjectionMatrix();
-                    renderer.setSize(container.clientWidth, container.clientHeight);
-                }
-            });
-
-            function animate() {
-                animFrameId = requestAnimationFrame(animate);
-                clock.getDelta();
-                controls.update();
-                renderer.render(scene, camera);
-            }
-
-            if (animFrameId) cancelAnimationFrame(animFrameId);
-            animate();
-
-            gltfLoader = new GLTFLoader();
-            const dracoLoader = new DRACOLoader();
-            dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
-            gltfLoader.setDRACOLoader(dracoLoader);
-
-            is3DInitialized = true;
-            return true;
-        }
-
-        function mostrarMenuFlotante(clientX, clientY, nombrePiso) {
-            const container = document.getElementById('ifc-canvas-container');
-            const menu = document.getElementById('menu-opciones-piso');
-            const rect = container.getBoundingClientRect();
-
-            document.getElementById('titulo-menu-piso').innerText = `📍 ${nombrePiso}`;
             
             // Posicionar cerca del mouse relativo al contenedor
             let x = clientX - rect.left + 10;
@@ -1845,6 +1811,51 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
         }
 
         window.cargarModeloIFC = cargarModeloGLBReal;
+        window.cargarModeloIFC = cargarModeloGLBReal;
+
+        // Configurar los botones del menú flotante una sola vez de forma global
+        document.addEventListener('DOMContentLoaded', () => {
+            const menuFlotante = document.getElementById('menu-opciones-piso');
+            
+            if (menuFlotante) {
+                menuFlotante.addEventListener('click', (e) => { e.stopPropagation(); });
+                menuFlotante.addEventListener('pointerup', (e) => { e.stopPropagation(); });
+
+                document.getElementById('btn-opcion-2d').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (window.pisoSeleccionadoParaMenu !== undefined && window.pisoSeleccionadoParaMenu !== null) {
+                        const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
+                        if (window.irAVista2DPiso) {
+                            window.irAVista2DPiso(nombresPisos[window.pisoSeleccionadoParaMenu]);
+                        }
+                    }
+                    ocultarMenuFlotante();
+                });
+
+                document.getElementById('btn-opcion-aforo').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (window.pisoSeleccionadoParaMenu !== undefined && window.pisoSeleccionadoParaMenu !== null) {
+                        activarMapaCalorPiso(window.pisoSeleccionadoParaMenu);
+                    }
+                    ocultarMenuFlotante();
+                });
+            }
+        });
     </script>
+
+    <div id="menu-opciones-piso" style="display: none; position: absolute; background: #0f172a; border: 1px solid #334155; padding: 12px; border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5); z-index: 9999; color: white; font-family: sans-serif; width: 200px;">
+        <p id="titulo-menu-piso" style="margin: 0 0 10px 0; font-size: 13px; font-weight: bold; color: #38bdf8; border-bottom: 1px solid #1e293b; padding-bottom: 5px;"></p>
+        <button id="btn-opcion-2d" style="width: 100%; background: #0284c7; border: none; color: white; padding: 8px; border-radius: 4px; margin-bottom: 6px; cursor: pointer; font-size: 12px;">🔵 Entrar al Plano</button>
+        <button id="btn-opcion-aforo" style="width: 100%; background: #ea580c; border: none; color: white; padding: 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">🔥 Ver Aforo / Calor</button>
+    </div>
+
+</body>
+</html>
+    </script>
+    <div id="menu-opciones-piso" style="display: none; position: absolute; background: #0f172a; border: 1px solid #334155; padding: 12px; border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5); z-index: 9999; color: white; font-family: sans-serif; width: 200px;">
+    <p id="titulo-menu-piso" style="margin: 0 0 10px 0; font-size: 13px; font-weight: bold; color: #38bdf8; border-bottom: 1px solid #1e293b; padding-bottom: 5px;"></p>
+    <button id="btn-opcion-2d" style="width: 100%; background: #0284c7; border: none; color: white; padding: 8px; border-radius: 4px; margin-bottom: 6px; cursor: pointer; font-size: 12px;">🔵 Entrar al Plano</button>
+    <button id="btn-opcion-aforo" style="width: 100%; background: #ea580c; border: none; color: white; padding: 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">🔥 Ver Aforo / Calor</button>
+</div>
     </body>
 </html>
