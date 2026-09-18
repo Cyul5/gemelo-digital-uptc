@@ -3,18 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UPTC GIC - Gestor de Información</title>
+    <title>UPTC SIG - Gestor de Información</title>
     
     <!-- LECTURA REAL DE EXCEL (SheetJS) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-    <!-- Three.js UMD -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
-
-    <!-- Web-IFC y IFCLoader para visualización BIM nativa (.ifc) -->
-    <script src="https://unpkg.com/web-ifc@0.0.36/web-ifc-api.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/IFCLoader.js"></script>
+    <!-- Import Maps para Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
 
     <style>
         :root {
@@ -100,7 +102,7 @@
         #svg-object { width: 100%; height: 100%; border: none; background-color: #ffffff; }
 
         /* VISTA 3D */
-        #vista-3d { width: 100%; height: 100%; background-color: #ffffff; display: block; position: relative; }
+        #vista-3d { width: 100%; height: 100%; background-color: #ffffff; display: block; }
         #ifc-canvas-container { width: 100%; height: 100%; background-color: #ffffff; touch-action: none; }
 
         /* VISTA PLANTA 2D */
@@ -258,7 +260,7 @@
                 <object id="svg-object" type="image/svg+xml" data="plano_uptc.svg"></object>
             </div>
 
-            <!-- VISTA 2: MODELO 3D (IFC) -->
+            <!-- VISTA 2: MODELO 3D -->
             <div id="vista-3d" class="vista">
                 <div id="ifc-canvas-container"></div>
             </div>
@@ -322,7 +324,7 @@
             <!-- SECCIÓN CORTES BIM (SOLO VISIBLE EN 3D) -->
             <div id="seccion-cortes-3d" style="display:none; margin-top: 15px;">
                 <div class="panel-title">✂️ Niveles (Modelo 3D)</div>
-                <div id="ifc-status" style="font-size:12px; color:var(--text-muted); margin-bottom:10px;"><span class="loading-spinner"></span> Esperando modelo IFC...</div>
+                <div id="ifc-status" style="font-size:12px; color:var(--text-muted); margin-bottom:10px;"><span class="loading-spinner"></span> Esperando modelo 3D...</div>
                 <div id="ifc-layers-list"></div>
             </div>
 
@@ -393,11 +395,10 @@
 
         function inicializarFranjasHorarias() {
             const selectFranja = document.getElementById('select-franja');
-            if(!selectFranja) return;
             selectFranja.innerHTML = '';
             for (let h = 7; h < 23; h++) {
                 const opt = document.createElement('option');
-                opt.value = `${h} - ${h + 1}`; 
+                opt.value = `${h} -${h + 1}`; 
                 
                 const inicio = h < 10 ? `0${h}:00` : `${h}:00`;
                 const fin = (h + 1) < 10 ? `0${h + 1}:00` : `${h + 1}:00`;
@@ -449,6 +450,7 @@
                 const hInst = sheetNames.find(n => normalizarTextoSimple(n).includes("INSTALACIONES"));
                 if (hInst) nombreHojaInstalacionesReal = hInst;
 
+                // 1. HOJA: Datos Generales
                 if (workbook.Sheets[nombreHojaDatosGeneralesReal]) {
                     const matrixGen = obtenerMatrizConMerges(workbook.Sheets[nombreHojaDatosGeneralesReal]);
                     registrosDatosGeneralesExcel = {};
@@ -483,6 +485,7 @@
                     }
                 }
 
+                // 2. HOJA: Horarios
                 if (workbook.Sheets[nombreHojaHorariosReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaHorariosReal]);
                     let headerRowIdx = -1;
@@ -542,6 +545,7 @@
                     }
                 }
 
+                // 3. HOJA: Inventario Espacios
                 if (workbook.Sheets[nombreHojaInventarioReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaInventarioReal]);
                     registrosInventarioExcel = {};
@@ -666,6 +670,7 @@
                     }
                 }
 
+                // 4. HOJA: Mobiliario
                 if (workbook.Sheets[nombreHojaMobiliarioReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaMobiliarioReal]);
                     registrosMobiliarioExcel = {};
@@ -722,12 +727,86 @@
                     }
                 }
 
+                // 5. HOJA: Accesibilidad y Seguridad (Procesamiento Matricial Robusto)
                 if (workbook.Sheets[nombreHojaAccesibilidadReal]) {
-                    registrosAccesibilidadExcel = XLSX.utils.sheet_to_json(workbook.Sheets[nombreHojaAccesibilidadReal], { defval: "N/A" });
+                    const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaAccesibilidadReal]);
+                    registrosAccesibilidadExcel = [];
+                    let headerRowIdx = -1;
+
+                    for (let r = 0; r < Math.min(10, matrix.length); r++) {
+                        const row = matrix[r];
+                        if (!row) continue;
+                        for (let c = 0; c < row.length; c++) {
+                            const txt = normalizarTextoSimple(row[c]);
+                            if (txt.includes("PISO") || txt.includes("NIVEL") || txt.includes("ACCESO") || txt.includes("SILLA DE RUEDAS")) {
+                                headerRowIdx = r;
+                                break;
+                            }
+                        }
+                        if (headerRowIdx !== -1) break;
+                    }
+
+                    if (headerRowIdx !== -1) {
+                        const headers = matrix[headerRowIdx].map(h => String(h || "").trim());
+                        for (let r = headerRowIdx + 1; r < matrix.length; r++) {
+                            const row = matrix[r];
+                            if (!row || row.length === 0) continue;
+                            let obj = {};
+                            let hasData = false;
+                            for (let c = 0; c < headers.length; c++) {
+                                const h = headers[c];
+                                if (h) {
+                                    const val = row[c] !== undefined && row[c] !== null ? String(row[c]).trim() : "N/A";
+                                    obj[h] = val;
+                                    if (val !== "N/A" && val !== "") hasData = true;
+                                }
+                            }
+                            if (hasData) registrosAccesibilidadExcel.push(obj);
+                        }
+                    } else {
+                        registrosAccesibilidadExcel = XLSX.utils.sheet_to_json(workbook.Sheets[nombreHojaAccesibilidadReal], { defval: "N/A" });
+                    }
                 }
 
+                // 6. HOJA: Instalaciones por Piso (Procesamiento Matricial Robusto)
                 if (workbook.Sheets[nombreHojaInstalacionesReal]) {
-                    registrosInstalacionesExcel = XLSX.utils.sheet_to_json(workbook.Sheets[nombreHojaInstalacionesReal], { defval: "N/A" });
+                    const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaInstalacionesReal]);
+                    registrosInstalacionesExcel = [];
+                    let headerRowIdx = -1;
+
+                    for (let r = 0; r < Math.min(10, matrix.length); r++) {
+                        const row = matrix[r];
+                        if (!row) continue;
+                        for (let c = 0; c < row.length; c++) {
+                            const txt = normalizarTextoSimple(row[c]);
+                            if (txt.includes("PISO") || txt.includes("NIVEL") || txt.includes("BAÑO") || txt.includes("SANITA")) {
+                                headerRowIdx = r;
+                                break;
+                            }
+                        }
+                        if (headerRowIdx !== -1) break;
+                    }
+
+                    if (headerRowIdx !== -1) {
+                        const headers = matrix[headerRowIdx].map(h => String(h || "").trim());
+                        for (let r = headerRowIdx + 1; r < matrix.length; r++) {
+                            const row = matrix[r];
+                            if (!row || row.length === 0) continue;
+                            let obj = {};
+                            let hasData = false;
+                            for (let c = 0; c < headers.length; c++) {
+                                const h = headers[c];
+                                if (h) {
+                                    const val = row[c] !== undefined && row[c] !== null ? String(row[c]).trim() : "N/A";
+                                    obj[h] = val;
+                                    if (val !== "N/A" && val !== "") hasData = true;
+                                }
+                            }
+                            if (hasData) registrosInstalacionesExcel.push(obj);
+                        }
+                    } else {
+                        registrosInstalacionesExcel = XLSX.utils.sheet_to_json(workbook.Sheets[nombreHojaInstalacionesReal], { defval: "N/A" });
+                    }
                 }
 
                 statusTag.innerHTML = `<span class="dot"></span> Excel Conectado`;
@@ -804,7 +883,7 @@
                 btnVolver.style.display = 'block';
                 seccionCortes.style.display = 'block';
                 panelFiltros.style.display = 'none';
-                breadcrumb.innerText = 'Edificio 30 Hunza (Modelo IFC 3D)';
+                breadcrumb.innerText = 'Edificio 30 Hunza (Modelo 3D)';
                 actualizarPanelDetallePiso3D("Edificio Completo");
                 if (window.cargarModeloIFC) window.cargarModeloIFC();
             } else if (idVista === 'vista-2d') {
@@ -1077,29 +1156,36 @@
             }
 
             if (!nombrePiso || nombrePiso === "Edificio Completo") {
-                panelTitulo.innerHTML = `🏢 EDIFICIO COMPLETO (3D BIM)`;
+                panelTitulo.innerHTML = `🏢 EDIFICIO COMPLETO (3D)`;
                 panelContenido.innerHTML = `
                     <div style="padding:10px 0; color:var(--text-muted); font-size:12px;">
-                        <p>💡 Modelo IFC cargado correctamente. Seleccione un nivel en el menú de aislamiento inferior para consultar las condiciones de <strong>Accesibilidad y Seguridad</strong> e <strong>Instalaciones</strong>.</p>
+                        <p>💡 Seleccione un nivel en el menú de aislamiento para desplegar las condiciones de <strong>Accesibilidad y Seguridad</strong> e <strong>Instalaciones y Acabados</strong> del piso.</p>
                     </div>
                 `;
                 return;
             }
 
             panelTitulo.innerHTML = `🏢 ${nombrePiso.toUpperCase()}`;
+
+            // Extraer solo el número de piso (ej. "Piso 1" -> "1", "Piso 5 / Cubierta" -> "5")
             const numeroPisoStr = String(nombrePiso).replace(/[^0-9]/g, '');
 
-            const accMatch = registrosAccesibilidadExcel.find(row => {
+            const esFilaDePiso = (row) => {
                 const keys = Object.keys(row);
-                const valPiso = String(row[keys[0]] || '').trim();
-                return valPiso === numeroPisoStr || valPiso.includes(numeroPisoStr);
-            }) || {};
+                for (const key of keys) {
+                    const kNorm = normalizarTextoSimple(key);
+                    if (kNorm.includes("PISO") || kNorm.includes("NIVEL") || keys.indexOf(key) === 0) {
+                        const valNorm = normalizarTextoSimple(row[key]);
+                        if (valNorm === numeroPisoStr || valNorm.includes(`PISO ${numeroPisoStr}`) || valNorm.includes(`PISO${numeroPisoStr}`) || (numeroPisoStr && valNorm.includes(numeroPisoStr))) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            };
 
-            const instMatches = registrosInstalacionesExcel.filter(row => {
-                const keys = Object.keys(row);
-                const valPiso = String(row[keys[0]] || '').trim();
-                return valPiso === numeroPisoStr || valPiso.includes(numeroPisoStr);
-            });
+            const accMatch = registrosAccesibilidadExcel.find(row => esFilaDePiso(row)) || {};
+            const instMatches = registrosInstalacionesExcel.filter(row => esFilaDePiso(row));
 
             let html = ``;
 
@@ -1108,7 +1194,7 @@
                 const keys = Object.keys(accMatch);
                 const getValAcc = (keyword) => {
                     const foundKey = keys.find(k => normalizarTextoSimple(k).includes(normalizarTextoSimple(keyword)));
-                    return foundKey ? accMatch[foundKey] : 'N/A';
+                    return (foundKey && accMatch[foundKey] !== undefined && accMatch[foundKey] !== null && String(accMatch[foundKey]).trim() !== "") ? accMatch[foundKey] : 'N/A';
                 };
 
                 html += `
@@ -1141,14 +1227,15 @@
                     const keysInst = Object.keys(item);
                     const getValInst = (keyword) => {
                         const foundKey = keysInst.find(k => normalizarTextoSimple(k).includes(normalizarTextoSimple(keyword)));
-                        return foundKey ? item[foundKey] : 'N/A';
+                        return (foundKey && item[foundKey] !== undefined && item[foundKey] !== null && String(item[foundKey]).trim() !== "") ? item[foundKey] : 'N/A';
                     };
 
-                    const tipoBaño = item[keysInst[1]] || 'Servicio';
+                    const tipoBanoKey = keysInst.find(k => normalizarTextoSimple(k).includes("TIPO") || normalizarTextoSimple(k).includes("BAÑO") || normalizarTextoSimple(k).includes("SERVICIO"));
+                    const tipoBano = (tipoBanoKey && item[tipoBanoKey] && item[tipoBanoKey] !== 'N/A') ? item[tipoBanoKey] : 'Servicio';
 
                     html += `
                         <div class="info-group">
-                            <div class="info-label">Servicios Sanitarios (${tipoBaño}):</div>
+                            <div class="info-label">Servicios Sanitarios (${tipoBano}):</div>
                             <div class="info-val" style="font-size:11px;">
                                 • Cantidad: <strong>${getValInst('Cantidad')}</strong> | Lavamanos: <strong>${getValInst('lavamanos')}</strong>
                             </div>
@@ -1161,6 +1248,12 @@
                                 • Filtraciones: <strong style="color:${String(getValInst('Filtraciones')).toLowerCase().includes('si') || String(getValInst('Filtraciones')).toLowerCase().includes('sí') ? '#ef4444' : '#34d399'}">${getValInst('Filtraciones')}</strong>
                             </div>
                         </div>
+                        ${getValInst('Observaciones') !== 'N/A' && getValInst('Observaciones') !== '' ? `
+                            <div class="info-group">
+                                <div class="info-label">Observaciones:</div>
+                                <div class="info-val" style="font-size:10px; color:#cbd5e1; font-style:italic;">${getValInst('Observaciones')}</div>
+                            </div>
+                        ` : ''}
                     `;
                 });
             } else {
@@ -1206,11 +1299,31 @@
                     <div class="info-section-title">🚪 Puertas y Ventanas</div>
                     <div class="info-group">
                         <div class="info-label">Puertas (N.º ${inv.puertasNum || '0'}):</div>
-                        <div class="info-val">Estado: ${inv.puertasEstado || 'N/A'}</div>
+                        <div class="info-val">Estado: ${inv.puertasEstado || 'N/A'}<br><small style="color:#94a3b8;">${inv.puertasObs && inv.puertasObs !== 'N/A' ? inv.puertasObs : ''}</small></div>
                     </div>
                     <div class="info-group">
                         <div class="info-label">Ventanas (N.º ${inv.ventanasNum || '0'}):</div>
-                        <div class="info-val">Estado: ${inv.ventanasEstado || 'N/A'}</div>
+                        <div class="info-val">Estado: ${inv.ventanasEstado || 'N/A'}<br><small style="color:#94a3b8;">${inv.ventanasObs && inv.ventanasObs !== 'N/A' ? inv.ventanasObs : ''}</small></div>
+                    </div>
+
+                    <div class="info-section-title">🧱 Cielo Raso y Muros</div>
+                    <div class="info-group">
+                        <div class="info-label">Cielo Raso:</div>
+                        <div class="info-val">Estado: ${inv.cieloEstado || 'N/A'} ${inv.cieloObs && inv.cieloObs !== 'N/A' ? '(' + inv.cieloObs + ')' : ''}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Acabado y Estado de Muros:</div>
+                        <div class="info-val">${inv.murosAcabado || 'N/A'} (Estado: ${inv.murosEstado || 'N/A'})<br><small style="color:#94a3b8;">${inv.murosObs && inv.murosObs !== 'N/A' ? inv.murosObs : ''}</small></div>
+                    </div>
+
+                    <div class="info-section-title">🗝️ Acceso y Orientación</div>
+                    <div class="info-group">
+                        <div class="info-label">Orientación del Espacio:</div>
+                        <div class="info-val">${inv.orientacion || 'N/A'}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Acceso / Responsable:</div>
+                        <div class="info-val">Libre: ${inv.accesoLibre || 'N/A'} | Control: ${inv.tipoControl || 'N/A'}<br>Responsable: ${inv.responsableAcceso || 'N/A'}</div>
                     </div>
 
                     <div class="info-section-title">⚠️ Patología y Diagnóstico</div>
@@ -1219,11 +1332,19 @@
                         <div class="info-val" style="color: #eab308; font-weight:700;">${inv.tipoPatologia || 'Ninguna'}</div>
                     </div>
                     <div class="info-group">
+                        <div class="info-label">Ubicación Patología:</div>
+                        <div class="info-val">${inv.ubicacionPatologia || 'N/A'}</div>
+                    </div>
+                    <div class="info-group">
                         <div class="info-label">Estado General y Observaciones:</div>
                         <div class="info-val" style="font-size:11px; color:#cbd5e1;">
                             <strong>Estado:</strong> ${inv.estadoGeneral || 'N/A'}<br>
                             ${inv.observacionesPatologia || 'Sin novedades'}
                         </div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">📅 Fecha Registro:</div>
+                        <div class="info-val" style="font-size:11px; color:#94a3b8;">${inv.fechaRegistro || 'N/A'}</div>
                     </div>
                 `;
             } else if (modo === "mobiliario") {
@@ -1242,6 +1363,14 @@
                         <div class="info-label">Tableros & Proyección:</div>
                         <div class="info-val">${mob.numTableros || '0'} ${mob.tipoTablero || ''} | Beam: ${mob.videoBeam || 'No'}</div>
                     </div>
+                    <div class="info-group">
+                        <div class="info-label">Iluminación & Tomas:</div>
+                        <div class="info-val">${mob.tipoIluminacion || 'N/A'} (${mob.luminariasFunc || '0'}/${mob.luminariasTotal || '0'}) | ${mob.tomacorrientes || '0'} tomas</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Observaciones Mobiliario:</div>
+                        <div class="info-val" style="font-size:11px; color:#cbd5e1;">${mob.obsElectricas || mob.observacionesMob || 'Sin novedad'}</div>
+                    </div>
                 `;
             } else if (modo === "horarios") {
                 document.getElementById('hoja-excel-indicador').innerHTML = `<strong>Hoja:</strong> ${nombreHojaHorariosReal}`;
@@ -1254,12 +1383,20 @@
                         <div class="info-val"><span class="badge-estado ${badgeClase}">${info.estado}</span></div>
                     </div>
                     <div class="info-group">
+                        <div class="info-label">Planta:</div>
+                        <div class="info-val">${pisoActual2D}</div>
+                    </div>
+                    <div class="info-group">
                         <div class="info-label">Actividad / Asignatura:</div>
                         <div class="info-val">${info.detalle}</div>
                     </div>
                     <div class="info-group">
                         <div class="info-label">Franja Horaria:</div>
-                        <div class="info-val">${info.franja} (${document.getElementById('select-dia').value})</div>
+                        <div class="info-val">${info.franja}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Día:</div>
+                        <div class="info-val">${document.getElementById('select-dia').value}</div>
                     </div>
                 `;
             }
@@ -1328,23 +1465,39 @@
                     svgObj.addEventListener('load', conectarHunza);
                 }
             }
+
+            const svg2dObj = document.getElementById('svg-2d-object');
+            if (svg2dObj) {
+                svg2dObj.addEventListener('load', () => {
+                    mostrarResumenPlanta2D();
+                    actualizarEstadoAulas2D();
+                });
+            }
         });
     </script>
 
-    <!-- MOTOR THREE.JS + IFCLOADER PARA VISUALIZACIÓN BIM NATIVA -->
-    <script>
-        let scene3D, camera3D, renderer3D, controls3D;
-        let ifcLoader = null;
+    <!-- MOTOR THREE.JS Y ZOOM INTERACTIVO -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+
+        let scene, camera, renderer, controls;
+        let gltfLoader = null;
         let is3DInitialized = false;
-        let yaCargadoIFC = false;
-        let modeloIFCGlobal = null;
+        let yaCargado = false;
+        let animFrameId = null;
+        let modeloGlobal = null;
         let planoInferior = null, planoSuperior = null;
         let alturaMinModel = 0, alturaMaxModel = 100;
         let pasoPisoGlobal = 20;
-        let pisosMeshesIFC = [[], [], [], [], []];
+
+        let pisosMeshes = [[], [], [], [], []];
         let pisoHoveredActual = -1;
 
-        const URL_IFC = 'EDIFICIO_AULAS_M3D.ifc'; // Cambia aquí por la ruta o nombre de tu archivo IFC
+        const clock = new THREE.Clock();
+        const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
 
         function init3DViewer() {
             if (is3DInitialized) return true;
@@ -1354,38 +1507,63 @@
 
             const width = container.clientWidth;
             const height = container.clientHeight;
+
             container.innerHTML = '';
 
-            scene3D = new THREE.Scene();
-            scene3D.background = new THREE.Color(0xffffff);
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xffffff);
 
-            camera3D = new THREE.PerspectiveCamera(45, width / height, 0.1, 3000);
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 3000);
 
-            renderer3D = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-            renderer3D.setSize(width, height);
-            renderer3D.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer3D.outputColorSpace = THREE.SRGBColorSpace;
-            renderer3D.localClippingEnabled = true;
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+            renderer.localClippingEnabled = true;
 
-            container.appendChild(renderer3D.domElement);
+            container.appendChild(renderer.domElement);
 
-            controls3D = new THREE.OrbitControls(camera3D, renderer3D.domElement);
-            controls3D.enableDamping = true;
-            controls3D.dampingFactor = 0.025;
-            controls3D.enableZoom = true;
-            controls3D.rotateSpeed = 0.4;
-            controls3D.panSpeed = 0.4;
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.025;
+            controls.enableZoom = false;
+            controls.rotateSpeed = 0.4;
+            controls.panSpeed = 0.4;
+            controls.minDistance = 2.0;
+            controls.maxDistance = 1000.0;
+
+            renderer.domElement.addEventListener('wheel', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const direction = new THREE.Vector3();
+                camera.getWorldDirection(direction);
+
+                const dir = Math.sign(event.deltaY);
+                const dist = camera.position.distanceTo(controls.target);
+                const step = Math.max(0.5, dist * 0.05);
+
+                if (dir > 0) {
+                    if (dist < controls.maxDistance) {
+                        camera.position.addScaledVector(direction, -step);
+                    }
+                } else {
+                    if (dist > controls.minDistance) {
+                        camera.position.addScaledVector(direction, step);
+                    }
+                }
+            }, { passive: false });
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
-            scene3D.add(ambientLight);
+            scene.add(ambientLight);
 
             const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
             dirLight.position.set(100, 200, 100);
-            scene3D.add(dirLight);
+            scene.add(dirLight);
 
             const gridHelper = new THREE.GridHelper(300, 60, 0x00b4d8, 0xcbd5e1);
             gridHelper.position.y = -0.01;
-            scene3D.add(gridHelper);
+            scene.add(gridHelper);
 
             const raycaster = new THREE.Raycaster();
             const mouse = new THREE.Vector2();
@@ -1393,6 +1571,56 @@
 
             container.addEventListener('pointerdown', (e) => {
                 pointerDownPos = { x: e.clientX, y: e.clientY };
+            });
+
+            container.addEventListener('pointermove', (e) => {
+                const rect = container.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                if (!modeloGlobal) return;
+
+                const intersects = raycaster.intersectObject(modeloGlobal, true);
+                let nuevoPisoHover = -1;
+
+                if (intersects.length > 0) {
+                    container.style.cursor = 'pointer';
+                    const puntoIntersec = intersects[0].point;
+                    const alturaRelativa = puntoIntersec.y - alturaMinModel;
+                    nuevoPisoHover = Math.floor(alturaRelativa / pasoPisoGlobal);
+                    nuevoPisoHover = Math.max(0, Math.min(nuevoPisoHover, 4));
+                } else {
+                    container.style.cursor = 'default';
+                }
+
+                if (nuevoPisoHover !== pisoHoveredActual) {
+                    if (pisoHoveredActual !== -1 && pisosMeshes[pisoHoveredActual]) {
+                        pisosMeshes[pisoHoveredActual].forEach(mesh => {
+                            if (mesh.material) {
+                                if (Array.isArray(mesh.material)) {
+                                    mesh.material.forEach(m => { if (m.emissive) m.emissive.setHex(0x000000); });
+                                } else if (mesh.material.emissive) {
+                                    mesh.material.emissive.setHex(0x000000);
+                                }
+                            }
+                        });
+                    }
+
+                    pisoHoveredActual = nuevoPisoHover;
+
+                    if (pisoHoveredActual !== -1 && pisosMeshes[pisoHoveredActual]) {
+                        pisosMeshes[pisoHoveredActual].forEach(mesh => {
+                            if (mesh.material) {
+                                if (Array.isArray(mesh.material)) {
+                                    mesh.material.forEach(m => { if (m.emissive) m.emissive.setHex(0x005577); });
+                                } else if (mesh.material.emissive) {
+                                    mesh.material.emissive.setHex(0x005577);
+                                }
+                            }
+                        });
+                    }
+                }
             });
 
             container.addEventListener('pointerup', (e) => {
@@ -1403,10 +1631,10 @@
                 mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
                 mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
 
-                raycaster.setFromCamera(mouse, camera3D);
-                if (!modeloIFCGlobal) return;
+                raycaster.setFromCamera(mouse, camera);
+                if (!modeloGlobal) return;
 
-                const intersects = raycaster.intersectObject(modeloIFCGlobal, true);
+                const intersects = raycaster.intersectObject(modeloGlobal, true);
                 if (intersects.length > 0) {
                     const puntoIntersec = intersects[0].point;
                     const alturaRelativa = puntoIntersec.y - alturaMinModel;
@@ -1423,22 +1651,26 @@
 
             window.addEventListener('resize', () => {
                 if (container && container.clientWidth > 0) {
-                    camera3D.aspect = container.clientWidth / container.clientHeight;
-                    camera3D.updateProjectionMatrix();
-                    renderer3D.setSize(container.clientWidth, container.clientHeight);
+                    camera.aspect = container.clientWidth / container.clientHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(container.clientWidth, container.clientHeight);
                 }
             });
 
             function animate() {
-                requestAnimationFrame(animate);
-                controls3D.update();
-                renderer3D.render(scene3D, camera3D);
+                animFrameId = requestAnimationFrame(animate);
+                clock.getDelta();
+                controls.update();
+                renderer.render(scene, camera);
             }
+
+            if (animFrameId) cancelAnimationFrame(animFrameId);
             animate();
 
-            // Configurar IFCLoader y web-ifc
-            ifcLoader = new THREE.IFCLoader();
-            ifcLoader.ifcManager.setWasmPath("https://unpkg.com/web-ifc@0.0.36/");
+            gltfLoader = new GLTFLoader();
+            const dracoLoader = new DRACOLoader();
+            dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+            gltfLoader.setDRACOLoader(dracoLoader);
 
             is3DInitialized = true;
             return true;
@@ -1450,129 +1682,139 @@
             planoSuperior.constant = alturaSuperior;
         }
 
-        async function cargarModeloIFCReal() {
-            if (yaCargadoIFC) return;
+        function cargarModeloGLBReal() {
+            if (yaCargado) return;
             if (!init3DViewer()) return;
 
             const statusEl = document.getElementById('ifc-status');
             const layersEl = document.getElementById('ifc-layers-list');
 
-            statusEl.innerHTML = '<span class="loading-spinner"></span> Cargando y parseando archivo IFC...';
+            statusEl.innerHTML = '<span class="loading-spinner"></span> Cargando modelo 3D...';
 
-            try {
-                ifcLoader.load(
-                    URL_IFC,
-                    (model) => {
-                        modeloIFCGlobal = model;
-                        scene3D.add(model);
+            gltfLoader.load(
+                URL_GLB,
+                (gltf) => {
+                    modeloGlobal = gltf.scene;
+                    modeloGlobal.updateMatrixWorld(true);
 
-                        const boxTemp = new THREE.Box3().setFromObject(modeloIFCGlobal);
-                        alturaMinModel = boxTemp.min.y;
-                        alturaMaxModel = boxTemp.max.y;
-                        const alturaTotal = alturaMaxModel - alturaMinModel;
-                        pasoPisoGlobal = alturaTotal / 5;
+                    const boxTemp = new THREE.Box3().setFromObject(modeloGlobal);
+                    const minY = boxTemp.min.y;
+                    const center = boxTemp.getCenter(new THREE.Vector3());
 
-                        planoInferior = new THREE.Plane(new THREE.Vector3(0, 1, 0), -alturaMinModel - 10);
-                        planoSuperior = new THREE.Plane(new THREE.Vector3(0, -1, 0), alturaMaxModel + 50);
-                        const arrayPlanosCorte = [planoInferior, planoSuperior];
+                    modeloGlobal.position.x -= center.x;
+                    modeloGlobal.position.z -= center.z;
+                    modeloGlobal.position.y -= minY;
 
-                        pisosMeshesIFC = [[], [], [], [], []];
+                    modeloGlobal.updateMatrixWorld(true);
 
-                        modeloIFCGlobal.traverse((child) => {
-                            if (child.isMesh) {
-                                if (Array.isArray(child.material)) {
-                                    child.material.forEach(mat => {
-                                        mat.clippingPlanes = arrayPlanosCorte;
-                                        mat.clipShadows = true;
-                                        mat.side = THREE.DoubleSide;
-                                        mat.needsUpdate = true;
-                                    });
-                                } else if (child.material) {
-                                    child.material.clippingPlanes = arrayPlanosCorte;
-                                    child.material.clipShadows = true;
-                                    child.material.side = THREE.DoubleSide;
-                                    child.material.needsUpdate = true;
-                                }
+                    const boxGlobal = new THREE.Box3().setFromObject(modeloGlobal);
+                    alturaMinModel = boxGlobal.min.y;
+                    alturaMaxModel = boxGlobal.max.y;
+                    const alturaTotal = alturaMaxModel - alturaMinModel;
+                    pasoPisoGlobal = alturaTotal / 5;
 
-                                const boxMalla = new THREE.Box3().setFromObject(child);
-                                const centerY = boxMalla.getCenter(new THREE.Vector3()).y;
-                                let idxPiso = Math.floor((centerY - alturaMinModel) / pasoPisoGlobal);
-                                idxPiso = Math.max(0, Math.min(idxPiso, 4));
-                                pisosMeshesIFC[idxPiso].push(child);
+                    planoInferior = new THREE.Plane(new THREE.Vector3(0, 1, 0), -alturaMinModel - 10);
+                    planoSuperior = new THREE.Plane(new THREE.Vector3(0, -1, 0), alturaMaxModel + 50);
+                    const arrayPlanosCorte = [planoInferior, planoSuperior];
+
+                    pisosMeshes = [[], [], [], [], []];
+
+                    modeloGlobal.traverse((child) => {
+                        if (child.isMesh) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(mat => {
+                                    mat.clippingPlanes = arrayPlanosCorte;
+                                    mat.clipShadows = true;
+                                    mat.side = THREE.DoubleSide;
+                                    mat.needsUpdate = true;
+                                });
+                            } else if (child.material) {
+                                child.material.clippingPlanes = arrayPlanosCorte;
+                                child.material.clipShadows = true;
+                                child.material.side = THREE.DoubleSide;
+                                child.material.needsUpdate = true;
                             }
-                        });
 
-                        layersEl.innerHTML = '';
-                        const divControles = document.createElement('div');
-                        divControles.innerHTML = `
-                            <button class="btn-nivel active" data-tipo="max">Ver Edificio Completo</button>
-                            <hr style="border-color:#1e293b; margin:8px 0;">
-                            <p style="margin:4px 0; color:var(--text-muted); font-size:11px;">Aislar Piso:</p>
-                            <div id="botones-pisos-container"></div>
-                        `;
-                        layersEl.appendChild(divControles);
+                            const boxMalla = new THREE.Box3().setFromObject(child);
+                            const centerY = boxMalla.getCenter(new THREE.Vector3()).y;
+                            let idxPiso = Math.floor((centerY - alturaMinModel) / pasoPisoGlobal);
+                            idxPiso = Math.max(0, Math.min(idxPiso, 4));
+                            pisosMeshes[idxPiso].push(child);
+                        }
+                    });
 
-                        const containerPisos = divControles.querySelector('#botones-pisos-container');
-                        const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
+                    scene.add(modeloGlobal);
 
-                        nombresPisos.forEach((nombre, idx) => {
-                            const basePiso = alturaMinModel + (idx * pasoPisoGlobal);
-                            const techoPiso = alturaMinModel + ((idx + 1) * pasoPisoGlobal);
+                    layersEl.innerHTML = '';
+                    
+                    const divControles = document.createElement('div');
+                    divControles.innerHTML = `
+                        <button class="btn-nivel active" data-tipo="max">Ver Edificio Completo</button>
+                        <hr style="border-color:#1e293b; margin:8px 0;">
+                        <p style="margin:4px 0; color:var(--text-muted); font-size:11px;">Aislar Piso:</p>
+                        <div id="botones-pisos-container"></div>
+                    `;
+                    layersEl.appendChild(divControles);
 
-                            const btn = document.createElement('button');
-                            btn.className = 'btn-nivel';
-                            btn.innerText = `🏢 ${nombre}`;
-                            btn.addEventListener('click', () => {
-                                document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
-                                btn.classList.add('active');
-                                aislarRangoAltura(basePiso, techoPiso);
-                                
-                                if (window.actualizarPanelDetallePiso3D) {
-                                    window.actualizarPanelDetallePiso3D(nombre);
-                                }
-                            });
-                            containerPisos.appendChild(btn);
-                        });
+                    const containerPisos = divControles.querySelector('#botones-pisos-container');
+                    const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
 
-                        divControles.querySelector('[data-tipo="max"]').addEventListener('click', function() {
+                    nombresPisos.forEach((nombre, idx) => {
+                        const basePiso = alturaMinModel + (idx * pasoPisoGlobal);
+                        const techoPiso = alturaMinModel + ((idx + 1) * pasoPisoGlobal);
+
+                        const btn = document.createElement('button');
+                        btn.className = 'btn-nivel';
+                        btn.innerText = `🏢 ${nombre}`;
+                        btn.addEventListener('click', () => {
                             document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
-                            this.classList.add('active');
-                            aislarRangoAltura(alturaMinModel - 10, alturaMaxModel + 50);
+                            btn.classList.add('active');
+                            aislarRangoAltura(basePiso, techoPiso);
                             
                             if (window.actualizarPanelDetallePiso3D) {
-                                window.actualizarPanelDetallePiso3D("Edificio Completo");
+                                window.actualizarPanelDetallePiso3D(nombre);
                             }
                         });
+                        containerPisos.appendChild(btn);
+                    });
 
-                        if (!boxTemp.isEmpty()) {
-                            const newCenter = boxTemp.getCenter(new THREE.Vector3());
-                            const sizeWorld = boxTemp.getSize(new THREE.Vector3());
-                            controls3D.target.copy(newCenter);
-                            const maxDim = Math.max(sizeWorld.x, sizeWorld.y, sizeWorld.z);
-                            camera3D.position.set(newCenter.x + maxDim * 1.2, newCenter.y + maxDim * 0.8, newCenter.z + maxDim * 1.2);
-                            camera3D.updateProjectionMatrix();
-                            controls3D.update();
+                    divControles.querySelector('[data-tipo="max"]').addEventListener('click', function() {
+                        document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
+                        this.classList.add('active');
+                        aislarRangoAltura(alturaMinModel - 10, alturaMaxModel + 50);
+                        
+                        if (window.actualizarPanelDetallePiso3D) {
+                            window.actualizarPanelDetallePiso3D("Edificio Completo");
                         }
+                    });
 
-                        statusEl.innerText = '🟢 Archivo IFC Cargado Exitosamente';
-                        yaCargadoIFC = true;
-                    },
-                    (progress) => {
-                        const pct = progress.total ? Math.round((progress.loaded / progress.total) * 100) : 0;
-                        statusEl.innerHTML = `<span class="loading-spinner"></span> Leyendo IFC: ${pct > 0 ? pct + '%' : 'Procesando...'}`;
-                    },
-                    (error) => {
-                        console.error('Error al cargar IFC:', error);
-                        statusEl.innerText = '❌ Error al cargar el archivo .ifc';
+                    if (!boxGlobal.isEmpty()) {
+                        const newCenter = boxGlobal.getCenter(new THREE.Vector3());
+                        const sizeWorld = boxGlobal.getSize(new THREE.Vector3());
+                        controls.target.copy(newCenter);
+                        const maxDim = Math.max(sizeWorld.x, sizeWorld.y, sizeWorld.z);
+                        camera.position.set(newCenter.x + maxDim * 1.2, newCenter.y + maxDim * 0.8, newCenter.z + maxDim * 1.2);
+                        camera.updateProjectionMatrix();
+                        controls.update();
                     }
-                );
-            } catch (e) {
-                console.error("Excepción en IFCLoader:", e);
-                statusEl.innerText = '❌ Error de inicialización en el visor IFC';
-            }
+
+                    statusEl.innerText = '🟢 Modelo 3D Cargado';
+                    yaCargado = true;
+                },
+                (xhr) => {
+                    if (xhr.lengthComputable && xhr.total > 0) {
+                        const pct = Math.round((xhr.loaded / xhr.total) * 100);
+                        statusEl.innerHTML = `<span class="loading-spinner"></span> Cargando: ${pct}%`;
+                    }
+                },
+                (error) => {
+                    console.error('❌ Error al cargar GLB:', error);
+                    statusEl.innerText = '❌ Error al cargar archivo GLB';
+                }
+            );
         }
 
-        window.cargarModeloIFC = cargarModeloIFCReal;
+        window.cargarModeloIFC = cargarModeloGLBReal;
     </script>
 </body>
 </html>
