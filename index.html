@@ -398,11 +398,11 @@
             selectFranja.innerHTML = '';
             for (let h = 7; h < 23; h++) {
                 const opt = document.createElement('option');
-                opt.value = `${h} - ${h + 1}`; 
+                opt.value = `${h} -${h + 1}`; 
                 
                 const inicio = h < 10 ? `0${h}:00` : `${h}:00`;
                 const fin = (h + 1) < 10 ? `0${h + 1}:00` : `${h + 1}:00`;
-                opt.innerText = `${inicio} - ${fin}`;
+                opt.innerText = `${inicio} -${fin}`;
                 
                 selectFranja.appendChild(opt);
             }
@@ -991,7 +991,6 @@
             document.getElementById('panel-contenido').innerHTML = htmlContenido;
         }
 
-        // Muestra los datos mapeados desde la hoja Datos Generales (Mapa General)
         function restablecerPanelEdificio() {
             aulaSeleccionadaActual = null;
             document.getElementById('panel-derecho-titulo').innerHTML = `🏢 DATOS DEL EDIFICIO`;
@@ -1073,7 +1072,6 @@
             `;
         }
 
-        // Renderiza Accesibilidad, Seguridad e Instalaciones por Piso para el Visor 3D
         function actualizarPanelDetallePiso3D(nombrePiso) {
             if (vistaActualGlobal !== 'vista-3d') return;
 
@@ -1099,13 +1097,11 @@
 
             const floorKey = normalizarTextoSimple(nombrePiso);
 
-            // 1. Filtrar Accesibilidad y Seguridad
             const accMatch = registrosAccesibilidadExcel.find(row => {
                 const p = normalizarTextoSimple(row['Piso'] || row['PISO'] || row['piso'] || '');
                 return p !== '' && (p.includes(floorKey) || floorKey.includes(p) || p.replace(/[^0-9]/g, '') === floorKey.replace(/[^0-9]/g, ''));
             }) || {};
 
-            // 2. Filtrar Instalaciones por Piso
             const instMatches = registrosInstalacionesExcel.filter(row => {
                 const p = normalizarTextoSimple(row['Piso'] || row['PISO'] || row['piso'] || '');
                 return p !== '' && (p.includes(floorKey) || floorKey.includes(p) || p.replace(/[^0-9]/g, '') === floorKey.replace(/[^0-9]/g, ''));
@@ -1113,7 +1109,6 @@
 
             let html = ``;
 
-            // Render ACCESIBILIDAD Y SEGURIDAD
             html += `<div class="info-section-title">♿ ACCESIBILIDAD Y SEGURIDAD</div>`;
             if (Object.keys(accMatch).length > 0) {
                 html += `
@@ -1140,13 +1135,12 @@
                 html += `<div class="info-group"><div class="info-val" style="color:var(--text-muted); font-size:11px;">Sin datos registrados de accesibilidad y seguridad para este piso.</div></div>`;
             }
 
-            // Render INSTALACIONES Y ACABADOS
             html += `<div class="info-section-title" style="margin-top:12px;">🔧 INSTALACIONES Y ACABADOS</div>`;
             if (instMatches.length > 0) {
                 instMatches.forEach(item => {
                     html += `
                         <div class="info-group">
-                            <div class="info-label">Servicios Sanitarios (${item['Baños'] || item['BañOS'] || 'General'}):</div>
+                            <div class="info-label">Servicios Sanitarios (${item['Baños'] || item['Baños'] || 'General'}):</div>
                             <div class="info-val" style="font-size:11px;">
                                 • Cantidad: <strong>${item['Cantidad'] || 'N/A'}</strong> | Lavamanos: <strong>${item['N.º de lavamanos'] || item['Lavamanos'] || 'N/A'}</strong>
                             </div>
