@@ -140,7 +140,7 @@
 
         /* PANEL DERECHO DE DATOS */
         .sidebar-right { 
-            width: 340px; 
+            width: 360px; 
             background-color: var(--bg-panel); 
             border-left: 1px solid #1e293b; 
             display: flex; 
@@ -189,14 +189,14 @@
             border-radius: 4px; 
             font-size: 12px; 
             cursor: pointer; 
-            width: 160px;
+            width: 180px;
         }
 
         .panel-title { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; text-transform: uppercase; }
         
-        .info-group { margin-bottom: 12px; font-size: 13px; }
-        .info-label { color: var(--text-muted); font-size: 12px; margin-bottom: 2px; }
-        .info-val { font-weight: 600; color: #f1f5f9; white-space: pre-line; }
+        .info-group { margin-bottom: 10px; font-size: 12px; }
+        .info-label { color: var(--text-muted); font-size: 11px; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .info-val { font-weight: 600; color: #f1f5f9; white-space: pre-line; word-break: break-word; }
 
         .badge-estado { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
         .badge-ocupado { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
@@ -273,18 +273,18 @@
         <div class="sidebar-right" id="sidebar-derecha">
             <button id="btn-volver-mapa" class="btn-regresar" onclick="irAVista('vista-mapa')">🗺️ Volver al Mapa General</button>
 
-            <!-- CONTENEDOR FILTROS Y MODO DE CONSULTA (VISUALIZACIÓN EN PLANO 2D) -->
+            <!-- CONTENEDOR FILTROS Y MODO DE CONSULTA -->
             <div class="panel-filtros-container" id="panel-filtros-horario">
                 <div class="filter-group">
                     <span>📋 Consulta:</span>
                     <select id="select-modo-consulta" class="filter-select" onchange="cambiarModoConsulta()">
+                        <option value="inventario">Inventario & Patologías</option>
+                        <option value="mobiliario">Mobiliario & Equipamiento</option>
                         <option value="horarios">Horarios de Uso (Disponibilidad)</option>
-                        <option value="aforo">Muestreo de Aforo / Silletería</option>
-                        <option value="tipo_espacio">Caracterización de Espacios</option>
                     </select>
                 </div>
 
-                <div id="grupo-controles-horario">
+                <div id="grupo-controles-horario" style="display:none;">
                     <div class="filter-group" style="margin-bottom: 8px;">
                         <span>🗓️ Día:</span>
                         <select id="select-dia" class="filter-select" onchange="actualizarEstadoAulas2D()">
@@ -319,7 +319,7 @@
 
             <div class="excel-box">
                 <div><strong>Archivo:</strong> Plantilla_Levantamiento_Edificio_2.xlsx</div>
-                <div id="hoja-excel-indicador"><strong>Hoja:</strong> Horarios de Uso</div>
+                <div id="hoja-excel-indicador"><strong>Hoja:</strong> Inventario de Espacios</div>
             </div>
         </div>
     </div>
@@ -327,6 +327,9 @@
     <!-- MOTOR LECTOR DE EXCEL Y RUTEO DE PLANOS -->
     <script>
         let registrosHorariosExcel = [];
+        let registrosInventarioExcel = {};
+        let registrosMobiliarioExcel = {};
+
         let pisoActual2D = "Piso 1";
         let aulaSeleccionadaActual = null;
         let vistaActualGlobal = "vista-mapa";
@@ -354,6 +357,20 @@
             }
         }
 
+        function obtenerMatrizConMerges(sheet) {
+            const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+            const merges = sheet['!merges'] || [];
+            merges.forEach(range => {
+                const firstVal = matrix[range.s.r] ? matrix[range.s.r][range.s.c] : "";
+                for (let r = range.s.r; r <= range.e.r; r++) {
+                    for (let c = range.s.c; c <= range.e.c; c++) {
+                        if (matrix[r]) matrix[r][c] = firstVal;
+                    }
+                }
+            });
+            return matrix;
+        }
+
         async function cargarExcelRealRepo() {
             const statusTag = document.getElementById('excel-status-tag');
             try {
@@ -363,78 +380,144 @@
                 const arrayBuffer = await response.arrayBuffer();
                 const workbook = XLSX.read(arrayBuffer, { type: 'array' });
 
-                const sheet = workbook.Sheets["Horarios de Uso"];
-                if (!sheet) return;
+                // 1. CARGA HOJA: Horarios de Uso
+                if (workbook.Sheets["Horarios de Uso"]) {
+                    const matrix = obtenerMatrizConMerges(workbook.Sheets["Horarios de Uso"]);
+                    let headerRowIdx = -1;
+                    let diasHeaders = {};
 
-                const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
-                
-                const merges = sheet['!merges'] || [];
-                merges.forEach(range => {
-                    const firstVal = matrix[range.s.r] ? matrix[range.s.r][range.s.c] : "";
-                    for (let r = range.s.r; r <= range.e.r; r++) {
-                        for (let c = range.s.c; c <= range.e.c; c++) {
-                            if (matrix[r]) matrix[r][c] = firstVal;
+                    for (let r = 0; r < Math.min(15, matrix.length); r++) {
+                        const row = matrix[r];
+                        for (let c = 0; c < row.length; c++) {
+                            if (String(row[c]).trim().toLowerCase().includes("lunes")) {
+                                headerRowIdx = r;
+                                break;
+                            }
+                        }
+                        if (headerRowIdx !== -1) break;
+                    }
+
+                    if (headerRowIdx !== -1) {
+                        const hRow = matrix[headerRowIdx];
+                        for (let c = 0; c < hRow.length; c++) {
+                            const cellVal = String(hRow[c]).trim();
+                            if (["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"].includes(cellVal)) {
+                                diasHeaders[c] = cellVal;
+                            }
                         }
                     }
-                });
 
-                let colEspacio = 1;
-                let colHoras = 2;
-                let headerRowIdx = -1;
-                let diasHeaders = {};
+                    registrosHorariosExcel = [];
+                    let espacioActual = "";
 
-                for (let r = 0; r < Math.min(15, matrix.length); r++) {
-                    const row = matrix[r];
-                    for (let c = 0; c < row.length; c++) {
-                        const val = String(row[c]).trim().toLowerCase();
-                        if (val.includes("lunes")) {
-                            headerRowIdx = r;
-                            break;
+                    for (let r = headerRowIdx + 1; r < matrix.length; r++) {
+                        const row = matrix[r];
+                        if (!row) continue;
+
+                        const valEspacio = String(row[1] || "").trim();
+                        if (valEspacio && (valEspacio.toUpperCase().startsWith("A-") || valEspacio.toUpperCase().startsWith("L-"))) {
+                            espacioActual = valEspacio.toUpperCase();
                         }
+
+                        const valHoraRaw = String(row[2] || "").trim();
+                        if (!valHoraRaw || !espacioActual) continue;
+
+                        const horaLimpia = valHoraRaw.replace(/\s+/g, '');
+
+                        Object.keys(diasHeaders).forEach(colIdx => {
+                            const nombreDia = diasHeaders[colIdx];
+                            const contenidoCelda = String(row[colIdx] || "").trim();
+
+                            if (contenidoCelda !== "") {
+                                registrosHorariosExcel.push({
+                                    aula: espacioActual,
+                                    hora: horaLimpia,
+                                    dia: nombreDia,
+                                    detalle: contenidoCelda
+                                });
+                            }
+                        });
                     }
-                    if (headerRowIdx !== -1) break;
                 }
 
-                if (headerRowIdx !== -1) {
-                    const hRow = matrix[headerRowIdx];
-                    for (let c = 0; c < hRow.length; c++) {
-                        const cellVal = String(hRow[c]).trim();
-                        if (["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"].includes(cellVal)) {
-                            diasHeaders[c] = cellVal;
+                // 2. CARGA HOJA: Inventario de Espacios
+                if (workbook.Sheets["Inventario de Espacios"]) {
+                    const matrix = obtenerMatrizConMerges(workbook.Sheets["Inventario de Espacios"]);
+                    registrosInventarioExcel = {};
+
+                    for (let r = 0; r < matrix.length; r++) {
+                        const row = matrix[r];
+                        if (!row) continue;
+
+                        const codigo = String(row[1] || "").trim().toUpperCase();
+                        if (codigo && (codigo.startsWith("A-") || codigo.startsWith("L-") || codigo.startsWith("HUNZA") || codigo.startsWith("SALA"))) {
+                            registrosInventarioExcel[codigo] = {
+                                categoria: row[2] || "N/A",
+                                subcategoria: row[3] || "N/A",
+                                uso: row[4] || "N/A",
+                                area: row[5] || "N/A",
+                                altura: row[6] || "N/A",
+                                capacidadEstud: row[7] || "N/A",
+                                capacidadDoc: row[8] || "N/A",
+                                puertas: row[9] || "N/A",
+                                estadoPuertas: row[10] || "N/A",
+                                obsPuertas: row[11] || "N/A",
+                                ventanas: row[12] || "N/A",
+                                estadoVentanas: row[13] || "N/A",
+                                obsVentanas: row[14] || "N/A",
+                                cieloRaso: row[15] || "N/A",
+                                obsCieloRaso: row[16] || "N/A",
+                                acabadoMuros: row[17] || "N/A",
+                                estadoMuros: row[18] || "N/A",
+                                obsMuros: row[19] || "N/A",
+                                orientacion: row[20] || "N/A",
+                                accesoLibre: row[21] || "N/A",
+                                tipoAcceso: row[22] || "N/A",
+                                responsable: row[23] || "N/A",
+                                tipoPatologia: row[24] || "Ninguna",
+                                ubicacionPatologia: row[25] || "N/A",
+                                estadoGeneral: row[26] || "Bueno",
+                                observacionesPatologia: row[27] || "Sin novedades registradas",
+                                fechaRegistro: row[28] || "N/A"
+                            };
                         }
                     }
                 }
 
-                registrosHorariosExcel = [];
-                let espacioActual = "";
+                // 3. CARGA HOJA: Mobiliario y Equipo
+                if (workbook.Sheets["Mobiliario y Equipo"]) {
+                    const matrix = obtenerMatrizConMerges(workbook.Sheets["Mobiliario y Equipo"]);
+                    registrosMobiliarioExcel = {};
 
-                for (let r = headerRowIdx + 1; r < matrix.length; r++) {
-                    const row = matrix[r];
-                    if (!row) continue;
+                    for (let r = 0; r < matrix.length; r++) {
+                        const row = matrix[r];
+                        if (!row) continue;
 
-                    const valEspacio = String(row[colEspacio] || "").trim();
-                    if (valEspacio && (valEspacio.toUpperCase().startsWith("A-") || valEspacio.toUpperCase().startsWith("L-"))) {
-                        espacioActual = valEspacio.toUpperCase();
-                    }
-
-                    const valHoraRaw = String(row[colHoras] || "").trim();
-                    if (!valHoraRaw || !espacioActual) continue;
-
-                    const horaLimpia = valHoraRaw.replace(/\s+/g, '');
-
-                    Object.keys(diasHeaders).forEach(colIdx => {
-                        const nombreDia = diasHeaders[colIdx];
-                        const contenidoCelda = String(row[colIdx] || "").trim();
-
-                        if (contenidoCelda !== "") {
-                            registrosHorariosExcel.push({
-                                aula: espacioActual,
-                                hora: horaLimpia,
-                                dia: nombreDia,
-                                detalle: contenidoCelda
-                            });
+                        const codigo = String(row[1] || "").trim().toUpperCase();
+                        if (codigo && (codigo.startsWith("A-") || codigo.startsWith("L-") || codigo.startsWith("HUNZA") || codigo.startsWith("SALA"))) {
+                            registrosMobiliarioExcel[codigo] = {
+                                numSillas: row[2] || "N/A",
+                                sillasProg: row[3] || "N/A",
+                                sillasBuenas: row[4] || "N/A",
+                                escritorioDocente: row[5] || "N/A",
+                                numTableros: row[6] || "N/A",
+                                tipoTablero: row[7] || "N/A",
+                                videoBeam: row[8] || "N/A",
+                                pantallaInteligente: row[9] || "N/A",
+                                numComputadores: row[10] || "N/A",
+                                tomacorrientes: row[11] || "N/A",
+                                luminariasTotal: row[12] || "N/A",
+                                luminariasFunc: row[13] || "N/A",
+                                tipoIluminacion: row[14] || "N/A",
+                                obsElectricas: row[15] || "N/A",
+                                cortinas: row[16] || "N/A",
+                                estadoMobiliario: row[17] || "N/A",
+                                sistemaAudio: row[18] || "N/A",
+                                extintor: row[19] || "N/A",
+                                observacionesMob: row[20] || "Sin observaciones adicionales"
+                            };
                         }
-                    });
+                    }
                 }
 
                 statusTag.innerHTML = `<span class="dot"></span> Excel Conectado`;
@@ -555,12 +638,12 @@
             if (modo === "horarios") {
                 grupoHorario.style.display = "block";
                 hojaIndicador.innerHTML = "<strong>Hoja:</strong> Horarios de Uso";
-            } else if (modo === "aforo") {
+            } else if (modo === "mobiliario") {
                 grupoHorario.style.display = "none";
-                hojaIndicador.innerHTML = "<strong>Hoja:</strong> Muestreo";
+                hojaIndicador.innerHTML = "<strong>Hoja:</strong> Mobiliario y Equipo";
             } else {
                 grupoHorario.style.display = "none";
-                hojaIndicador.innerHTML = "<strong>Hoja:</strong> Tipo de Espacio";
+                hojaIndicador.innerHTML = "<strong>Hoja:</strong> Inventario de Espacios";
             }
 
             aulaSeleccionadaActual = null;
@@ -597,9 +680,15 @@
                         elAula.style.stroke = '#10b981';
                         elAula.style.strokeWidth = '1px';
                     }
-                } else if (modoConsulta === "aforo") {
-                    elAula.style.fill = 'rgba(2, 132, 199, 0.35)';
-                    elAula.style.stroke = '#0284c7';
+                } else if (modoConsulta === "inventario") {
+                    const inv = registrosInventarioExcel[codigoAula];
+                    if (inv && String(inv.estadoGeneral).toLowerCase().includes("regular")) {
+                        elAula.style.fill = 'rgba(234, 179, 8, 0.4)';
+                        elAula.style.stroke = '#eab308';
+                    } else {
+                        elAula.style.fill = 'rgba(0, 180, 216, 0.25)';
+                        elAula.style.stroke = '#00b4d8';
+                    }
                     elAula.style.strokeWidth = '1.5px';
                 } else {
                     elAula.style.fill = 'rgba(168, 85, 247, 0.35)';
@@ -682,9 +771,65 @@
             const panelTitulo = document.getElementById('panel-derecho-titulo');
             const panelContenido = document.getElementById('panel-contenido');
 
-            panelTitulo.innerHTML = `📌 Aula / Espacio ${codigoAula}`;
+            panelTitulo.innerHTML = `📌 Espacio ${codigoAula}`;
 
-            if (modo === "horarios") {
+            if (modo === "inventario") {
+                const inv = registrosInventarioExcel[codigoAula] || {};
+                panelContenido.innerHTML = `
+                    <div class="info-group">
+                        <div class="info-label">Categoría / Uso:</div>
+                        <div class="info-val">${inv.categoria || 'N/A'} - ${inv.uso || 'N/A'}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Área / Altura:</div>
+                        <div class="info-val">${inv.area || 'N/A'} m² | H: ${inv.altura || 'N/A'} m</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Capacidad Observada:</div>
+                        <div class="info-val">${inv.capacidadEstud || 'N/A'} Puestos</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Estado de Muros:</div>
+                        <div class="info-val">${inv.acabadoMuros || 'N/A'} (${inv.estadoMuros || 'N/A'})</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Patología / Daños:</div>
+                        <div class="info-val" style="color: #eab308;">${inv.tipoPatologia || 'Ninguna'}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Ubicación Patología:</div>
+                        <div class="info-val">${inv.ubicacionPatologia || 'N/A'}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Observaciones Diagnóstico:</div>
+                        <div class="info-val" style="font-size:11px; color:#cbd5e1;">${inv.observacionesPatologia || 'Sin novedad'}</div>
+                    </div>
+                `;
+            } else if (modo === "mobiliario") {
+                const mob = registrosMobiliarioExcel[codigoAula] || {};
+                panelContenido.innerHTML = `
+                    <div class="info-group">
+                        <div class="info-label">Sillas Disponibles / Buen Estado:</div>
+                        <div class="info-val">${mob.numSillas || 'N/A'} totales / ${mob.sillasBuenas || 'N/A'} buenas</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Escritorio Docente:</div>
+                        <div class="info-val">${mob.escritorioDocente || 'N/A'}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Tableros & Proyección:</div>
+                        <div class="info-val">${mob.numTableros || '0'} ${mob.tipoTablero || ''} | Beam: ${mob.videoBeam || 'No'}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Iluminación & Tomas:</div>
+                        <div class="info-val">${mob.tipoIluminacion || 'N/A'} (${mob.luminariasFunc || '0'}/${mob.luminariasTotal || '0'}) | ${mob.tomacorrientes || '0'} tomas</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Observaciones Mobiliario:</div>
+                        <div class="info-val" style="font-size:11px; color:#cbd5e1;">${mob.obsElectricas || mob.observacionesMob || 'Sin novedad'}</div>
+                    </div>
+                `;
+            } else if (modo === "horarios") {
                 const info = consultarHorarioAula(codigoAula, document.getElementById('select-dia').value, document.getElementById('select-franja').value);
                 const badgeClase = info.estado === "Ocupado" ? "badge-ocupado" : "badge-libre";
 
@@ -708,32 +853,6 @@
                     <div class="info-group">
                         <div class="info-label">Día:</div>
                         <div class="info-val">${document.getElementById('select-dia').value}</div>
-                    </div>
-                `;
-            } else if (modo === "aforo") {
-                panelContenido.innerHTML = `
-                    <div class="info-group">
-                        <div class="info-label">Tipo de Silletería:</div>
-                        <div class="info-val">Sillas Universitarias / Mesas</div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Capacidad de Puestos:</div>
-                        <div class="info-val">40 a 45 estudiantes</div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Recursos Disponibles:</div>
-                        <div class="info-val">Tablero Acrílico + Video Beam</div>
-                    </div>
-                `;
-            } else {
-                panelContenido.innerHTML = `
-                    <div class="info-group">
-                        <div class="info-label">Clasificación de Uso:</div>
-                        <div class="info-val">Aula de Cátedra Presencial</div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Nivel / Piso:</div>
-                        <div class="info-val">${pisoActual2D}</div>
                     </div>
                 `;
             }
