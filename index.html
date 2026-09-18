@@ -1511,7 +1511,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
         });
     </script>
 
-<!-- MOTOR THREE.JS Y ZOOM INTERACTIVO -->
+<!-- MOTOR THREE.JS Y ZOOM INTERACTIVO CON MENÚ DE AFORO -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -1530,7 +1530,8 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
         let pisosMeshes = [[], [], [], [], []];
         let pisoHoveredActual = -1;
-        let pisoActivoSeleccionado = -1; // -1 significa Edificio Completo
+        let pisoActivoSeleccionado = -1; 
+        let pisoSeleccionadoParaMenu = null; // Almacena el piso clickeado temporalmente
 
         const clock = new THREE.Clock();
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
@@ -1545,6 +1546,51 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
             const height = container.clientHeight;
 
             container.innerHTML = '';
+
+            // Crear el elemento HTML del menú flotante dentro del contenedor si no existe
+            let menuFlotante = document.getElementById('menu-opciones-piso');
+            if (!menuFlotante) {
+                menuFlotante = document.createElement('div');
+                menuFlotante.id = 'menu-opciones-piso';
+                menuFlotante.style.cssText = `
+                    display: none;
+                    position: absolute;
+                    background: #0f172a;
+                    border: 1px solid #334155;
+                    padding: 12px;
+                    border-radius: 8px;
+                    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+                    z-index: 1000;
+                    color: white;
+                    font-family: sans-serif;
+                    width: 200px;
+                `;
+                menuFlotante.innerHTML = `
+                    <p id="titulo-menu-piso" style="margin: 0 0 10px 0; font-size: 13px; font-weight: bold; color: #38bdf8; border-bottom: 1px solid #1e293b; padding-bottom: 5px;"></p>
+                    <button id="btn-opcion-2d" style="width: 100%; background: #0284c7; border: none; color: white; padding: 8px; border-radius: 4px; margin-bottom: 6px; cursor: pointer; font-size: 12px;">🔵 Entrar al Plano</button>
+                    <button id="btn-opcion-aforo" style="width: 100%; background: #ea580c; border: none; color: white; padding: 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">🔥 Ver Aforo / Calor</button>
+                `;
+                container.style.position = 'relative';
+                container.appendChild(menuFlotante);
+
+                // Eventos de los botones del menú
+                document.getElementById('btn-opcion-2d').addEventListener('click', () => {
+                    if (pisoSeleccionadoParaMenu !== null) {
+                        const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
+                        if (window.irAVista2DPiso) {
+                            window.irAVista2DPiso(nombresPisos[pisoSeleccionadoParaMenu]);
+                        }
+                    }
+                    ocultarMenuFlotante();
+                });
+
+                document.getElementById('btn-opcion-aforo').addEventListener('click', () => {
+                    if (pisoSeleccionadoParaMenu !== null) {
+                        activarMapaCalorPiso(pisoSeleccionadoParaMenu);
+                    }
+                    ocultarMenuFlotante();
+                });
+            }
 
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xffffff);
@@ -1610,6 +1656,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
             container.addEventListener('pointerdown', (e) => {
                 pointerDownPos = { x: e.clientX, y: e.clientY };
+                ocultarMenuFlotante(); // Ocultar menú si hace clic en otra parte
             });
 
             container.addEventListener('pointermove', (e) => {
@@ -1662,6 +1709,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                 }
             });
 
+            // Evento de Clic: Muestra el menú flotante en lugar de saltar de una
             container.addEventListener('pointerup', (e) => {
                 const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
                 if (dist > 5) return;
@@ -1688,8 +1736,9 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                     }
                 }
 
-                if (indicePisoFinal !== -1 && window.irAVista2DPiso) {
-                    window.irAVista2DPiso(nombresPisos[indicePisoFinal]);
+                if (indicePisoFinal !== -1) {
+                    pisoSeleccionadoParaMenu = indicePisoFinal;
+                    mostrarMenuFlotante(e.clientX, e.clientY, nombresPisos[indicePisoFinal]);
                 }
             });
 
@@ -1718,6 +1767,46 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
             is3DInitialized = true;
             return true;
+        }
+
+        function mostrarMenuFlotante(clientX, clientY, nombrePiso) {
+            const container = document.getElementById('ifc-canvas-container');
+            const menu = document.getElementById('menu-opciones-piso');
+            const rect = container.getBoundingClientRect();
+
+            document.getElementById('titulo-menu-piso').innerText = `📍 ${nombrePiso}`;
+            
+            // Posicionar cerca del mouse relativo al contenedor
+            let x = clientX - rect.left + 10;
+            let y = clientY - rect.top + 10;
+            
+            menu.style.left = `${x}px`;
+            menu.style.top = `${y}px`;
+            menu.style.display = 'block';
+        }
+
+        function ocultarMenuFlotante() {
+            const menu = document.getElementById('menu-opciones-piso');
+            if (menu) menu.style.display = 'none';
+        }
+
+        // Función simulada para activar el mapa de calor en el piso seleccionado
+        function activarMapaCalorPiso(idxPiso) {
+            console.activar = `Activando mapa de calor para el piso index: ${idxPiso}`;
+            
+            // Ejemplo visual temporal: Pintar ese piso de un color naranja/rojo tipo calor en su material emissive
+            if (pisosMeshes[idxPiso]) {
+                pisosMeshes[idxPiso].forEach(mesh => {
+                    if (mesh.material) {
+                        if (Array.isArray(mesh.material)) {
+                            mesh.material.forEach(m => { if (m.emissive) m.emissive.setHex(0xff4500); });
+                        } else if (mesh.material.emissive) {
+                            mesh.material.emissive.setHex(0xff4500); // Color de alerta de aforo alto
+                        }
+                    }
+                });
+            }
+            alert(`Modo Aforo/Mapa de Calor activado para el ${["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"][idxPiso]}. (Zonas de alto flujo teñidas).`);
         }
 
         function aislarRangoAltura(alturaInferior, alturaSuperior) {
@@ -1763,7 +1852,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
                     pisosMeshes = [[], [], [], [], []];
 
-modeloGlobal.traverse((child) => {
+                    modeloGlobal.traverse((child) => {
                         if (child.isMesh) {
                             if (Array.isArray(child.material)) {
                                 child.material = child.material.map(mat => {
@@ -1818,7 +1907,7 @@ modeloGlobal.traverse((child) => {
                             btn.classList.add('active');
                             aislarRangoAltura(basePiso, techoPiso);
                             
-                            pisoActivoSeleccionado = idx; // Guardamos el piso aislado actual
+                            pisoActivoSeleccionado = idx;
                             
                             if (window.actualizarPanelDetallePiso3D) {
                                 window.actualizarPanelDetallePiso3D(nombre);
@@ -1832,7 +1921,7 @@ modeloGlobal.traverse((child) => {
                         this.classList.add('active');
                         aislarRangoAltura(alturaMinModel - 50, alturaMaxModel + 100);
                         
-                        pisoActivoSeleccionado = -1; // Regresamos a modo edificio completo
+                        pisoActivoSeleccionado = -1;
                         
                         if (window.actualizarPanelDetallePiso3D) {
                             window.actualizarPanelDetallePiso3D("Edificio Completo");
