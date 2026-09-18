@@ -1547,7 +1547,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
             container.innerHTML = '';
 
-// Crear el elemento HTML del menú flotante una sola vez de forma segura
+// Crear el elemento HTML del menú flotante de forma segura
             let menuFlotante = document.getElementById('menu-opciones-piso');
             if (!menuFlotante) {
                 menuFlotante = document.createElement('div');
@@ -1573,7 +1573,6 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                 container.style.position = 'relative';
                 container.appendChild(menuFlotante);
 
-                // Evitar que los clics del menú afecten al visor 3D
                 menuFlotante.addEventListener('click', (e) => { e.stopPropagation(); });
                 menuFlotante.addEventListener('pointerup', (e) => { e.stopPropagation(); });
 
@@ -1596,9 +1595,10 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                     ocultarMenuFlotante();
                 });
             } else {
-                container.appendChild(menuFlotante);
+                if (!container.contains(menuFlotante)) {
+                    container.appendChild(menuFlotante);
+                }
             }
-
             // Evento de Clic: Muestra el menú flotante en lugar de saltar de una
             container.addEventListener('pointerup', (e) => {
                 const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
