@@ -1511,7 +1511,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
         });
     </script>
 
-    <!-- MOTOR THREE.JS Y ZOOM INTERACTIVO -->
+  <!-- MOTOR THREE.JS Y ZOOM INTERACTIVO -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -1560,7 +1560,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.dampingFactor = 0.025;
+            controls.dampingFactor = 0.05; // MODIFICADO: Aumentado ligeramente para frenar más rápido al soltar el click
             controls.enableZoom = false;
             controls.rotateSpeed = 0.4;
             controls.panSpeed = 0.4;
@@ -1748,8 +1748,9 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                     const alturaTotal = alturaMaxModel - alturaMinModel;
                     pasoPisoGlobal = alturaTotal / 5;
 
-                    planoInferior = new THREE.Plane(new THREE.Vector3(0, 1, 0), -alturaMinModel - 10);
-                    planoSuperior = new THREE.Plane(new THREE.Vector3(0, -1, 0), alturaMaxModel + 50);
+                    // MODIFICADO: Inicializar los planos abarcando todo el edificio completo por defecto
+                    planoInferior = new THREE.Plane(new THREE.Vector3(0, 1, 0), -alturaMinModel - 50);
+                    planoSuperior = new THREE.Plane(new THREE.Vector3(0, -1, 0), alturaMaxModel + 100);
                     const arrayPlanosCorte = [planoInferior, planoSuperior];
 
                     pisosMeshes = [[], [], [], [], []];
@@ -1816,7 +1817,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                     divControles.querySelector('[data-tipo="max"]').addEventListener('click', function() {
                         document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
                         this.classList.add('active');
-                        aislarRangoAltura(alturaMinModel - 10, alturaMaxModel + 50);
+                        aislarRangoAltura(alturaMinModel - 50, alturaMaxModel + 100);
                         
                         if (window.actualizarPanelDetallePiso3D) {
                             window.actualizarPanelDetallePiso3D("Edificio Completo");
@@ -1851,5 +1852,5 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
         window.cargarModeloIFC = cargarModeloGLBReal;
     </script>
-</body>
+    </body>
 </html>
