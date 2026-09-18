@@ -318,7 +318,7 @@
 
             <div class="excel-box">
                 <div><strong>Archivo:</strong> Plantilla_Levantamiento_Edificio.xlsx</div>
-                <div id="hoja-excel-indicador"><strong>Hoja:</strong> Inventario de Espacios</div>
+                <div id="hoja-excel-indicador"><strong>Hoja:</strong> Inventario Espacios</div>
             </div>
         </div>
     </div>
@@ -328,6 +328,11 @@
         let registrosHorariosExcel = [];
         let registrosInventarioExcel = {};
         let registrosMobiliarioExcel = {};
+
+        // Nombres reales detectados dinámicamente de las pestañas
+        let nombreHojaInventarioReal = "Inventario Espacios";
+        let nombreHojaHorariosReal = "Horarios de Uso";
+        let nombreHojaMobiliarioReal = "Mobiliario y Equipo";
 
         let pisoActual2D = "Piso 1";
         let aulaSeleccionadaActual = null;
@@ -408,10 +413,24 @@
 
                 const arrayBuffer = await response.arrayBuffer();
                 const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                const sheetNames = Object.keys(workbook.Sheets);
+
+                // Detección flexible de nombres de pestañas en el Excel
+                const hInv = sheetNames.find(n => normalizarTextoSimple(n).includes("INVENTARIO"));
+                if (hInv) nombreHojaInventarioReal = hInv;
+
+                const hHor = sheetNames.find(n => normalizarTextoSimple(n).includes("HORARIO"));
+                if (hHor) nombreHojaHorariosReal = hHor;
+
+                const hMob = sheetNames.find(n => normalizarTextoSimple(n).includes("MOBILIARIO"));
+                if (hMob) nombreHojaMobiliarioReal = hMob;
+
+                // Actualizar la etiqueta inicial
+                document.getElementById('hoja-excel-indicador').innerHTML = `<strong>Hoja:</strong> ${nombreHojaInventarioReal}`;
 
                 // 1. CARGA HOJA: Horarios de Uso
-                if (workbook.Sheets["Horarios de Uso"]) {
-                    const matrix = obtenerMatrizConMerges(workbook.Sheets["Horarios de Uso"]);
+                if (workbook.Sheets[nombreHojaHorariosReal]) {
+                    const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaHorariosReal]);
                     let headerRowIdx = -1;
                     let diasHeaders = {};
 
@@ -469,15 +488,14 @@
                     }
                 }
 
-                // 2. CARGA HOJA: Inventario de Espacios (CON PARSER ADAPTATIVO POR COLUMNAS Y MULTI-ENCABEZADO)
-                if (workbook.Sheets["Inventario de Espacios"]) {
-                    const matrix = obtenerMatrizConMerges(workbook.Sheets["Inventario de Espacios"]);
+                // 2. CARGA HOJA: Inventario Espacios
+                if (workbook.Sheets[nombreHojaInventarioReal]) {
+                    const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaInventarioReal]);
                     registrosInventarioExcel = {};
 
                     let colMap = {};
                     let codigoColIdx = -1;
 
-                    // Escanear las primeras 15 filas para asociar nombres de columnas
                     for (let r = 0; r < Math.min(15, matrix.length); r++) {
                         const row = matrix[r];
                         if (!row) continue;
@@ -510,7 +528,6 @@
 
                         let codigoVal = "";
 
-                        // Intentar obtener código en la columna detectada
                         if (codigoColIdx !== -1 && row[codigoColIdx]) {
                             const candidate = String(row[codigoColIdx]).trim().toUpperCase();
                             if (candidate && !candidate.includes("CODIGO") && !candidate.includes("ESPACIO") && candidate !== "N/A") {
@@ -518,7 +535,6 @@
                             }
                         }
 
-                        // Si no lo encuentra, buscar en las primeras 6 celdas
                         if (!codigoVal) {
                             for (let c = 0; c < Math.min(6, row.length); c++) {
                                 const val = String(row[c] || "").trim().toUpperCase();
@@ -555,7 +571,6 @@
                                 observacionesPatologia: getCell(colMap.observacionesPatologia, 12) !== "N/A" ? getCell(colMap.observacionesPatologia, 12) : "Sin novedades registradas"
                             };
 
-                            // Guardar bajo distintas variaciones de clave para garantizar match total
                             const codLimpio = normalizarCodigoEspacio(codigoVal);
                             registrosInventarioExcel[codigoVal] = objData;
                             registrosInventarioExcel[codLimpio] = objData;
@@ -565,8 +580,8 @@
                 }
 
                 // 3. CARGA HOJA: Mobiliario y Equipo
-                if (workbook.Sheets["Mobiliario y Equipo"]) {
-                    const matrix = obtenerMatrizConMerges(workbook.Sheets["Mobiliario y Equipo"]);
+                if (workbook.Sheets[nombreHojaMobiliarioReal]) {
+                    const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaMobiliarioReal]);
                     registrosMobiliarioExcel = {};
 
                     for (let r = 0; r < matrix.length; r++) {
@@ -740,13 +755,13 @@
 
             if (modo === "horarios") {
                 grupoHorario.style.display = "block";
-                hojaIndicador.innerHTML = "<strong>Hoja:</strong> Horarios de Uso";
+                hojaIndicador.innerHTML = `<strong>Hoja:</strong> ${nombreHojaHorariosReal}`;
             } else if (modo === "mobiliario") {
                 grupoHorario.style.display = "none";
-                hojaIndicador.innerHTML = "<strong>Hoja:</strong> Mobiliario y Equipo";
+                hojaIndicador.innerHTML = `<strong>Hoja:</strong> ${nombreHojaMobiliarioReal}`;
             } else {
                 grupoHorario.style.display = "none";
-                hojaIndicador.innerHTML = "<strong>Hoja:</strong> Inventario de Espacios";
+                hojaIndicador.innerHTML = `<strong>Hoja:</strong> ${nombreHojaInventarioReal}`;
             }
 
             aulaSeleccionadaActual = null;
