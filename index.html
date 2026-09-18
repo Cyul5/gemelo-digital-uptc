@@ -140,7 +140,7 @@
 
         /* PANEL DERECHO DE DATOS */
         .sidebar-right { 
-            width: 360px; 
+            width: 380px; 
             background-color: var(--bg-panel); 
             border-left: 1px solid #1e293b; 
             display: flex; 
@@ -188,14 +188,26 @@
             border-radius: 4px; 
             font-size: 12px; 
             cursor: pointer; 
-            width: 180px;
+            width: 190px;
         }
 
         .panel-title { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #1e293b; padding-bottom: 8px; text-transform: uppercase; }
         
-        .info-group { margin-bottom: 10px; font-size: 12px; }
+        .info-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 10px;
+            margin-bottom: 6px;
+            padding-bottom: 3px;
+            border-bottom: 1px dashed #1e293b;
+        }
+
+        .info-group { margin-bottom: 8px; font-size: 12px; }
         .info-label { color: var(--text-muted); font-size: 11px; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .info-val { font-weight: 600; color: #f1f5f9; white-space: pre-line; word-break: break-word; }
+        .info-val { font-weight: 600; color: #f1f5f9; white-space: pre-line; word-break: break-word; line-height: 1.35; }
 
         .badge-estado { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
         .badge-ocupado { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
@@ -258,7 +270,7 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <div>
                         <h2 id="titulo-vista-2d" style="color: #0284c7; font-size: 16px;">Planta 2D - Piso 1</h2>
-                        <p style="color: #64748b; font-size: 12px;">Haz clic en un aula para consultar el detalle de la misma.</p>
+                        <p style="color: #64748b; font-size: 12px;">Haz clic en un aula para consultar el detalle completo de la misma.</p>
                     </div>
                     <button class="btn-regresar" style="display:inline-block; margin-bottom: 0; width: auto;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
                 </div>
@@ -329,7 +341,6 @@
         let registrosInventarioExcel = {};
         let registrosMobiliarioExcel = {};
 
-        // Nombres reales detectados dinámicamente de las pestañas
         let nombreHojaInventarioReal = "Inventario Espacios";
         let nombreHojaHorariosReal = "Horarios de Uso";
         let nombreHojaMobiliarioReal = "Mobiliario y Equipo";
@@ -415,7 +426,6 @@
                 const workbook = XLSX.read(arrayBuffer, { type: 'array' });
                 const sheetNames = Object.keys(workbook.Sheets);
 
-                // Detección flexible de nombres de pestañas en el Excel
                 const hInv = sheetNames.find(n => normalizarTextoSimple(n).includes("INVENTARIO"));
                 if (hInv) nombreHojaInventarioReal = hInv;
 
@@ -425,10 +435,9 @@
                 const hMob = sheetNames.find(n => normalizarTextoSimple(n).includes("MOBILIARIO"));
                 if (hMob) nombreHojaMobiliarioReal = hMob;
 
-                // Actualizar la etiqueta inicial
                 document.getElementById('hoja-excel-indicador').innerHTML = `<strong>Hoja:</strong> ${nombreHojaInventarioReal}`;
 
-                // 1. CARGA HOJA: Horarios de Uso
+                // 1. HOJA: Horarios
                 if (workbook.Sheets[nombreHojaHorariosReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaHorariosReal]);
                     let headerRowIdx = -1;
@@ -488,7 +497,7 @@
                     }
                 }
 
-                // 2. CARGA HOJA: Inventario Espacios
+                // 2. HOJA COMPLETA: Inventario Espacios (Mapeo de los 29 campos de Excel)
                 if (workbook.Sheets[nombreHojaInventarioReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaInventarioReal]);
                     registrosInventarioExcel = {};
@@ -496,7 +505,8 @@
                     let colMap = {};
                     let codigoColIdx = -1;
 
-                    for (let r = 0; r < Math.min(15, matrix.length); r++) {
+                    // Mapeo inteligente de encabezados buscando palabras clave
+                    for (let r = 0; r < Math.min(10, matrix.length); r++) {
                         const row = matrix[r];
                         if (!row) continue;
 
@@ -504,51 +514,70 @@
                             const txt = normalizarTextoSimple(row[c]);
                             if (!txt) continue;
 
-                            if ((txt.includes("CODIGO") || txt.includes("ESPACIO") || txt.includes("AULA") || txt.includes("NUMERO")) && codigoColIdx === -1) {
-                                codigoColIdx = c;
+                            if ((txt.includes("CODIGO") || txt.includes("ESPACIO")) && codigoColIdx === -1) codigoColIdx = c;
+                            if (txt.includes("CATEGORIA DE ESPACIO")) colMap.categoria = c;
+                            if (txt.includes("SUBCATEGORIA")) colMap.subcategoria = c;
+                            if (txt.includes("USO ACTUAL")) colMap.uso = c;
+                            if (txt.includes("AREA") || txt.includes("M2")) colMap.area = c;
+                            if (txt.includes("ALTURA")) colMap.altura = c;
+                            if (txt.includes("CONTADAS")) colMap.capEstudiantes = c;
+                            if (txt.includes("DOCENTE")) colMap.capDocente = c;
+
+                            if (txt.includes("PUERTA")) {
+                                if (txt.includes("N.") || txt.includes("CANT")) colMap.puertasNum = c;
+                                else if (txt.includes("ESTADO")) colMap.puertasEstado = c;
+                                else if (txt.includes("OBSERV")) colMap.puertasObs = c;
                             }
-                            if (txt.includes("CATEGOR")) colMap.categoria = c;
-                            if (txt.includes("SUBCATEGOR")) colMap.subcategoria = c;
-                            if (txt.includes("USO") || txt.includes("DESTINAC")) colMap.uso = c;
-                            if (txt.includes("AREA") || txt.includes("ÁREA") || txt.includes("M2")) colMap.area = c;
-                            if (txt.includes("ALTURA") || txt.includes("ALTO")) colMap.altura = c;
-                            if (txt.includes("CAPACID") || txt.includes("AFORO") || txt.includes("PUESTOS")) colMap.capacidadEstud = c;
-                            if (txt.includes("ACABADO") || (txt.includes("MURO") && !txt.includes("ESTADO"))) colMap.acabadoMuros = c;
-                            if (txt.includes("ESTADO") && (txt.includes("MURO") || txt.includes("CONSERV"))) colMap.estadoMuros = c;
-                            if (txt.includes("PATOLOG") || txt.includes("DANO") || txt.includes("DAÑO") || txt.includes("DETERIORO")) colMap.tipoPatologia = c;
+
+                            if (txt.includes("VENTANA")) {
+                                if (txt.includes("N.") || txt.includes("CANT")) colMap.ventanasNum = c;
+                                else if (txt.includes("ESTADO")) colMap.ventanasEstado = c;
+                                else if (txt.includes("OBSERV")) colMap.ventanasObs = c;
+                            }
+
+                            if (txt.includes("CIELO RASO")) {
+                                if (txt.includes("ESTADO")) colMap.cieloEstado = c;
+                                else if (txt.includes("OBSERV")) colMap.cieloObs = c;
+                            }
+
+                            if (txt.includes("MURO")) {
+                                if (txt.includes("ACABADO")) colMap.murosAcabado = c;
+                                else if (txt.includes("ESTADO")) colMap.murosEstado = c;
+                                else if (txt.includes("OBSERV")) colMap.murosObs = c;
+                            }
+
+                            if (txt.includes("ORIENTA")) colMap.orientacion = c;
+                            if (txt.includes("ACCESO LIBRE") || txt.includes("¿ACCESO")) colMap.accesoLibre = c;
+                            if (txt.includes("CONTROL ACCESO")) colMap.tipoControl = c;
+                            if (txt.includes("RESPONSABLE")) colMap.responsableAcceso = c;
+
+                            if (txt.includes("TIPO") && (txt.includes("PATOLOG") || txt.includes("DANO"))) colMap.tipoPatologia = c;
                             if (txt.includes("UBICAC")) colMap.ubicacionPatologia = c;
-                            if (txt.includes("OBSERVAC") || txt.includes("DIAGNOST")) colMap.observacionesPatologia = c;
-                            if (txt.includes("ESTADO GENERAL") || txt.includes("ESTADO DE CONSERVACION")) colMap.estadoGeneral = c;
+                            if (txt.includes("ESTADO GENERAL")) colMap.estadoGeneral = c;
+                            if (txt.includes("OBSERVACIONES") && !txt.includes("PUERTA") && !txt.includes("VENTANA") && !txt.includes("MURO")) colMap.observacionesPatologia = c;
+                            if (txt.includes("FECHA")) colMap.fechaRegistro = c;
                         }
                     }
 
+                    // Lectura de cada fila de espacio
                     for (let r = 0; r < matrix.length; r++) {
                         const row = matrix[r];
                         if (!row) continue;
 
                         let codigoVal = "";
 
-                        if (codigoColIdx !== -1 && row[codigoColIdx]) {
-                            const candidate = String(row[codigoColIdx]).trim().toUpperCase();
-                            if (candidate && !candidate.includes("CODIGO") && !candidate.includes("ESPACIO") && candidate !== "N/A") {
+                        // Búsqueda del código del espacio en la fila
+                        for (let c = 0; c < Math.min(5, row.length); c++) {
+                            const candidate = String(row[c] || "").trim().toUpperCase();
+                            if (/^(A|L|HUNZA|SALA|ESPACIO)[-\s]?\d+/i.test(candidate) || /^A-\d+/i.test(candidate)) {
                                 codigoVal = candidate;
-                            }
-                        }
-
-                        if (!codigoVal) {
-                            for (let c = 0; c < Math.min(6, row.length); c++) {
-                                const val = String(row[c] || "").trim().toUpperCase();
-                                if (/^(A|L|HUNZA|SALA|ESPACIO)[-\s]?\d+/i.test(val) || /^A-\d+/i.test(val)) {
-                                    codigoVal = val;
-                                    codigoColIdx = c;
-                                    break;
-                                }
+                                break;
                             }
                         }
 
                         if (codigoVal) {
-                            const getCell = (primaryCol, relativeOffset) => {
-                                let cIdx = (primaryCol !== undefined) ? primaryCol : (codigoColIdx !== -1 ? codigoColIdx + relativeOffset : -1);
+                            const getCell = (primaryCol, defaultIdx) => {
+                                let cIdx = (primaryCol !== undefined && primaryCol !== -1) ? primaryCol : defaultIdx;
                                 if (cIdx !== -1 && row[cIdx] !== undefined && row[cIdx] !== null) {
                                     const res = String(row[cIdx]).trim();
                                     if (res !== "" && res !== "undefined" && res !== "N/A") return res;
@@ -556,19 +585,37 @@
                                 return "N/A";
                             };
 
+                            // Objeto estricto con los 29 campos ordenados por columna de Excel
                             const objData = {
-                                categoria: getCell(colMap.categoria, 1),
-                                subcategoria: getCell(colMap.subcategoria, 2),
-                                uso: getCell(colMap.uso, 3),
-                                area: getCell(colMap.area, 4),
-                                altura: getCell(colMap.altura, 5),
-                                capacidadEstud: getCell(colMap.capacidadEstud, 6),
-                                acabadoMuros: getCell(colMap.acabadoMuros, 7),
-                                estadoMuros: getCell(colMap.estadoMuros, 8),
-                                tipoPatologia: getCell(colMap.tipoPatologia, 9) !== "N/A" ? getCell(colMap.tipoPatologia, 9) : "Ninguna",
-                                ubicacionPatologia: getCell(colMap.ubicacionPatologia, 10),
-                                estadoGeneral: getCell(colMap.estadoGeneral, 11) !== "N/A" ? getCell(colMap.estadoGeneral, 11) : "Bueno",
-                                observacionesPatologia: getCell(colMap.observacionesPatologia, 12) !== "N/A" ? getCell(colMap.observacionesPatologia, 12) : "Sin novedades registradas"
+                                piso: getCell(colMap.piso, 0),
+                                codigo: codigoVal,
+                                categoria: getCell(colMap.categoria, 2),
+                                subcategoria: getCell(colMap.subcategoria, 3),
+                                uso: getCell(colMap.uso, 4),
+                                area: getCell(colMap.area, 5),
+                                altura: getCell(colMap.altura, 6),
+                                capEstudiantes: getCell(colMap.capEstudiantes, 7),
+                                capDocente: getCell(colMap.capDocente, 8),
+                                puertasNum: getCell(colMap.puertasNum, 9),
+                                puertasEstado: getCell(colMap.puertasEstado, 10),
+                                puertasObs: getCell(colMap.puertasObs, 11),
+                                ventanasNum: getCell(colMap.ventanasNum, 12),
+                                ventanasEstado: getCell(colMap.ventanasEstado, 13),
+                                ventanasObs: getCell(colMap.ventanasObs, 14),
+                                cieloEstado: getCell(colMap.cieloEstado, 15),
+                                cieloObs: getCell(colMap.cieloObs, 16),
+                                murosAcabado: getCell(colMap.murosAcabado, 17),
+                                murosEstado: getCell(colMap.murosEstado, 18),
+                                murosObs: getCell(colMap.murosObs, 19),
+                                orientacion: getCell(colMap.orientacion, 20),
+                                accesoLibre: getCell(colMap.accesoLibre, 21),
+                                tipoControl: getCell(colMap.tipoControl, 22),
+                                responsableAcceso: getCell(colMap.responsableAcceso, 23),
+                                tipoPatologia: getCell(colMap.tipoPatologia, 24),
+                                ubicacionPatologia: getCell(colMap.ubicacionPatologia, 25),
+                                estadoGeneral: getCell(colMap.estadoGeneral, 26),
+                                observacionesPatologia: getCell(colMap.observacionesPatologia, 27),
+                                fechaRegistro: getCell(colMap.fechaRegistro, 28)
                             };
 
                             const codLimpio = normalizarCodigoEspacio(codigoVal);
@@ -579,7 +626,7 @@
                     }
                 }
 
-                // 3. CARGA HOJA: Mobiliario y Equipo
+                // 3. HOJA: Mobiliario
                 if (workbook.Sheets[nombreHojaMobiliarioReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaMobiliarioReal]);
                     registrosMobiliarioExcel = {};
@@ -884,6 +931,7 @@
             document.getElementById('panel-contenido').innerHTML = htmlContenido;
         }
 
+        // Muestra todos los campos mapeados desde Excel en el Panel Lateral
         function mostrarDetalleAulaPanel(codigoAula) {
             const modo = document.getElementById('select-modo-consulta').value;
             const panelTitulo = document.getElementById('panel-derecho-titulo');
@@ -894,34 +942,75 @@
 
             if (modo === "inventario") {
                 const inv = buscarRegistroPorCodigo(registrosInventarioExcel, codigoAula) || {};
+                
                 panelContenido.innerHTML = `
+                    <div class="info-section-title">📐 Dimensiones y Uso</div>
                     <div class="info-group">
-                        <div class="info-label">Categoría / Uso:</div>
-                        <div class="info-val">${inv.categoria || 'N/A'} - ${inv.uso || 'N/A'}</div>
+                        <div class="info-label">Categoría / Subcategoría:</div>
+                        <div class="info-val">${inv.categoria || 'N/A'} - ${inv.subcategoria || 'N/A'}</div>
                     </div>
                     <div class="info-group">
-                        <div class="info-label">Área / Altura:</div>
-                        <div class="info-val">${inv.area || 'N/A'} m² | H: ${inv.altura || 'N/A'} m</div>
+                        <div class="info-label">Uso Actual:</div>
+                        <div class="info-val">${inv.uso || 'N/A'}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Área / Altura Techo:</div>
+                        <div class="info-val">${inv.area && inv.area !== 'N/A' ? inv.area + ' m²' : 'N/A'} | H: ${inv.altura && inv.altura !== 'N/A' ? inv.altura + ' m' : 'N/A'}</div>
                     </div>
                     <div class="info-group">
                         <div class="info-label">Capacidad Observada:</div>
-                        <div class="info-val">${inv.capacidadEstud || 'N/A'} Puestos</div>
+                        <div class="info-val">👥 Estudiantes: <strong>${inv.capEstudiantes || 'N/A'}</strong> | 👨‍🏫 Docente: <strong>${inv.capDocente || 'N/A'}</strong></div>
+                    </div>
+
+                    <div class="info-section-title">🚪 Puertas y Ventanas</div>
+                    <div class="info-group">
+                        <div class="info-label">Puertas (N.º ${inv.puertasNum || '0'}):</div>
+                        <div class="info-val">Estado: ${inv.puertasEstado || 'N/A'}<br><small style="color:#94a3b8;">${inv.puertasObs && inv.puertasObs !== 'N/A' ? inv.puertasObs : ''}</small></div>
                     </div>
                     <div class="info-group">
-                        <div class="info-label">Estado de Muros:</div>
-                        <div class="info-val">${inv.acabadoMuros || 'N/A'} (${inv.estadoMuros || 'N/A'})</div>
+                        <div class="info-label">Ventanas (N.º ${inv.ventanasNum || '0'}):</div>
+                        <div class="info-val">Estado: ${inv.ventanasEstado || 'N/A'}<br><small style="color:#94a3b8;">${inv.ventanasObs && inv.ventanasObs !== 'N/A' ? inv.ventanasObs : ''}</small></div>
+                    </div>
+
+                    <div class="info-section-title">🧱 Cielo Raso y Muros</div>
+                    <div class="info-group">
+                        <div class="info-label">Cielo Raso:</div>
+                        <div class="info-val">Estado: ${inv.cieloEstado || 'N/A'} ${inv.cieloObs && inv.cieloObs !== 'N/A' ? '(' + inv.cieloObs + ')' : ''}</div>
                     </div>
                     <div class="info-group">
-                        <div class="info-label">Patología / Daños:</div>
-                        <div class="info-val" style="color: #eab308;">${inv.tipoPatologia || 'Ninguna'}</div>
+                        <div class="info-label">Acabado y Estado de Muros:</div>
+                        <div class="info-val">${inv.murosAcabado || 'N/A'} (Estado: ${inv.murosEstado || 'N/A'})<br><small style="color:#94a3b8;">${inv.murosObs && inv.murosObs !== 'N/A' ? inv.murosObs : ''}</small></div>
+                    </div>
+
+                    <div class="info-section-title">🗝️ Acceso y Orientación</div>
+                    <div class="info-group">
+                        <div class="info-label">Orientación del Espacio:</div>
+                        <div class="info-val">${inv.orientacion || 'N/A'}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Acceso / Responsable:</div>
+                        <div class="info-val">Libre: ${inv.accesoLibre || 'N/A'} | Control: ${inv.tipoControl || 'N/A'}<br>Responsable: ${inv.responsableAcceso || 'N/A'}</div>
+                    </div>
+
+                    <div class="info-section-title">⚠️ Patología y Diagnóstico</div>
+                    <div class="info-group">
+                        <div class="info-label">Tipo de Patología:</div>
+                        <div class="info-val" style="color: #eab308; font-weight:700;">${inv.tipoPatologia || 'Ninguna'}</div>
                     </div>
                     <div class="info-group">
                         <div class="info-label">Ubicación Patología:</div>
                         <div class="info-val">${inv.ubicacionPatologia || 'N/A'}</div>
                     </div>
                     <div class="info-group">
-                        <div class="info-label">Observaciones Diagnóstico:</div>
-                        <div class="info-val" style="font-size:11px; color:#cbd5e1;">${inv.observacionesPatologia || 'Sin novedad'}</div>
+                        <div class="info-label">Estado General y Observaciones:</div>
+                        <div class="info-val" style="font-size:11px; color:#cbd5e1;">
+                            <strong>Estado:</strong> ${inv.estadoGeneral || 'N/A'}<br>
+                            ${inv.observacionesPatologia || 'Sin novedades'}
+                        </div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">📅 Fecha Registro:</div>
+                        <div class="info-val" style="font-size:11px; color:#94a3b8;">${inv.fechaRegistro || 'N/A'}</div>
                     </div>
                 `;
             } else if (modo === "mobiliario") {
