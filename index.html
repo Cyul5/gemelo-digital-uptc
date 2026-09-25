@@ -94,7 +94,7 @@
             z-index: 10;
         }
 
-        /* VISTA MAPA GENERAL CON ZOOM Y PANEO FUNCIONAL */
+        /* VISTA MAPA GENERAL CON ZOOM Y PANEO CORREGIDO */
         #vista-mapa { 
             width: 100%; 
             height: 100%; 
@@ -109,13 +109,10 @@
         #map-viewport {
             width: 100%;
             height: 100%;
-            transform-origin: 0 0;
             position: absolute;
             top: 0;
             left: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            transform-origin: 0 0;
         }
         #svg-object { 
             width: 100%; 
@@ -123,6 +120,7 @@
             border: none; 
             background-color: #ffffff; 
             display: block;
+            pointer-events: auto; /* Permite capturar clics en el edificio Hunza */
         }
 
         /* VISTA 3D */
@@ -276,7 +274,7 @@
 
         <!-- AREA CENTRAL -->
         <div class="content-area">
-            <!-- VISTA 1: MAPA GENERAL SVG CON ZOOM Y PANEO -->
+            <!-- VISTA 1: MAPA GENERAL SVG CON ZOOM Y PANEO FUNCIONAL -->
             <div id="vista-mapa" class="vista activa">
                 <div id="map-viewport">
                     <object id="svg-object" type="image/svg+xml" data="plano_uptc.svg"></object>
@@ -1139,7 +1137,7 @@
                     </div>
                     <div class="info-group">
                         <div class="info-label">Institución / Sede:</div>
-                        <div class="info-val">${institucion} -${ciudad}</div>
+                        <div class="info-val">${institucion} - ${ciudad}</div>
                     </div>
                     <div class="info-group">
                         <div class="info-label">Dirección:</div>
@@ -1454,7 +1452,7 @@
             }
         }
 
-        // --- SISTEMA DE ZOOM Y PAN DINÁMICO PARA EL MAPA GENERAL ---
+        // --- SISTEMA DE ZOOM Y PAN DINÁMICO CORREGIDO PARA EL MAPA GENERAL ---
         let scale = 1;
         let panning = false;
         let pointX = 0;
@@ -1465,6 +1463,7 @@
         function inicializarZoomPanMapa() {
             const vistaMapa = document.getElementById('vista-mapa');
             const viewport = document.getElementById('map-viewport');
+            const svgObj = document.getElementById('svg-object');
             if (!vistaMapa || !viewport) return;
 
             vistaMapa.addEventListener('mousedown', (e) => {
@@ -1472,6 +1471,8 @@
                     panning = true;
                     startX = e.clientX - pointX;
                     startY = e.clientY - pointY;
+                    // Desactivar temporalmente la captura del objeto para permitir arrastre fluido
+                    if(svgObj) svgObj.style.pointerEvents = 'none';
                 }
             });
 
@@ -1483,7 +1484,11 @@
             });
 
             window.addEventListener('mouseup', () => {
-                panning = false;
+                if (panning) {
+                    panning = false;
+                    // Reactivar clics en el SVG al soltar
+                    if(svgObj) svgObj.style.pointerEvents = 'auto';
+                }
             });
 
             vistaMapa.addEventListener('wheel', (e) => {
@@ -1850,7 +1855,7 @@
                             }
 
                             const boxMalla = new THREE.Box3().setFromObject(child);
-                            const centerY = boxMalla.getCenter(new THREE.Vector3()).y;
+                            const centerY = boxMallas.getCenter(new THREE.Vector3()).y;
                             let idxPiso = Math.floor((centerY - alturaMinModel) / pasoPisoGlobal);
                             idxPiso = Math.max(0, Math.min(idxPiso, 4));
                             pisosMeshes[idxPiso].push(child);
@@ -1920,7 +1925,7 @@
                     yaCargado = true;
                 },
                 (xhr) => {
-                    if (xhr.lengthComputable && xhr.total >0) {
+                    if (xhr.lengthComputable && xhr.total > 0) {
                         const pct = Math.round((xhr.loaded / xhr.total) * 100);
                         statusEl.innerHTML = `<span class="loading-spinner"></span> Cargando: ${pct}%`;
                     }
