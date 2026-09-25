@@ -94,7 +94,7 @@
             z-index: 10;
         }
 
-        /* VISTA MAPA GENERAL CON OVERLAY INTELIGENTE */
+        /* VISTA MAPA GENERAL CON ZOOM Y PANEO FLUIDO */
         #vista-mapa { 
             width: 100%; 
             height: 100%; 
@@ -110,6 +110,7 @@
             top: 0;
             left: 0;
             transform-origin: 0 0;
+            will-change: transform;
         }
         #svg-object { 
             width: 100%; 
@@ -117,18 +118,7 @@
             border: none; 
             background-color: #ffffff; 
             display: block;
-            pointer-events: auto; /* Permite hover y clics directos sobre el SVG */
-        }
-        /* Overlay inteligente: por defecto deja pasar eventos, se activa al hacer clic sostenido para paneo */
-        #map-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 20;
-            background: transparent;
-            pointer-events: none; /* Permite que el mouse interactúe libremente con el SVG por debajo */
+            pointer-events: auto;
         }
 
         /* VISTA 3D */
@@ -282,13 +272,11 @@
 
         <!-- AREA CENTRAL -->
         <div class="content-area">
-            <!-- VISTA 1: MAPA GENERAL SVG CON INTERACCIÓN BALANCEADA -->
+            <!-- VISTA 1: MAPA GENERAL SVG CON ZOOM Y PANEO ROBUSTO -->
             <div id="vista-mapa" class="vista activa">
                 <div id="map-viewport">
                     <object id="svg-object" type="image/svg+xml" data="plano_uptc.svg"></object>
                 </div>
-                <!-- Overlay inteligente para activar zoom y paneo al arrastrar -->
-                <div id="map-overlay"></div>
             </div>
 
             <!-- VISTA 2: MODELO 3D -->
@@ -1462,47 +1450,44 @@
             }
         }
 
-        // --- SISTEMA DE ZOOM Y PAN INTELIGENTE CON ARRASTRE SOSTENIDO ---
+        // --- SISTEMA DE ZOOM Y PANEO FLUIDO SIN BLOQUEAR HOVER ---
         let scale = 1;
         let panning = false;
         let pointX = 0;
         let pointY = 0;
         let startX = 0;
         let startY = 0;
+        let hasMoved = false;
 
         function inicializarZoomPanMapa() {
             const vistaMapa = document.getElementById('vista-mapa');
-            const svgObj = document.getElementById('svg-object');
             if (!vistaMapa) return;
 
-            // Al presionar el botón izquierdo en el mapa, activamos el paneo y bloqueamos temporalmente el SVG
             vistaMapa.addEventListener('mousedown', (e) => {
                 if (e.button === 0) {
                     panning = true;
+                    hasMoved = false;
                     startX = e.clientX - pointX;
                     startY = e.clientY - pointY;
-                    if (svgObj) svgObj.style.pointerEvents = 'none';
-                    vistaMapa.style.cursor = 'grabbing';
                 }
             });
 
             window.addEventListener('mousemove', (e) => {
                 if (!panning) return;
+                const dist = Math.hypot(e.clientX - (startX + pointX), e.clientY - (startY + pointY));
+                if (dist > 3) hasMoved = true;
+
                 pointX = e.clientX - startX;
                 pointY = e.clientY - startY;
                 setTransform();
             });
 
-            window.addEventListener('mouseup', () => {
+            window.addEventListener('mouseup', (e) => {
                 if (panning) {
                     panning = false;
-                    // Reactivamos las interacciones normales (hover/click) del edificio Hunza
-                    if (svgObj) svgObj.style.pointerEvents = 'auto';
-                    vistaMapa.style.cursor = 'default';
                 }
             });
 
-            // Zoom con la rueda del ratón en cualquier parte de la vista mapa
             vistaMapa.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 const xs = (e.clientX - pointX) / scale;
@@ -1554,6 +1539,7 @@
                             elHunza.style.transition = 'opacity 0.2s, filter 0.2s';
                             
                             elHunza.addEventListener('mouseenter', () => {
+                                if (panning) return;
                                 elHunza.style.opacity = '0.7';
                                 elHunza.style.filter = 'drop-shadow(0px 0px 8px #00b4d8)';
                                 if (vistaActualGlobal === 'vista-mapa' && sidebarDerecha) {
@@ -1571,6 +1557,7 @@
                             });
 
                             elHunza.addEventListener('click', (e) => {
+                                if (hasMoved) return; // Si arrastró el mapa, no cuenta como clic en el edificio
                                 e.stopPropagation();
                                 irAVista('vista-3d');
                             });
