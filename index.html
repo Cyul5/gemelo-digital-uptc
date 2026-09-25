@@ -94,7 +94,7 @@
             z-index: 10;
         }
 
-        /* VISTA MAPA GENERAL CON ZOOM Y PANEO CORREGIDO */
+        /* VISTA MAPA GENERAL CON ZOOM Y PANEO POR OVERLAY */
         #vista-mapa { 
             width: 100%; 
             height: 100%; 
@@ -120,7 +120,17 @@
             border: none; 
             background-color: #ffffff; 
             display: block;
-            pointer-events: auto; /* Permite capturar clics en el edificio Hunza */
+            pointer-events: auto; /* Permite interactuar con el SVG interno */
+        }
+        /* Capa transparente superior para capturar zoom y paneo fluidos sin bloqueo */
+        #map-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 20;
+            background: transparent;
         }
 
         /* VISTA 3D */
@@ -274,11 +284,13 @@
 
         <!-- AREA CENTRAL -->
         <div class="content-area">
-            <!-- VISTA 1: MAPA GENERAL SVG CON ZOOM Y PANEO FUNCIONAL -->
+            <!-- VISTA 1: MAPA GENERAL SVG CON ZOOM Y PANEO MEJORADO -->
             <div id="vista-mapa" class="vista activa">
                 <div id="map-viewport">
                     <object id="svg-object" type="image/svg+xml" data="plano_uptc.svg"></object>
                 </div>
+                <!-- Capa overlay para garantizar paneo y zoom fluidos sin bloqueo de eventos -->
+                <div id="map-overlay"></div>
             </div>
 
             <!-- VISTA 2: MODELO 3D -->
@@ -1137,7 +1149,7 @@
                     </div>
                     <div class="info-group">
                         <div class="info-label">Institución / Sede:</div>
-                        <div class="info-val">${institucion} - ${ciudad}</div>
+                        <div class="info-val">${institucion} -${ciudad}</div>
                     </div>
                     <div class="info-group">
                         <div class="info-label">Dirección:</div>
@@ -1452,7 +1464,7 @@
             }
         }
 
-        // --- SISTEMA DE ZOOM Y PAN DINÁMICO CORREGIDO PARA EL MAPA GENERAL ---
+        // --- SISTEMA DE ZOOM Y PAN DINÁMICO MEDIANTE OVERLAY ---
         let scale = 1;
         let panning = false;
         let pointX = 0;
@@ -1461,18 +1473,14 @@
         let startY = 0;
 
         function inicializarZoomPanMapa() {
-            const vistaMapa = document.getElementById('vista-mapa');
-            const viewport = document.getElementById('map-viewport');
-            const svgObj = document.getElementById('svg-object');
-            if (!vistaMapa || !viewport) return;
+            const overlay = document.getElementById('map-overlay');
+            if (!overlay) return;
 
-            vistaMapa.addEventListener('mousedown', (e) => {
+            overlay.addEventListener('mousedown', (e) => {
                 if (e.button === 0) {
                     panning = true;
                     startX = e.clientX - pointX;
                     startY = e.clientY - pointY;
-                    // Desactivar temporalmente la captura del objeto para permitir arrastre fluido
-                    if(svgObj) svgObj.style.pointerEvents = 'none';
                 }
             });
 
@@ -1484,14 +1492,10 @@
             });
 
             window.addEventListener('mouseup', () => {
-                if (panning) {
-                    panning = false;
-                    // Reactivar clics en el SVG al soltar
-                    if(svgObj) svgObj.style.pointerEvents = 'auto';
-                }
+                panning = false;
             });
 
-            vistaMapa.addEventListener('wheel', (e) => {
+            overlay.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 const xs = (e.clientX - pointX) / scale;
                 const ys = (e.clientY - pointY) / scale;
@@ -1855,7 +1859,7 @@
                             }
 
                             const boxMalla = new THREE.Box3().setFromObject(child);
-                            const centerY = boxMallas.getCenter(new THREE.Vector3()).y;
+                            const centerY = boxMalla.getCenter(new THREE.Vector3()).y;
                             let idxPiso = Math.floor((centerY - alturaMinModel) / pasoPisoGlobal);
                             idxPiso = Math.max(0, Math.min(idxPiso, 4));
                             pisosMeshes[idxPiso].push(child);
