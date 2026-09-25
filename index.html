@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Uptc GIC</title>
+    <title>Uptc GIC</title>
     
     <!-- LECTURA REAL DE EXCEL (SheetJS Actualizado) -->
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -94,7 +94,7 @@
             z-index: 10;
         }
 
-        /* VISTA MAPA SVG GENERAL CON SOPORTE DE ZOOM Y PANEO */
+        /* VISTA MAPA GENERAL CON ZOOM Y PANEO FUNCIONAL */
         #vista-mapa { 
             width: 100%; 
             height: 100%; 
@@ -110,10 +110,12 @@
             width: 100%;
             height: 100%;
             transform-origin: 0 0;
-            transition: transform 0.05s ease-out;
             position: absolute;
             top: 0;
             left: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         #svg-object { 
             width: 100%; 
@@ -274,7 +276,7 @@
 
         <!-- AREA CENTRAL -->
         <div class="content-area">
-            <!-- VISTA 1: MAPA GENERAL SVG CON ZOOM Y PAN -->
+            <!-- VISTA 1: MAPA GENERAL SVG CON ZOOM Y PANEO -->
             <div id="vista-mapa" class="vista activa">
                 <div id="map-viewport">
                     <object id="svg-object" type="image/svg+xml" data="plano_uptc.svg"></object>
@@ -358,19 +360,19 @@
 
    <!-- MOTOR LECTOR DE EXCEL REFINADO Y RUTEO -->
     <script>
-let registrosDatosGeneralesExcel = {};
-let registrosInventarioExcel = {};
-let registrosMobiliarioExcel = {};
-let registrosHorariosExcel = [];
-let registrosAccesibilidadExcel = [];
-let registrosInstalacionesExcel = [];
+        let registrosDatosGeneralesExcel = {};
+        let registrosInventarioExcel = {};
+        let registrosMobiliarioExcel = {};
+        let registrosHorariosExcel = [];
+        let registrosAccesibilidadExcel = [];
+        let registrosInstalacionesExcel = [];
 
-let nombreHojaDatosGeneralesReal = "Datos Generales";
-let nombreHojaInventarioReal = "Inventario Espacios";
-let nombreHojaMobiliarioReal = "Mobiliario y Equipo";
-let nombreHojaHorariosReal = "Horarios de Uso";
-let nombreHojaAccesibilidadReal = "Accesibilidad y Seguridad";
-let nombreHojaInstalacionesReal = "Instalaciones por Piso";
+        let nombreHojaDatosGeneralesReal = "Datos Generales";
+        let nombreHojaInventarioReal = "Inventario Espacios";
+        let nombreHojaMobiliarioReal = "Mobiliario y Equipo";
+        let nombreHojaHorariosReal = "Horarios de Uso";
+        let nombreHojaAccesibilidadReal = "Accesibilidad y Seguridad";
+        let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
         let pisoActual2D = "Piso 1";
         let aulaSeleccionadaActual = null;
@@ -472,7 +474,6 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                 const hInst = sheetNames.find(n => normalizarTextoSimple(n).includes("INSTALACIONES"));
                 if (hInst) nombreHojaInstalacionesReal = hInst;
 
-                // 1. HOJA: Datos Generales (Global Edificio)
                 if (workbook.Sheets[nombreHojaDatosGeneralesReal]) {
                     const matrixGen = obtenerMatrizConMerges(workbook.Sheets[nombreHojaDatosGeneralesReal]);
                     registrosDatosGeneralesExcel = {};
@@ -507,7 +508,6 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                     }
                 }
 
-                // 2. HOJA: Horarios (Visor 2D)
                 if (workbook.Sheets[nombreHojaHorariosReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaHorariosReal]);
                     let headerRowIdx = -1;
@@ -567,7 +567,6 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                     }
                 }
 
-                // 3. HOJA: Inventario Espacios (Visor 2D)
                 if (workbook.Sheets[nombreHojaInventarioReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaInventarioReal]);
                     registrosInventarioExcel = {};
@@ -692,7 +691,6 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                     }
                 }
 
-                // 4. HOJA: Mobiliario y Equipo (Visor 2D)
                 if (workbook.Sheets[nombreHojaMobiliarioReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaMobiliarioReal]);
                     registrosMobiliarioExcel = {};
@@ -749,7 +747,6 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                     }
                 }
 
-                // 5. HOJA: Accesibilidad y Seguridad (Visor 3D)
                 if (workbook.Sheets[nombreHojaAccesibilidadReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaAccesibilidadReal]);
                     registrosAccesibilidadExcel = [];
@@ -790,7 +787,6 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                     }
                 }
 
-                // 6. HOJA: Instalaciones por Piso (Visor 3D)
                 if (workbook.Sheets[nombreHojaInstalacionesReal]) {
                     const matrix = obtenerMatrizConMerges(workbook.Sheets[nombreHojaInstalacionesReal]);
                     registrosInstalacionesExcel = [];
@@ -1458,7 +1454,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
             }
         }
 
-        // --- SISTEMA DE ZOOM Y PAN PARA EL MAPA GENERAL ---
+        // --- SISTEMA DE ZOOM Y PAN DINÁMICO PARA EL MAPA GENERAL ---
         let scale = 1;
         let panning = false;
         let pointX = 0;
@@ -1472,14 +1468,14 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
             if (!vistaMapa || !viewport) return;
 
             vistaMapa.addEventListener('mousedown', (e) => {
-                if (e.button === 0) { // Clic izquierdo
+                if (e.button === 0) {
                     panning = true;
                     startX = e.clientX - pointX;
                     startY = e.clientY - pointY;
                 }
             });
 
-            vistaMapa.addEventListener('mousemove', (e) => {
+            window.addEventListener('mousemove', (e) => {
                 if (!panning) return;
                 pointX = e.clientX - startX;
                 pointY = e.clientY - startY;
@@ -1502,7 +1498,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                     scale /= 1.15;
                 }
 
-                scale = Math.max(0.5, Math.min(scale, 10)); // Límites de zoom
+                scale = Math.max(0.5, Math.min(scale, 10)); // Límites de Zoom
 
                 pointX = e.clientX - xs * scale;
                 pointY = e.clientY - ys * scale;
@@ -1582,7 +1578,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
         });
     </script>
 
-<!-- MOTOR THREE.JS Y ZOOM INTERACTIVO -->
+    <!-- MOTOR THREE.JS Y ZOOM INTERACTIVO -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -1601,7 +1597,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
         let pisosMeshes = [[], [], [], [], []];
         let pisoHoveredActual = -1;
-        let pisoActivoSeleccionado = -1; // -1 significa Edificio Completo
+        let pisoActivoSeleccionado = -1;
 
         const clock = new THREE.Clock();
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
@@ -1889,7 +1885,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                             btn.classList.add('active');
                             aislarRangoAltura(basePiso, techoPiso);
                             
-                            pisoActivoSeleccionado = idx; // Guardamos el piso aislado actual
+                            pisoActivoSeleccionado = idx;
                             
                             if (window.actualizarPanelDetallePiso3D) {
                                 window.actualizarPanelDetallePiso3D(nombre);
@@ -1903,7 +1899,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                         this.classList.add('active');
                         aislarRangoAltura(alturaMinModel - 50, alturaMaxModel + 100);
                         
-                        pisoActivoSeleccionado = -1; // Regresamos a modo edificio completo
+                        pisoActivoSeleccionado = -1;
                         
                         if (window.actualizarPanelDetallePiso3D) {
                             window.actualizarPanelDetallePiso3D("Edificio Completo");
@@ -1924,7 +1920,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                     yaCargado = true;
                 },
                 (xhr) => {
-                    if (xhr.lengthComputable && xhr.total > 0) {
+                    if (xhr.lengthComputable && xhr.total >0) {
                         const pct = Math.round((xhr.loaded / xhr.total) * 100);
                         statusEl.innerHTML = `<span class="loading-spinner"></span> Cargando: ${pct}%`;
                     }
@@ -1938,5 +1934,5 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
         window.cargarModeloIFC = cargarModeloGLBReal;
     </script>
-    </body>
+</body>
 </html>
