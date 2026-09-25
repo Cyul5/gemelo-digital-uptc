@@ -113,7 +113,7 @@
             display: block;
             border: none; 
             background-color: #ffffff; 
-            object-fit: cover; /* Estira y cubre toda la pantalla de lado a lado */
+            object-fit: fill; /* Forzar cobertura exacta de borde a borde */
         }
 
         /* VISTA 3D */
@@ -267,7 +267,7 @@
 
         <!-- AREA CENTRAL -->
         <div class="content-area">
-            <!-- VISTA 1: MAPA GENERAL SVG (Cambiado a img para forzar cobertura total) -->
+            <!-- VISTA 1: MAPA GENERAL SVG -->
             <div id="vista-mapa" class="vista activa">
                 <img id="svg-object" src="plano_uptc.svg" alt="Plano General UPTC" />
             </div>
@@ -1465,8 +1465,6 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
             }
 
             const sidebarDerecha = document.getElementById('sidebar-derecha');
-            // Nota: Al usar tag <img>, las interacciones directas con elementos internos del SVG por contentDocument ya no aplican aquí,
-            // pero mantenemos la estructura visual y de vistas intacta.
 
             const svg2dObj = document.getElementById('svg-2d-object');
             if (svg2dObj) {
