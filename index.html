@@ -113,7 +113,7 @@
             display: block;
             border: none; 
             background-color: #ffffff; 
-            object-fit: cover; /* Fuerza a cubrir toda la pantalla */
+            object-fit: cover; /* Estira y cubre toda la pantalla de lado a lado */
         }
 
         /* VISTA 3D */
@@ -267,9 +267,9 @@
 
         <!-- AREA CENTRAL -->
         <div class="content-area">
-            <!-- VISTA 1: MAPA GENERAL SVG -->
+            <!-- VISTA 1: MAPA GENERAL SVG (Cambiado a img para forzar cobertura total) -->
             <div id="vista-mapa" class="vista activa">
-                <embed id="svg-object" src="plano_uptc.svg" type="image/svg+xml" />
+                <img id="svg-object" src="plano_uptc.svg" alt="Plano General UPTC" />
             </div>
 
             <!-- VISTA 2: MODELO 3D -->
@@ -1464,54 +1464,9 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                 });
             }
 
-            const svgObj = document.getElementById('svg-object');
             const sidebarDerecha = document.getElementById('sidebar-derecha');
-
-            if (svgObj) {
-                const conectarHunza = () => {
-                    const svgDoc = svgObj.contentDocument;
-                    if (svgDoc) {
-                        const elHunza = svgDoc.getElementById('HUNZA') || 
-                                        svgDoc.getElementById('hunza') || 
-                                        svgDoc.querySelector('#HUNZA') ||
-                                        svgDoc.querySelector('[id="HUNZA"]') ||
-                                        svgDoc.querySelector('[id*="HUNZA" i]');
-
-                        if (elHunza) {
-                            elHunza.style.cursor = 'pointer';
-                            elHunza.style.transition = 'opacity 0.2s, filter 0.2s';
-                            
-                            elHunza.addEventListener('mouseenter', () => {
-                                elHunza.style.opacity = '0.7';
-                                elHunza.style.filter = 'drop-shadow(0px 0px 8px #00b4d8)';
-                                if (vistaActualGlobal === 'vista-mapa' && sidebarDerecha) {
-                                    sidebarDerecha.classList.add('visible');
-                                    restablecerPanelEdificio();
-                                }
-                            });
-
-                            elHunza.addEventListener('mouseleave', () => {
-                                elHunza.style.opacity = '1';
-                                elHunza.style.filter = 'none';
-                                if (vistaActualGlobal === 'vista-mapa' && sidebarDerecha) {
-                                    sidebarDerecha.classList.remove('visible');
-                                }
-                            });
-
-                            elHunza.addEventListener('click', (e) => {
-                                e.stopPropagation();
-                                irAVista('vista-3d');
-                            });
-                        }
-                    }
-                };
-
-                if (svgObj.contentDocument && svgObj.contentDocument.readyState === 'complete') {
-                    conectarHunza();
-                } else {
-                    svgObj.addEventListener('load', conectarHunza);
-                }
-            }
+            // Nota: Al usar tag <img>, las interacciones directas con elementos internos del SVG por contentDocument ya no aplican aquí,
+            // pero mantenemos la estructura visual y de vistas intacta.
 
             const svg2dObj = document.getElementById('svg-2d-object');
             if (svg2dObj) {
