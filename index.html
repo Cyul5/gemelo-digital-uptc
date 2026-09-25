@@ -53,9 +53,6 @@
         .sub-title { color: var(--text-muted); font-size: 13px; }
 
         .header-right { display: flex; align-items: center; gap: 16px; }
-        .search-box { position: relative; }
-        .search-box input { background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 5px 10px 5px 28px; color: #fff; font-size: 12px; width: 220px; }
-        .search-box::before { content: "🔍"; position: absolute; left: 8px; top: 4px; font-size: 11px; opacity: 0.6; }
         .excel-status { font-size: 11px; color: var(--green); display: flex; align-items: center; gap: 6px; font-weight: 500; }
         .dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; display: inline-block; }
 
@@ -97,9 +94,34 @@
             z-index: 10;
         }
 
-        /* VISTA MAPA SVG GENERAL */
-        #vista-mapa { align-items: center; justify-content: center; width: 100%; height: 100%; background-color: #ffffff; }
-        #svg-object { width: 100%; height: 100%; border: none; background-color: #ffffff; }
+        /* VISTA MAPA SVG GENERAL CON SOPORTE DE ZOOM Y PANEO */
+        #vista-mapa { 
+            width: 100%; 
+            height: 100%; 
+            background-color: #ffffff; 
+            overflow: hidden; 
+            position: relative;
+            cursor: grab;
+        }
+        #vista-mapa:active {
+            cursor: grabbing;
+        }
+        #map-viewport {
+            width: 100%;
+            height: 100%;
+            transform-origin: 0 0;
+            transition: transform 0.05s ease-out;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        #svg-object { 
+            width: 100%; 
+            height: 100%; 
+            border: none; 
+            background-color: #ffffff; 
+            display: block;
+        }
 
         /* VISTA 3D */
         #vista-3d { width: 100%; height: 100%; background-color: #ffffff; display: block; }
@@ -236,7 +258,6 @@
         </div>
 
         <div class="header-right">
-            </div>
             <div class="excel-status" id="excel-status-tag">
                 <span class="dot" style="background:#eab308;"></span> Leyendo Excel...
             </div>
@@ -253,9 +274,11 @@
 
         <!-- AREA CENTRAL -->
         <div class="content-area">
-            <!-- VISTA 1: MAPA GENERAL SVG -->
+            <!-- VISTA 1: MAPA GENERAL SVG CON ZOOM Y PAN -->
             <div id="vista-mapa" class="vista activa">
-                <object id="svg-object" type="image/svg+xml" data="plano_uptc.svg"></object>
+                <div id="map-viewport">
+                    <object id="svg-object" type="image/svg+xml" data="plano_uptc.svg"></object>
+                </div>
             </div>
 
             <!-- VISTA 2: MODELO 3D -->
@@ -1156,7 +1179,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                     <div class="info-section-title">🚶 2.2 Circulación Vertical</div>
                     <div class="info-group">
                         <div class="info-label">Escaleras:</div>
-                        <div class="info-val">${numEscaleras} ${notasEscaleras ? '(' + notasEscaleras + ')' : ''} \vert{} Estado: ${estadoEscaleras}</div>
+                        <div class="info-val">${numEscaleras} ${notasEscaleras ? '(' + notasEscaleras + ')' : ''} | Estado: ${estadoEscaleras}</div>
                     </div>
                     <div class="info-group">
                         <div class="info-label">Ascensores:</div>
@@ -1435,20 +1458,70 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
             }
         }
 
+        // --- SISTEMA DE ZOOM Y PAN PARA EL MAPA GENERAL ---
+        let scale = 1;
+        let panning = false;
+        let pointX = 0;
+        let pointY = 0;
+        let startX = 0;
+        let startY = 0;
+
+        function inicializarZoomPanMapa() {
+            const vistaMapa = document.getElementById('vista-mapa');
+            const viewport = document.getElementById('map-viewport');
+            if (!vistaMapa || !viewport) return;
+
+            vistaMapa.addEventListener('mousedown', (e) => {
+                if (e.button === 0) { // Clic izquierdo
+                    panning = true;
+                    startX = e.clientX - pointX;
+                    startY = e.clientY - pointY;
+                }
+            });
+
+            vistaMapa.addEventListener('mousemove', (e) => {
+                if (!panning) return;
+                pointX = e.clientX - startX;
+                pointY = e.clientY - startY;
+                setTransform();
+            });
+
+            window.addEventListener('mouseup', () => {
+                panning = false;
+            });
+
+            vistaMapa.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const xs = (e.clientX - pointX) / scale;
+                const ys = (e.clientY - pointY) / scale;
+                const delta = e.deltaY;
+
+                if (delta < 0) {
+                    scale *= 1.15;
+                } else {
+                    scale /= 1.15;
+                }
+
+                scale = Math.max(0.5, Math.min(scale, 10)); // Límites de zoom
+
+                pointX = e.clientX - xs * scale;
+                pointY = e.clientY - ys * scale;
+
+                setTransform();
+            }, { passive: false });
+        }
+
+        function setTransform() {
+            const viewport = document.getElementById('map-viewport');
+            if (viewport) {
+                viewport.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+            }
+        }
+
         window.addEventListener('load', () => {
             inicializarFranjasHorarias();
             cargarExcelRealRepo();
-
-            const inputBuscarGlobal = document.getElementById('input-busqueda-global');
-            if (inputBuscarGlobal) {
-                inputBuscarGlobal.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter' && e.target.value.trim() !== '') {
-                        const busqueda = e.target.value.trim();
-                        aulaSeleccionadaActual = busqueda;
-                        mostrarDetalleAulaPanel(busqueda);
-                    }
-                });
-            }
+            inicializarZoomPanMapa();
 
             const svgObj = document.getElementById('svg-object');
             const sidebarDerecha = document.getElementById('sidebar-derecha');
@@ -1761,7 +1834,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
                     pisosMeshes = [[], [], [], [], []];
 
-modeloGlobal.traverse((child) => {
+                    modeloGlobal.traverse((child) => {
                         if (child.isMesh) {
                             if (Array.isArray(child.material)) {
                                 child.material = child.material.map(mat => {
