@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uptc GIC</title>
+<title>Uptc GIC</title>
     
     <!-- LECTURA REAL DE EXCEL (SheetJS Actualizado) -->
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -53,6 +53,9 @@
         .sub-title { color: var(--text-muted); font-size: 13px; }
 
         .header-right { display: flex; align-items: center; gap: 16px; }
+        .search-box { position: relative; }
+        .search-box input { background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 5px 10px 5px 28px; color: #fff; font-size: 12px; width: 220px; }
+        .search-box::before { content: "🔍"; position: absolute; left: 8px; top: 4px; font-size: 11px; opacity: 0.6; }
         .excel-status { font-size: 11px; color: var(--green); display: flex; align-items: center; gap: 6px; font-weight: 500; }
         .dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; display: inline-block; }
 
@@ -94,30 +97,9 @@
             z-index: 10;
         }
 
-        /* VISTA MAPA GENERAL CON ZOOM, PAN Y CLIC */
-        #vista-mapa { 
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%; 
-            height: 100%; 
-            background-color: #ffffff; 
-            overflow: hidden;
-            cursor: grab;
-        }
-        #vista-mapa:active {
-            cursor: grabbing;
-        }
-        #svg-object { 
-            width: 100%; 
-            height: 100%; 
-            display: block;
-            border: none; 
-            background-color: #ffffff; 
-            object-fit: contain;
-            transform-origin: 0 0;
-            transition: transform 0.05s ease-out;
-        }
+        /* VISTA MAPA SVG GENERAL */
+        #vista-mapa { align-items: center; justify-content: center; width: 100%; height: 100%; background-color: #ffffff; }
+        #svg-object { width: 100%; height: 100%; border: none; background-color: #ffffff; }
 
         /* VISTA 3D */
         #vista-3d { width: 100%; height: 100%; background-color: #ffffff; display: block; }
@@ -254,6 +236,7 @@
         </div>
 
         <div class="header-right">
+            </div>
             <div class="excel-status" id="excel-status-tag">
                 <span class="dot" style="background:#eab308;"></span> Leyendo Excel...
             </div>
@@ -270,9 +253,9 @@
 
         <!-- AREA CENTRAL -->
         <div class="content-area">
-            <!-- VISTA 1: MAPA GENERAL SVG (Con zoom, desplazamiento y clic para ir a 3D) -->
+            <!-- VISTA 1: MAPA GENERAL SVG -->
             <div id="vista-mapa" class="vista activa">
-                <img id="svg-object" src="plano_uptc.svg" alt="Plano General UPTC" />
+                <object id="svg-object" type="image/svg+xml" data="plano_uptc.svg"></object>
             </div>
 
             <!-- VISTA 2: MODELO 3D -->
@@ -352,19 +335,19 @@
 
    <!-- MOTOR LECTOR DE EXCEL REFINADO Y RUTEO -->
     <script>
-        let registrosDatosGeneralesExcel = {};
-        let registrosInventarioExcel = {};
-        let registrosMobiliarioExcel = {};
-        let registrosHorariosExcel = [];
-        let registrosAccesibilidadExcel = [];
-        let registrosInstalacionesExcel = [];
+let registrosDatosGeneralesExcel = {};
+let registrosInventarioExcel = {};
+let registrosMobiliarioExcel = {};
+let registrosHorariosExcel = [];
+let registrosAccesibilidadExcel = [];
+let registrosInstalacionesExcel = [];
 
-        let nombreHojaDatosGeneralesReal = "Datos Generales";
-        let nombreHojaInventarioReal = "Inventario Espacios";
-        let nombreHojaMobiliarioReal = "Mobiliario y Equipo";
-        let nombreHojaHorariosReal = "Horarios de Uso";
-        let nombreHojaAccesibilidadReal = "Accesibilidad y Seguridad";
-        let nombreHojaInstalacionesReal = "Instalaciones por Piso";
+let nombreHojaDatosGeneralesReal = "Datos Generales";
+let nombreHojaInventarioReal = "Inventario Espacios";
+let nombreHojaMobiliarioReal = "Mobiliario y Equipo";
+let nombreHojaHorariosReal = "Horarios de Uso";
+let nombreHojaAccesibilidadReal = "Accesibilidad y Seguridad";
+let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
         let pisoActual2D = "Piso 1";
         let aulaSeleccionadaActual = null;
@@ -1452,75 +1435,69 @@
             }
         }
 
-        // --- SISTEMA DE ZOOM, PAN Y CLIC AL EDIFICIO EN EL MAPA GENERAL ---
-        let mapaZoom = 1;
-        let mapaPanX = 0;
-        let mapaPanY = 0;
-        let isDraggingMap = false;
-        let startX = 0, startY = 0;
-        let hasMoved = false;
-
-        function inicializarInteraccionMapaGeneral() {
-            const vistaMapa = document.getElementById('vista-mapa');
-            const svgImg = document.getElementById('svg-object');
-            if (!vistaMapa || !svgImg) return;
-
-            // Zoom con rueda del ratón
-            vistaMapa.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                const zoomFactor = 1.15;
-                if (e.deltaY < 0) {
-                    mapaZoom *= zoomFactor;
-                } else {
-                    mapaZoom /= zoomFactor;
-                }
-                mapaZoom = Math.max(0.5, Math.min(mapaZoom, 15));
-                actualizarTransformMapa();
-            }, { passive: false });
-
-            // Desplazamiento (Pan) y detección de clic en el edificio
-            vistaMapa.addEventListener('mousedown', (e) => {
-                if (e.button === 0) {
-                    isDraggingMap = true;
-                    hasMoved = false;
-                    startX = e.clientX - mapaPanX;
-                    startY = e.clientY - mapaPanY;
-                }
-            });
-
-            window.addEventListener('mousemove', (e) => {
-                if (!isDraggingMap) return;
-                const dist = Math.hypot(e.clientX - (startX + mapaPanX), e.clientY - (startY + mapaPanY));
-                if (dist > 3) hasMoved = true;
-
-                mapaPanX = e.clientX - startX;
-                mapaPanY = e.clientY - startY;
-                actualizarTransformMapa();
-            });
-
-            window.addEventListener('mouseup', () => {
-                isDraggingMap = false;
-            });
-
-            // Clic en el edificio para saltar a la vista 3D (si no se estuvo arrastrando)
-            svgImg.addEventListener('click', (e) => {
-                if (!hasMoved) {
-                    irAVista('vista-3d');
-                }
-            });
-        }
-
-        function actualizarTransformMapa() {
-            const svgImg = document.getElementById('svg-object');
-            if (svgImg) {
-                svgImg.style.transform = `translate(${mapaPanX}px, ${mapaPanY}px) scale(${mapaZoom})`;
-            }
-        }
-
         window.addEventListener('load', () => {
             inicializarFranjasHorarias();
             cargarExcelRealRepo();
-            inicializarInteraccionMapaGeneral();
+
+            const inputBuscarGlobal = document.getElementById('input-busqueda-global');
+            if (inputBuscarGlobal) {
+                inputBuscarGlobal.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && e.target.value.trim() !== '') {
+                        const busqueda = e.target.value.trim();
+                        aulaSeleccionadaActual = busqueda;
+                        mostrarDetalleAulaPanel(busqueda);
+                    }
+                });
+            }
+
+            const svgObj = document.getElementById('svg-object');
+            const sidebarDerecha = document.getElementById('sidebar-derecha');
+
+            if (svgObj) {
+                const conectarHunza = () => {
+                    const svgDoc = svgObj.contentDocument;
+                    if (svgDoc) {
+                        const elHunza = svgDoc.getElementById('HUNZA') || 
+                                        svgDoc.getElementById('hunza') || 
+                                        svgDoc.querySelector('#HUNZA') ||
+                                        svgDoc.querySelector('[id="HUNZA"]') ||
+                                        svgDoc.querySelector('[id*="HUNZA" i]');
+
+                        if (elHunza) {
+                            elHunza.style.cursor = 'pointer';
+                            elHunza.style.transition = 'opacity 0.2s, filter 0.2s';
+                            
+                            elHunza.addEventListener('mouseenter', () => {
+                                elHunza.style.opacity = '0.7';
+                                elHunza.style.filter = 'drop-shadow(0px 0px 8px #00b4d8)';
+                                if (vistaActualGlobal === 'vista-mapa' && sidebarDerecha) {
+                                    sidebarDerecha.classList.add('visible');
+                                    restablecerPanelEdificio();
+                                }
+                            });
+
+                            elHunza.addEventListener('mouseleave', () => {
+                                elHunza.style.opacity = '1';
+                                elHunza.style.filter = 'none';
+                                if (vistaActualGlobal === 'vista-mapa' && sidebarDerecha) {
+                                    sidebarDerecha.classList.remove('visible');
+                                }
+                            });
+
+                            elHunza.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                irAVista('vista-3d');
+                            });
+                        }
+                    }
+                };
+
+                if (svgObj.contentDocument && svgObj.contentDocument.readyState === 'complete') {
+                    conectarHunza();
+                } else {
+                    svgObj.addEventListener('load', conectarHunza);
+                }
+            }
 
             const svg2dObj = document.getElementById('svg-2d-object');
             if (svg2dObj) {
@@ -1532,7 +1509,7 @@
         });
     </script>
 
-    <!-- MOTOR THREE.JS Y VISOR 3D -->
+<!-- MOTOR THREE.JS Y ZOOM INTERACTIVO -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -1551,7 +1528,7 @@
 
         let pisosMeshes = [[], [], [], [], []];
         let pisoHoveredActual = -1;
-        let pisoActivoSeleccionado = -1;
+        let pisoActivoSeleccionado = -1; // -1 significa Edificio Completo
 
         const clock = new THREE.Clock();
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
@@ -1784,7 +1761,7 @@
 
                     pisosMeshes = [[], [], [], [], []];
 
-                    modeloGlobal.traverse((child) => {
+modeloGlobal.traverse((child) => {
                         if (child.isMesh) {
                             if (Array.isArray(child.material)) {
                                 child.material = child.material.map(mat => {
@@ -1839,7 +1816,7 @@
                             btn.classList.add('active');
                             aislarRangoAltura(basePiso, techoPiso);
                             
-                            pisoActivoSeleccionado = idx;
+                            pisoActivoSeleccionado = idx; // Guardamos el piso aislado actual
                             
                             if (window.actualizarPanelDetallePiso3D) {
                                 window.actualizarPanelDetallePiso3D(nombre);
@@ -1853,7 +1830,7 @@
                         this.classList.add('active');
                         aislarRangoAltura(alturaMinModel - 50, alturaMaxModel + 100);
                         
-                        pisoActivoSeleccionado = -1;
+                        pisoActivoSeleccionado = -1; // Regresamos a modo edificio completo
                         
                         if (window.actualizarPanelDetallePiso3D) {
                             window.actualizarPanelDetallePiso3D("Edificio Completo");
@@ -1888,5 +1865,5 @@
 
         window.cargarModeloIFC = cargarModeloGLBReal;
     </script>
-</body>
+    </body>
 </html>
