@@ -97,9 +97,23 @@
             z-index: 10;
         }
 
-        /* VISTA MAPA SVG GENERAL */
-        #vista-mapa { width: 100%; height: 100%; background-color: #ffffff; }
-        #svg-object { width: 100%; height: 100%; object-fit: cover; border: none; background-color: #ffffff; }
+        /* VISTA MAPA SVG GENERAL - CORREGIDO PARA CUBRIR TODA LA PANTALLA */
+        #vista-mapa { 
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%; 
+            height: 100%; 
+            background-color: #ffffff; 
+            overflow: hidden;
+        }
+        #svg-object { 
+            width: 100%; 
+            height: 100%; 
+            display: block;
+            border: none; 
+            background-color: #ffffff; 
+        }
 
         /* VISTA 3D */
         #vista-3d { width: 100%; height: 100%; background-color: #ffffff; display: block; }
@@ -236,7 +250,6 @@
         </div>
 
         <div class="header-right">
-            </div>
             <div class="excel-status" id="excel-status-tag">
                 <span class="dot" style="background:#eab308;"></span> Leyendo Excel...
             </div>
@@ -255,7 +268,7 @@
         <div class="content-area">
             <!-- VISTA 1: MAPA GENERAL SVG -->
             <div id="vista-mapa" class="vista activa">
-                <embed id="svg-object" src="plano_uptc.svg" type="image/svg+xml" style="width: 100%; height: 100%; display: block;" />
+                <embed id="svg-object" src="plano_uptc.svg" type="image/svg+xml" />
             </div>
 
             <!-- VISTA 2: MODELO 3D -->
@@ -1761,7 +1774,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
                     pisosMeshes = [[], [], [], [], []];
 
-modeloGlobal.traverse((child) => {
+                    modeloGlobal.traverse((child) => {
                         if (child.isMesh) {
                             if (Array.isArray(child.material)) {
                                 child.material = child.material.map(mat => {
