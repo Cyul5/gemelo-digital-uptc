@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Uptc GIC</title>
+    <title>Uptc GIC</title>
     
     <!-- LECTURA REAL DE EXCEL (SheetJS Actualizado) -->
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -53,9 +53,6 @@
         .sub-title { color: var(--text-muted); font-size: 13px; }
 
         .header-right { display: flex; align-items: center; gap: 16px; }
-        .search-box { position: relative; }
-        .search-box input { background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 5px 10px 5px 28px; color: #fff; font-size: 12px; width: 220px; }
-        .search-box::before { content: "🔍"; position: absolute; left: 8px; top: 4px; font-size: 11px; opacity: 0.6; }
         .excel-status { font-size: 11px; color: var(--green); display: flex; align-items: center; gap: 6px; font-weight: 500; }
         .dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; display: inline-block; }
 
@@ -97,7 +94,7 @@
             z-index: 10;
         }
 
-        /* VISTA MAPA SVG GENERAL CON SOPORTE DE ZOOM Y PAN */
+        /* VISTA MAPA GENERAL CON ZOOM, PAN Y CLIC */
         #vista-mapa { 
             position: absolute;
             top: 0;
@@ -117,6 +114,7 @@
             display: block;
             border: none; 
             background-color: #ffffff; 
+            object-fit: contain;
             transform-origin: 0 0;
             transition: transform 0.05s ease-out;
         }
@@ -272,9 +270,9 @@
 
         <!-- AREA CENTRAL -->
         <div class="content-area">
-            <!-- VISTA 1: MAPA GENERAL SVG (Con Embed original + Zoom y Pan) -->
+            <!-- VISTA 1: MAPA GENERAL SVG (Con zoom, desplazamiento y clic para ir a 3D) -->
             <div id="vista-mapa" class="vista activa">
-                <embed id="svg-object" type="image/svg+xml" src="plano_uptc.svg" />
+                <img id="svg-object" src="plano_uptc.svg" alt="Plano General UPTC" />
             </div>
 
             <!-- VISTA 2: MODELO 3D -->
@@ -354,19 +352,19 @@
 
    <!-- MOTOR LECTOR DE EXCEL REFINADO Y RUTEO -->
     <script>
-let registrosDatosGeneralesExcel = {};
-let registrosInventarioExcel = {};
-let registrosMobiliarioExcel = {};
-let registrosHorariosExcel = [];
-let registrosAccesibilidadExcel = [];
-let registrosInstalacionesExcel = [];
+        let registrosDatosGeneralesExcel = {};
+        let registrosInventarioExcel = {};
+        let registrosMobiliarioExcel = {};
+        let registrosHorariosExcel = [];
+        let registrosAccesibilidadExcel = [];
+        let registrosInstalacionesExcel = [];
 
-let nombreHojaDatosGeneralesReal = "Datos Generales";
-let nombreHojaInventarioReal = "Inventario Espacios";
-let nombreHojaMobiliarioReal = "Mobiliario y Equipo";
-let nombreHojaHorariosReal = "Horarios de Uso";
-let nombreHojaAccesibilidadReal = "Accesibilidad y Seguridad";
-let nombreHojaInstalacionesReal = "Instalaciones por Piso";
+        let nombreHojaDatosGeneralesReal = "Datos Generales";
+        let nombreHojaInventarioReal = "Inventario Espacios";
+        let nombreHojaMobiliarioReal = "Mobiliario y Equipo";
+        let nombreHojaHorariosReal = "Horarios de Uso";
+        let nombreHojaAccesibilidadReal = "Accesibilidad y Seguridad";
+        let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
         let pisoActual2D = "Piso 1";
         let aulaSeleccionadaActual = null;
@@ -1454,35 +1452,37 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
             }
         }
 
-        // LÓGICA DE ZOOM, PAN Y CLIC EN EL EDIFICIO DEL MAPA GENERAL
+        // --- SISTEMA DE ZOOM, PAN Y CLIC AL EDIFICIO EN EL MAPA GENERAL ---
         let mapaZoom = 1;
         let mapaPanX = 0;
         let mapaPanY = 0;
         let isDraggingMap = false;
         let startX = 0, startY = 0;
+        let hasMoved = false;
 
         function inicializarInteraccionMapaGeneral() {
             const vistaMapa = document.getElementById('vista-mapa');
-            const svgEmbed = document.getElementById('svg-object');
-            if (!vistaMapa || !svgEmbed) return;
+            const svgImg = document.getElementById('svg-object');
+            if (!vistaMapa || !svgImg) return;
 
             // Zoom con rueda del ratón
             vistaMapa.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                const zoomFactor = 1.1;
+                const zoomFactor = 1.15;
                 if (e.deltaY < 0) {
                     mapaZoom *= zoomFactor;
                 } else {
                     mapaZoom /= zoomFactor;
                 }
-                mapaZoom = Math.max(0.5, Math.min(mapaZoom, 10)); // Límites de zoom
+                mapaZoom = Math.max(0.5, Math.min(mapaZoom, 15));
                 actualizarTransformMapa();
             }, { passive: false });
 
-            // Arrastrar (Pan) con el ratón
+            // Desplazamiento (Pan) y detección de clic en el edificio
             vistaMapa.addEventListener('mousedown', (e) => {
                 if (e.button === 0) {
                     isDraggingMap = true;
+                    hasMoved = false;
                     startX = e.clientX - mapaPanX;
                     startY = e.clientY - mapaPanY;
                 }
@@ -1490,6 +1490,9 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
             window.addEventListener('mousemove', (e) => {
                 if (!isDraggingMap) return;
+                const dist = Math.hypot(e.clientX - (startX + mapaPanX), e.clientY - (startY + mapaPanY));
+                if (dist > 3) hasMoved = true;
+
                 mapaPanX = e.clientX - startX;
                 mapaPanY = e.clientY - startY;
                 actualizarTransformMapa();
@@ -1499,44 +1502,18 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                 isDraggingMap = false;
             });
 
-            // Detectar carga del SVG para habilitar el clic en el edificio Hunza
-            svgEmbed.addEventListener('load', () => {
-                try {
-                    const svgDoc = svgEmbed.contentDocument;
-                    if (!svgDoc) return;
-
-                    // Buscar elementos del edificio Hunza por ID o clases/atributos comunes
-                    const elementosEdificio = svgDoc.querySelectorAll('[id*="HUNZA"], [id*="Hunza"], [id*="hunza"], [id*="30"], #Edificio-Hunza');
-                    
-                    elementosEdificio.forEach(el => {
-                        el.style.cursor = 'pointer';
-                        el.addEventListener('click', (ev) => {
-                            ev.stopPropagation();
-                            irAVista('vista-3d');
-                        });
-                    });
-
-                    // Como respaldo, permitir clic general en caminos/polígonos que coincidan con el edificio
-                    svgDoc.querySelectorAll('path, polygon, rect').forEach(el => {
-                        const id = (el.id || "").toUpperCase();
-                        if (id.includes("HUNZA") || id.includes("EDIFICIO") || id === "30") {
-                            el.style.cursor = 'pointer';
-                            el.addEventListener('click', (ev) => {
-                                ev.stopPropagation();
-                                irAVista('vista-3d');
-                            });
-                        }
-                    });
-                } catch (err) {
-                    console.log("No se pudieron enlazar eventos internos del SVG por políticas de CORS o estructura.", err);
+            // Clic en el edificio para saltar a la vista 3D (si no se estuvo arrastrando)
+            svgImg.addEventListener('click', (e) => {
+                if (!hasMoved) {
+                    irAVista('vista-3d');
                 }
             });
         }
 
         function actualizarTransformMapa() {
-            const svgEmbed = document.getElementById('svg-object');
-            if (svgEmbed) {
-                svgEmbed.style.transform = `translate(${mapaPanX}px, ${mapaPanY}px) scale(${mapaZoom})`;
+            const svgImg = document.getElementById('svg-object');
+            if (svgImg) {
+                svgImg.style.transform = `translate(${mapaPanX}px, ${mapaPanY}px) scale(${mapaZoom})`;
             }
         }
 
@@ -1544,17 +1521,6 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
             inicializarFranjasHorarias();
             cargarExcelRealRepo();
             inicializarInteraccionMapaGeneral();
-
-            const inputBuscarGlobal = document.getElementById('input-busqueda-global');
-            if (inputBuscarGlobal) {
-                inputBuscarGlobal.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter' && e.target.value.trim() !== '') {
-                        const busqueda = e.target.value.trim();
-                        aulaSeleccionadaActual = busqueda;
-                        mostrarDetalleAulaPanel(busqueda);
-                    }
-                });
-            }
 
             const svg2dObj = document.getElementById('svg-2d-object');
             if (svg2dObj) {
@@ -1566,7 +1532,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
         });
     </script>
 
-<!-- MOTOR THREE.JS Y ZOOM INTERACTIVO -->
+    <!-- MOTOR THREE.JS Y VISOR 3D -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -1585,7 +1551,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
         let pisosMeshes = [[], [], [], [], []];
         let pisoHoveredActual = -1;
-        let pisoActivoSeleccionado = -1; // -1 significa Edificio Completo
+        let pisoActivoSeleccionado = -1;
 
         const clock = new THREE.Clock();
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
@@ -1870,7 +1836,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                         btn.innerText = `🏢 ${nombre}`;
                         btn.addEventListener('click', () => {
                             document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
-                            btn.classList.0 ? btn.classList.add('active') : btn.classList.add('active');
+                            btn.classList.add('active');
                             aislarRangoAltura(basePiso, techoPiso);
                             
                             pisoActivoSeleccionado = idx;
@@ -1922,5 +1888,5 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
         window.cargarModeloIFC = cargarModeloGLBReal;
     </script>
-    </body>
+</body>
 </html>
