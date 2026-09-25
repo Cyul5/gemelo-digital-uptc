@@ -97,7 +97,7 @@
             z-index: 10;
         }
 
-        /* VISTA MAPA SVG GENERAL - FORZANDO COBERTURA TOTAL SIN BORDES */
+        /* VISTA MAPA SVG GENERAL CON SOPORTE DE ZOOM Y PAN */
         #vista-mapa { 
             position: absolute;
             top: 0;
@@ -106,6 +106,10 @@
             height: 100%; 
             background-color: #ffffff; 
             overflow: hidden;
+            cursor: grab;
+        }
+        #vista-mapa:active {
+            cursor: grabbing;
         }
         #svg-object { 
             width: 100%; 
@@ -113,9 +117,8 @@
             display: block;
             border: none; 
             background-color: #ffffff; 
-            object-fit: cover; /* Cambiado a cover para rellenar perfectamente */
-            transform: scale(1.02); /* Amplía ligeramente un 2% para eliminar cualquier residuo de margen blanco */
-            transform-origin: center;
+            transform-origin: 0 0;
+            transition: transform 0.05s ease-out;
         }
 
         /* VISTA 3D */
@@ -269,9 +272,9 @@
 
         <!-- AREA CENTRAL -->
         <div class="content-area">
-            <!-- VISTA 1: MAPA GENERAL SVG -->
+            <!-- VISTA 1: MAPA GENERAL SVG (Con Embed original + Zoom y Pan) -->
             <div id="vista-mapa" class="vista activa">
-                <img id="svg-object" src="plano_uptc.svg" alt="Plano General UPTC" />
+                <embed id="svg-object" type="image/svg+xml" src="plano_uptc.svg" />
             </div>
 
             <!-- VISTA 2: MODELO 3D -->
@@ -1451,9 +1454,96 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
             }
         }
 
+        // LÓGICA DE ZOOM, PAN Y CLIC EN EL EDIFICIO DEL MAPA GENERAL
+        let mapaZoom = 1;
+        let mapaPanX = 0;
+        let mapaPanY = 0;
+        let isDraggingMap = false;
+        let startX = 0, startY = 0;
+
+        function inicializarInteraccionMapaGeneral() {
+            const vistaMapa = document.getElementById('vista-mapa');
+            const svgEmbed = document.getElementById('svg-object');
+            if (!vistaMapa || !svgEmbed) return;
+
+            // Zoom con rueda del ratón
+            vistaMapa.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomFactor = 1.1;
+                if (e.deltaY < 0) {
+                    mapaZoom *= zoomFactor;
+                } else {
+                    mapaZoom /= zoomFactor;
+                }
+                mapaZoom = Math.max(0.5, Math.min(mapaZoom, 10)); // Límites de zoom
+                actualizarTransformMapa();
+            }, { passive: false });
+
+            // Arrastrar (Pan) con el ratón
+            vistaMapa.addEventListener('mousedown', (e) => {
+                if (e.button === 0) {
+                    isDraggingMap = true;
+                    startX = e.clientX - mapaPanX;
+                    startY = e.clientY - mapaPanY;
+                }
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDraggingMap) return;
+                mapaPanX = e.clientX - startX;
+                mapaPanY = e.clientY - startY;
+                actualizarTransformMapa();
+            });
+
+            window.addEventListener('mouseup', () => {
+                isDraggingMap = false;
+            });
+
+            // Detectar carga del SVG para habilitar el clic en el edificio Hunza
+            svgEmbed.addEventListener('load', () => {
+                try {
+                    const svgDoc = svgEmbed.contentDocument;
+                    if (!svgDoc) return;
+
+                    // Buscar elementos del edificio Hunza por ID o clases/atributos comunes
+                    const elementosEdificio = svgDoc.querySelectorAll('[id*="HUNZA"], [id*="Hunza"], [id*="hunza"], [id*="30"], #Edificio-Hunza');
+                    
+                    elementosEdificio.forEach(el => {
+                        el.style.cursor = 'pointer';
+                        el.addEventListener('click', (ev) => {
+                            ev.stopPropagation();
+                            irAVista('vista-3d');
+                        });
+                    });
+
+                    // Como respaldo, permitir clic general en caminos/polígonos que coincidan con el edificio
+                    svgDoc.querySelectorAll('path, polygon, rect').forEach(el => {
+                        const id = (el.id || "").toUpperCase();
+                        if (id.includes("HUNZA") || id.includes("EDIFICIO") || id === "30") {
+                            el.style.cursor = 'pointer';
+                            el.addEventListener('click', (ev) => {
+                                ev.stopPropagation();
+                                irAVista('vista-3d');
+                            });
+                        }
+                    });
+                } catch (err) {
+                    console.log("No se pudieron enlazar eventos internos del SVG por políticas de CORS o estructura.", err);
+                }
+            });
+        }
+
+        function actualizarTransformMapa() {
+            const svgEmbed = document.getElementById('svg-object');
+            if (svgEmbed) {
+                svgEmbed.style.transform = `translate(${mapaPanX}px, ${mapaPanY}px) scale(${mapaZoom})`;
+            }
+        }
+
         window.addEventListener('load', () => {
             inicializarFranjasHorarias();
             cargarExcelRealRepo();
+            inicializarInteraccionMapaGeneral();
 
             const inputBuscarGlobal = document.getElementById('input-busqueda-global');
             if (inputBuscarGlobal) {
@@ -1465,8 +1555,6 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                     }
                 });
             }
-
-            const sidebarDerecha = document.getElementById('sidebar-derecha');
 
             const svg2dObj = document.getElementById('svg-2d-object');
             if (svg2dObj) {
@@ -1782,10 +1870,10 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                         btn.innerText = `🏢 ${nombre}`;
                         btn.addEventListener('click', () => {
                             document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
-                            btn.classList.add('active');
+                            btn.classList.0 ? btn.classList.add('active') : btn.classList.add('active');
                             aislarRangoAltura(basePiso, techoPiso);
                             
-                            pisoActivoSeleccionado = idx; // Guardamos el piso aislado actual
+                            pisoActivoSeleccionado = idx;
                             
                             if (window.actualizarPanelDetallePiso3D) {
                                 window.actualizarPanelDetallePiso3D(nombre);
@@ -1799,7 +1887,7 @@ let nombreHojaInstalacionesReal = "Instalaciones por Piso";
                         this.classList.add('active');
                         aislarRangoAltura(alturaMinModel - 50, alturaMaxModel + 100);
                         
-                        pisoActivoSeleccionado = -1; // Regresamos a modo edificio completo
+                        pisoActivoSeleccionado = -1;
                         
                         if (window.actualizarPanelDetallePiso3D) {
                             window.actualizarPanelDetallePiso3D("Edificio Completo");
