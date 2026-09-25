@@ -94,17 +94,14 @@
             z-index: 10;
         }
 
-        /* VISTA MAPA GENERAL CON ZOOM Y PANEO POR OVERLAY */
+        /* VISTA MAPA GENERAL CON OVERLAY INTELIGENTE */
         #vista-mapa { 
             width: 100%; 
             height: 100%; 
             background-color: #ffffff; 
             overflow: hidden; 
             position: relative;
-            cursor: grab;
-        }
-        #vista-mapa:active {
-            cursor: grabbing;
+            cursor: default;
         }
         #map-viewport {
             width: 100%;
@@ -120,9 +117,9 @@
             border: none; 
             background-color: #ffffff; 
             display: block;
-            pointer-events: auto; /* Permite interactuar con el SVG interno */
+            pointer-events: auto; /* Permite hover y clics directos sobre el SVG */
         }
-        /* Capa transparente superior para capturar zoom y paneo fluidos sin bloqueo */
+        /* Overlay inteligente: por defecto deja pasar eventos, se activa al hacer clic sostenido para paneo */
         #map-overlay {
             position: absolute;
             top: 0;
@@ -131,6 +128,7 @@
             height: 100%;
             z-index: 20;
             background: transparent;
+            pointer-events: none; /* Permite que el mouse interactúe libremente con el SVG por debajo */
         }
 
         /* VISTA 3D */
@@ -284,12 +282,12 @@
 
         <!-- AREA CENTRAL -->
         <div class="content-area">
-            <!-- VISTA 1: MAPA GENERAL SVG CON ZOOM Y PANEO MEJORADO -->
+            <!-- VISTA 1: MAPA GENERAL SVG CON INTERACCIÓN BALANCEADA -->
             <div id="vista-mapa" class="vista activa">
                 <div id="map-viewport">
                     <object id="svg-object" type="image/svg+xml" data="plano_uptc.svg"></object>
                 </div>
-                <!-- Capa overlay para garantizar paneo y zoom fluidos sin bloqueo de eventos -->
+                <!-- Overlay inteligente para activar zoom y paneo al arrastrar -->
                 <div id="map-overlay"></div>
             </div>
 
@@ -1149,7 +1147,7 @@
                     </div>
                     <div class="info-group">
                         <div class="info-label">Institución / Sede:</div>
-                        <div class="info-val">${institucion} -${ciudad}</div>
+                        <div class="info-val">${institucion} - ${ciudad}</div>
                     </div>
                     <div class="info-group">
                         <div class="info-label">Dirección:</div>
@@ -1464,7 +1462,7 @@
             }
         }
 
-        // --- SISTEMA DE ZOOM Y PAN DINÁMICO MEDIANTE OVERLAY ---
+        // --- SISTEMA DE ZOOM Y PAN INTELIGENTE CON ARRASTRE SOSTENIDO ---
         let scale = 1;
         let panning = false;
         let pointX = 0;
@@ -1473,14 +1471,18 @@
         let startY = 0;
 
         function inicializarZoomPanMapa() {
-            const overlay = document.getElementById('map-overlay');
-            if (!overlay) return;
+            const vistaMapa = document.getElementById('vista-mapa');
+            const svgObj = document.getElementById('svg-object');
+            if (!vistaMapa) return;
 
-            overlay.addEventListener('mousedown', (e) => {
+            // Al presionar el botón izquierdo en el mapa, activamos el paneo y bloqueamos temporalmente el SVG
+            vistaMapa.addEventListener('mousedown', (e) => {
                 if (e.button === 0) {
                     panning = true;
                     startX = e.clientX - pointX;
                     startY = e.clientY - pointY;
+                    if (svgObj) svgObj.style.pointerEvents = 'none';
+                    vistaMapa.style.cursor = 'grabbing';
                 }
             });
 
@@ -1492,10 +1494,16 @@
             });
 
             window.addEventListener('mouseup', () => {
-                panning = false;
+                if (panning) {
+                    panning = false;
+                    // Reactivamos las interacciones normales (hover/click) del edificio Hunza
+                    if (svgObj) svgObj.style.pointerEvents = 'auto';
+                    vistaMapa.style.cursor = 'default';
+                }
             });
 
-            overlay.addEventListener('wheel', (e) => {
+            // Zoom con la rueda del ratón en cualquier parte de la vista mapa
+            vistaMapa.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 const xs = (e.clientX - pointX) / scale;
                 const ys = (e.clientY - pointY) / scale;
