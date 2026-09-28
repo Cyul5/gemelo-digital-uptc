@@ -95,35 +95,62 @@
         }
 
         /* VISTA MAPA GENERAL CON ZOOM Y PANEO FLUIDO */
-        #vista-mapa { 
-            width: 100%; 
-            height: 100%; 
-            background-color: #ffffff; 
-            overflow: hidden; 
-            position: relative;
-            cursor: default;
-        }
-        #map-viewport {
+        #vista-mapa {
+            position: absolute;
+            inset: 0;
             width: 100%;
             height: 100%;
+            background-color: #ffffff;
+            overflow: hidden;
+            cursor: grab;
+        }
+        #vista-mapa.arrastrando { cursor: grabbing; }
+        #map-viewport {
             position: absolute;
             top: 0;
             left: 0;
+            width: 100%;
+            height: 100%;
             transform-origin: 0 0;
             will-change: transform;
         }
-        #svg-object { 
-            width: 100%; 
-            height: 100%; 
-            border: none; 
-            background-color: #ffffff; 
+        #svg-object {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background-color: #ffffff;
             display: block;
             pointer-events: auto;
         }
-        <div id="map-controls">
-  <button id="zoom-in" title="Acercar">+</button>
-  <button id="zoom-out" title="Alejar">-</button>
-</div>
+
+        /* Controles de zoom del mapa */
+        #map-controls {
+            position: absolute;
+            left: 16px;
+            bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            z-index: 20;
+        }
+        #map-controls button {
+            width: 34px; height: 34px;
+            border: 1px solid #1e293b;
+            border-radius: 6px;
+            background: var(--bg-header);
+            color: #f8fafc;
+            font-size: 18px; line-height: 1;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        #map-controls button:hover { background: #0284c7; }
+
+        /* En el mapa general el panel derecho FLOTA sobre el mapa (no le quita ancho) */
+        .app-body:has(#vista-mapa.activa) .sidebar-right {
+            position: absolute;
+            top: 0; right: 0; bottom: 0;
+            pointer-events: none;
+        }
 
         /* VISTA 3D */
         #vista-3d { width: 100%; height: 100%; background-color: #ffffff; display: block; }
@@ -280,6 +307,11 @@
             <div id="vista-mapa" class="vista activa">
                 <div id="map-viewport">
                     <object id="svg-object" type="image/svg+xml" data="plano_uptc.svg"></object>
+                </div>
+                <div id="map-controls">
+                    <button id="zoom-in" title="Acercar">+</button>
+                    <button id="zoom-out" title="Alejar">&minus;</button>
+                    <button id="zoom-reset" title="Restablecer vista">&#8634;</button>
                 </div>
             </div>
 
@@ -887,6 +919,7 @@
             }
 
             if (idVista === 'vista-mapa') document.getElementById('btn-nav-mapa').classList.add('active');
+            if (idVista === 'vista-mapa') requestAnimationFrame(setTransform);
             if (idVista === 'vista-3d') document.getElementById('btn-nav-3d').classList.add('active');
             if (idVista === 'vista-2d') document.getElementById('btn-nav-2d').classList.add('active');
 
@@ -1454,70 +1487,164 @@
             }
         }
 
-        // --- SISTEMA DE ZOOM Y PANEO FLUIDO SIN BLOQUEAR HOVER ---
+        // --- SISTEMA DE ZOOM Y PANEO DEL MAPA GENERAL ---
+        // Nota: los eventos del mouse sobre un <object> SVG NO suben al documento
+        // padre, por eso los listeners se registran también dentro del SVG.
+        const MAPA_MODO_AJUSTE = 'slice';   // 'slice' = cubre todo el área | 'meet' = muestra el mapa completo
+        const MAPA_ZOOM_MIN = 1;
+        const MAPA_ZOOM_MAX = 12;
+
         let scale = 1;
         let panning = false;
         let pointX = 0;
         let pointY = 0;
-        let startX = 0;
-        let startY = 0;
+        let lastScreenX = 0;
+        let lastScreenY = 0;
+        let movidoPx = 0;
         let hasMoved = false;
+
+        function limitarPaneo() {
+            const cont = document.getElementById('vista-mapa');
+            if (!cont) return;
+            const W = cont.clientWidth, H = cont.clientHeight;
+            // El mapa siempre debe cubrir el contenedor (sin huecos blancos)
+            pointX = Math.min(0, Math.max(W - W * scale, pointX));
+            pointY = Math.min(0, Math.max(H - H * scale, pointY));
+        }
+
+        function setTransform() {
+            limitarPaneo();
+            const viewport = document.getElementById('map-viewport');
+            if (viewport) {
+                viewport.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+            }
+        }
+
+        // Zoom manteniendo fijo el punto (cx, cy) en coordenadas del contenedor
+        function zoomEnPunto(cx, cy, factor) {
+            const nuevo = Math.max(MAPA_ZOOM_MIN, Math.min(scale * factor, MAPA_ZOOM_MAX));
+            if (nuevo === scale) return;
+            const xs = (cx - pointX) / scale;
+            const ys = (cy - pointY) / scale;
+            scale = nuevo;
+            pointX = cx - xs * scale;
+            pointY = cy - ys * scale;
+            setTransform();
+        }
+
+        function resetearVistaMapa() {
+            scale = 1; pointX = 0; pointY = 0;
+            setTransform();
+        }
+
+        // Ajusta el SVG para que llene todo el contenedor (en vez de su tamaño fijo original)
+        function ajustarSvgMapa() {
+            const svgObj = document.getElementById('svg-object');
+            if (!svgObj || !svgObj.contentDocument) return;
+            const svg = svgObj.contentDocument.documentElement;
+            if (!svg || svg.tagName.toLowerCase() !== 'svg') return;
+
+            let vb = null;
+            try {
+                const bb = svg.getBBox();               // área real del contenido
+                if (bb.width > 0 && bb.height > 0) vb = [bb.x, bb.y, bb.width, bb.height];
+            } catch (e) { /* se usa el respaldo */ }
+
+            if (!vb) {
+                const attr = svg.getAttribute('viewBox');
+                if (attr) {
+                    vb = attr.trim().split(/[\s,]+/).map(Number);
+                } else {
+                    const w = parseFloat(svg.getAttribute('width'));
+                    const h = parseFloat(svg.getAttribute('height'));
+                    if (w > 0 && h > 0) vb = [0, 0, w, h];
+                }
+            }
+
+            if (vb) svg.setAttribute('viewBox', vb.join(' '));
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', '100%');
+            svg.setAttribute('preserveAspectRatio', `xMidYMid ${MAPA_MODO_AJUSTE}`);
+            svg.style.width = '100%';
+            svg.style.height = '100%';
+            svg.style.display = 'block';
+            resetearVistaMapa();
+        }
 
         function inicializarZoomPanMapa() {
             const vistaMapa = document.getElementById('vista-mapa');
             if (!vistaMapa) return;
 
-            vistaMapa.addEventListener('mousedown', (e) => {
-                if (e.button === 0) {
-                    panning = true;
-                    hasMoved = false;
-                    startX = e.clientX - pointX;
-                    startY = e.clientY - pointY;
-                }
-            });
+            // Convierte un evento (del documento padre o del SVG interno) a coordenadas del contenedor
+            const puntoContenedor = (e, interno) => {
+                if (interno) return { x: pointX + e.clientX * scale, y: pointY + e.clientY * scale };
+                const r = vistaMapa.getBoundingClientRect();
+                return { x: e.clientX - r.left, y: e.clientY - r.top };
+            };
 
-            window.addEventListener('mousemove', (e) => {
+            const onDown = (e) => {
+                if (e.button !== 0) return;
+                if (e.target.closest && e.target.closest('#map-controls')) return;
+                panning = true;
+                hasMoved = false;
+                movidoPx = 0;
+                lastScreenX = e.screenX;
+                lastScreenY = e.screenY;
+                vistaMapa.classList.add('arrastrando');
+            };
+            const onMove = (e) => {
                 if (!panning) return;
-                const dist = Math.hypot(e.clientX - (startX + pointX), e.clientY - (startY + pointY));
-                if (dist > 3) hasMoved = true;
-
-                pointX = e.clientX - startX;
-                pointY = e.clientY - startY;
+                const dx = e.screenX - lastScreenX;
+                const dy = e.screenY - lastScreenY;
+                lastScreenX = e.screenX;
+                lastScreenY = e.screenY;
+                movidoPx += Math.abs(dx) + Math.abs(dy);
+                if (movidoPx > 4) hasMoved = true;   // evita confundir un clic con un arrastre
+                pointX += dx;
+                pointY += dy;
                 setTransform();
-            });
-
-            window.addEventListener('mouseup', (e) => {
-                if (panning) {
-                    panning = false;
-                }
-            });
-
-            vistaMapa.addEventListener('wheel', (e) => {
+            };
+            const onUp = () => {
+                if (!panning) return;
+                panning = false;
+                vistaMapa.classList.remove('arrastrando');
+            };
+            const onWheel = (interno) => (e) => {
                 e.preventDefault();
-                const xs = (e.clientX - pointX) / scale;
-                const ys = (e.clientY - pointY) / scale;
-                const delta = e.deltaY;
+                const p = puntoContenedor(e, interno);
+                zoomEnPunto(p.x, p.y, e.deltaY < 0 ? 1.15 : 1 / 1.15);
+            };
 
-                if (delta < 0) {
-                    scale *= 1.15;
-                } else {
-                    scale /= 1.15;
-                }
+            // Documento padre
+            vistaMapa.addEventListener('mousedown', onDown);
+            vistaMapa.addEventListener('wheel', onWheel(false), { passive: false });
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onUp);
 
-                scale = Math.max(0.5, Math.min(scale, 10)); // Límites de Zoom
-
-                pointX = e.clientX - xs * scale;
-                pointY = e.clientY - ys * scale;
-
-                setTransform();
-            }, { passive: false });
-        }
-
-        function setTransform() {
-            const viewport = document.getElementById('map-viewport');
-            if (viewport) {
-                viewport.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+            // Documento interno del SVG (se conecta cada vez que el SVG termina de cargar)
+            const svgObj = document.getElementById('svg-object');
+            const conectarInterno = () => {
+                const doc = svgObj && svgObj.contentDocument;
+                if (!doc || doc.__zoomPanConectado) return;
+                doc.__zoomPanConectado = true;
+                doc.addEventListener('mousedown', onDown);
+                doc.addEventListener('mousemove', onMove);
+                doc.addEventListener('mouseup', onUp);
+                doc.addEventListener('wheel', onWheel(true), { passive: false });
+                doc.addEventListener('dragstart', (e) => e.preventDefault());
+            };
+            if (svgObj) {
+                svgObj.addEventListener('load', conectarInterno);
+                if (svgObj.contentDocument && svgObj.contentDocument.readyState === 'complete') conectarInterno();
             }
+
+            // Botones
+            const centro = () => ({ x: vistaMapa.clientWidth / 2, y: vistaMapa.clientHeight / 2 });
+            document.getElementById('zoom-in').addEventListener('click', () => { const c = centro(); zoomEnPunto(c.x, c.y, 1.4); });
+            document.getElementById('zoom-out').addEventListener('click', () => { const c = centro(); zoomEnPunto(c.x, c.y, 1 / 1.4); });
+            document.getElementById('zoom-reset').addEventListener('click', resetearVistaMapa);
+
+            window.addEventListener('resize', setTransform);
         }
 
         window.addEventListener('load', () => {
@@ -1530,6 +1657,7 @@
 
             if (svgObj) {
                 const conectarHunza = () => {
+                    ajustarSvgMapa();
                     const svgDoc = svgObj.contentDocument;
                     if (svgDoc) {
                         const elHunza = svgDoc.getElementById('HUNZA') || 
