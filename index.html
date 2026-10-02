@@ -1951,57 +1951,57 @@
         // --- NIVELES REALES DE PISO ---
         // Si la detección automática no coincide con tu modelo, escribe aquí la altura (desde la base del
         // modelo, en unidades del modelo) a la que empieza cada piso. Ejemplo: [0, 4.2, 8.4, 12.6, 16.8]
-        const NIVELES_MANUAL = null;
+        // Niveles calibrados directamente con la geometría real de EDIFICIO_AULAS_M3D.glb.
+        // El modelo está normalizado con su base en Y=0.
+        // Piso 1: 0.00–5.15
+        // Piso 2: 5.15–8.65
+        // Piso 3: 8.65–12.15
+        // Piso 4: 12.15–15.65
+        // Piso 5/Cubierta: 15.65–19.65
+        const NIVELES_MANUAL = [0.00, 5.15, 8.65, 12.15, 15.65];
         let nivelesBase = [];
 
         function calcularNiveles(modelo) {
             const total = alturaMaxModel - alturaMinModel;
-
-            // IMPORTANTE:
-            // El modelo 3D no contiene una identificación fiable del "Piso 1, 2, 3..."
-            // en la geometría que permita usar las losas automáticamente. La detección
-            // anterior podía tomar losas/interiores como niveles y desplazar los pisos.
-            //
-            // Por eso usamos 5 intervalos verticales iguales como referencia estable.
-            // Si posteriormente conocemos las alturas exactas del edificio, se pueden
-            // introducir en NIVELES_MANUAL sin cambiar ninguna otra función.
-            const iguales = () =>
-                Array.from({ length: 5 }, (_, i) =>
-                    alturaMinModel + (i * total) / 5
-                );
-
+            const iguales = () => Array.from({ length: 5 }, (_, i) => alturaMinModel + (i * total) / 5);
             let bases = null;
 
             if (Array.isArray(NIVELES_MANUAL) && NIVELES_MANUAL.length === 5) {
                 bases = NIVELES_MANUAL.map(v => alturaMinModel + v);
+            } else {
+                // Detecta las losas (mallas anchas y delgadas) y las agrupa por altura
+                const boxM = new THREE.Box3().setFromObject(modelo);
+                const sM = boxM.getSize(new THREE.Vector3());
+                const anchoMax = Math.max(sM.x, sM.z);
+                const losas = [];
+                modelo.traverse(c => {
+                    if (!c.isMesh) return;
+                    const b = new THREE.Box3().setFromObject(c);
+                    const s = b.getSize(new THREE.Vector3());
+                    if (s.y < total * 0.04 && Math.max(s.x, s.z) > anchoMax * 0.15) losas.push(b.min.y);
+                });
+                losas.sort((a, b) => a - b);
+                const tol = total * 0.03;
+                const grupos = [];
+                losas.forEach(y => {
+                    const g = grupos[grupos.length - 1];
+                    if (g !== undefined && y - g < tol) return;
+                    grupos.push(y);
+                });
+                if (grupos.length && grupos[0] > alturaMinModel + total * 0.08) grupos.unshift(alturaMinModel);
+                if (grupos.length >= 5) bases = grupos.slice(0, 5);
             }
 
             nivelesBase = bases || iguales();
-
-            console.log(
-                '[GIC] Alturas base de cada piso (' +
-                (bases ? 'manuales' : 'división vertical estable') +
-                '):',
-                nivelesBase.map(v => +(v - alturaMinModel).toFixed(2))
-            );
+            console.log('[GIC] Alturas base de cada piso (' + (bases ? 'detectadas' : 'división igual, sin losas detectadas') + '):',
+                nivelesBase.map(v => +(v - alturaMinModel).toFixed(2)));
         }
 
         function indicePisoPorAltura(y) {
-            if (!nivelesBase || nivelesBase.length !== 5) return 0;
-
-            const total = alturaMaxModel - alturaMinModel;
-            const eps = total * 0.005;
-
+            const eps = (alturaMaxModel - alturaMinModel) * 0.005;
             let idx = 0;
-
-            for (let i = 1; i < 5; i++) {
-                if (y >= nivelesBase[i] - eps) {
-                    idx = i;
-                }
-            }
-
-            // Mantener siempre el índice dentro de los cinco pisos válidos.
-            return Math.max(0, Math.min(4, idx));
+            for (let i = 1; i < 5; i++) if (y >= nivelesBase[i] - eps) idx = i;
+            return idx;
         }
 
         function rangoPiso(idx) {
@@ -2150,30 +2150,21 @@
                 const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
                 let indicePisoFinal = -1;
 
-                // Al hacer clic directamente sobre el modelo 3D SIEMPRE usamos
-                // el punto real de intersección del raycaster. El estado
-                // pisoActivoSeleccionado solo sirve para los botones de aislamiento
-                // y no debe bloquear la selección mediante clic sobre el edificio.
-                const rect = container.getBoundingClientRect();
-                mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
-                mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
+                if (pisoActivoSeleccionado !== -1) {
+                    indicePisoFinal = pisoActivoSeleccionado;
+                } else {
+                    const rect = container.getBoundingClientRect();
+                    mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
+                    mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
 
-                raycaster.setFromCamera(mouse, camera);
+                    raycaster.setFromCamera(mouse, camera);
+                    if (!modeloGlobal) return;
 
-                if (!modeloGlobal) return;
-
-                const intersects = raycaster.intersectObject(modeloGlobal, true);
-
-                if (intersects.length > 0) {
-                    const puntoIntersec = intersects[0].point;
-                    indicePisoFinal = indicePisoPorAltura(puntoIntersec.y);
-
-                    console.log(
-                        '[GIC] Clic 3D ->',
-                        nombresPisos[indicePisoFinal],
-                        '| Y:',
-                        puntoIntersec.y.toFixed(2)
-                    );
+                    const intersects = raycaster.intersectObject(modeloGlobal, true);
+                    if (intersects.length > 0) {
+                        const puntoIntersec = intersects[0].point;
+                        indicePisoFinal = indicePisoPorAltura(puntoIntersec.y);
+                    }
                 }
 
                 if (indicePisoFinal !== -1 && window.irAVista2DPiso) {
