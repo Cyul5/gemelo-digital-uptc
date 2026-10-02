@@ -145,7 +145,6 @@
         }
         #map-controls button:hover { background: #0284c7; }
 
-        /* En el mapa general el panel derecho FLOTA sobre el mapa (no le quita ancho) */
         .app-body:has(#vista-mapa.activa) .sidebar-right {
             position: absolute;
             top: 0; right: 0; bottom: 0;
@@ -355,7 +354,7 @@
                 <!-- LISTA DESPLEGABLE DE EDIFICIOS -->
                 <div id="panel-edificios">
                     <button id="btn-lista-edificios" type="button">
-                        <span>🏛️ Edificios del campus <span id="contador-edificios" style="color:#94a3b8;font-weight:400;"></span></span>
+                        <span>🏛️️ Edificios del campus <span id="contador-edificios" style="color:#94a3b8;font-weight:400;"></span></span>
                         <span class="flecha">▾</span>
                     </button>
                     <div id="lista-edificios-box">
@@ -1473,7 +1472,7 @@
                         </div>
                         <div class="info-group">
                             <div class="info-label">Capacidad Observada:</div>
-                            <div class="info-val">👥 Estudiantes: <strong>${inv.capEstudiantes || 'N/A'}</strong> | 👨‍‍🏫 Docente: <strong>${inv.capDocente || 'N/A'}</strong></div>
+                            <div class="info-val">👥 Estudiantes: <strong>${inv.capEstudiantes || 'N/A'}</strong> | 👨‍‍‍🏫 Docente: <strong>${inv.capDocente || 'N/A'}</strong></div>
                         </div>
 
                         <div class="info-section-title">🚪 Puertas y Ventanas</div>
@@ -1740,7 +1739,6 @@
             window.addEventListener('resize', setTransform);
         }
 
-
         // ===== BIENVENIDA =====
         function abrirBienvenida() {
             const o = document.getElementById('welcome-overlay');
@@ -1805,7 +1803,6 @@
             setTransform();
             setTimeout(() => vp.classList.remove('animando'), 700);
 
-            // Resaltado temporal
             el.style.transition = 'filter 0.3s';
             el.style.filter = 'drop-shadow(0px 0px 10px #00b4d8) drop-shadow(0px 0px 4px #00b4d8)';
             setTimeout(() => { el.style.filter = 'none'; }, 2500);
@@ -1943,71 +1940,36 @@
         let modeloGlobal = null;
         let planoInferior = null, planoSuperior = null;
         let alturaMinModel = 0, alturaMaxModel = 100;
-        let pasoPisoGlobal = 20;
 
-        // --- NIVELES REALES DE PISO ---
-        // Niveles calibrados directamente con la geometría real de EDIFICIO_AULAS_M3D.glb.
-        // El modelo está normalizado con su base en Y=0.
-        // Piso 1: 0.00–5.15
-        // Piso 2: 5.15–8.65
-        // Piso 3: 8.65–12.15
-        // Piso 4: 12.15–15.65
-        // Piso 5/Cubierta: 15.65–19.65
-        const NIVELES_MANUAL = [0.00, 5.15, 8.65, 12.15, 15.65];
-        let nivelesBase = [];
+        // MAPEO RIGUROSO DE INTERVALOS DE ALTURA DE PISO (Y MIN - Y MAX)
+        // Basado en el origen normalizado del modelo en Y=0.
+        const MAPPING_PISOS = [
+            { idx: 0, nombre: "Piso 1", minY: -50.0, maxY: 4.80 },
+            { idx: 1, nombre: "Piso 2", minY: 4.80,  maxY: 8.50 },
+            { idx: 2, nombre: "Piso 3", minY: 8.50,  maxY: 12.00 },
+            { idx: 3, nombre: "Piso 4", minY: 12.00, maxY: 15.50 },
+            { idx: 4, nombre: "Piso 5 / Cubierta", minY: 15.50, maxY: 200.0 }
+        ];
 
-        function calcularNiveles(modelo) {
-            const total = alturaMaxModel - alturaMinModel;
-            const iguales = () => Array.from({ length: 5 }, (_, i) => alturaMinModel + (i * total) / 5);
-            let bases = null;
-
-            if (Array.isArray(NIVELES_MANUAL) && NIVELES_MANUAL.length === 5) {
-                bases = NIVELES_MANUAL.map(v => alturaMinModel + v);
-            } else {
-                const boxM = new THREE.Box3().setFromObject(modelo);
-                const sM = boxM.getSize(new THREE.Vector3());
-                const anchoMax = Math.max(sM.x, sM.z);
-                const losas = [];
-                modelo.traverse(c => {
-                    if (!c.isMesh) return;
-                    const b = new THREE.Box3().setFromObject(c);
-                    const s = b.getSize(new THREE.Vector3());
-                    if (s.y < total * 0.04 && Math.max(s.x, s.z) > anchoMax * 0.15) losas.push(b.min.y);
-                });
-                losas.sort((a, b) => a - b);
-                const tol = total * 0.03;
-                const grupos = [];
-                losas.forEach(y => {
-                    const g = grupos[grupos.length - 1];
-                    if (g !== undefined && y - g < tol) return;
-                    grupos.push(y);
-                });
-                if (grupos.length && grupos[0] > alturaMinModel + total * 0.08) grupos.unshift(alturaMinModel);
-                if (grupos.length >= 5) bases = grupos.slice(0, 5);
+        function indicePisoPorAltura(yActual) {
+            const yRelativa = yActual - alturaMinModel;
+            for (let i = 0; i < MAPPING_PISOS.length; i++) {
+                if (yRelativa >= MAPPING_PISOS[i].minY && yRelativa < MAPPING_PISOS[i].maxY) {
+                    return MAPPING_PISOS[i].idx;
+                }
             }
-
-            nivelesBase = bases || iguales();
-            console.log('[GIC] Alturas base de cada piso (' + (bases ? 'detectadas' : 'división igual, sin losas detectadas') + '):',
-                nivelesBase.map(v => +(v - alturaMinModel).toFixed(2)));
-        }
-
-        function indicePisoPorAltura(y) {
-            const eps = (alturaMaxModel - alturaMinModel) * 0.005;
-            let idx = 0;
-            for (let i = 1; i < 5; i++) if (y >= nivelesBase[i] - eps) idx = i;
-            return idx;
+            return 0; // Por defecto Piso 1 si es una coordenada inferior
         }
 
         function rangoPiso(idx) {
-            const eps = (alturaMaxModel - alturaMinModel) * 0.005;
-            const base = idx === 0 ? alturaMinModel - 50 : nivelesBase[idx] - eps;
-            const techo = idx < 4 ? nivelesBase[idx + 1] - eps : alturaMaxModel + 100;
+            const config = MAPPING_PISOS[idx] || MAPPING_PISOS[0];
+            const base = alturaMinModel + config.minY;
+            const techo = alturaMinModel + config.maxY;
             return { base, techo };
         }
 
         let pisosMeshes = [[], [], [], [], []];
         let pisoHoveredActual = -1;
-        let pisoActivoSeleccionado = -1;
 
         const clock = new THREE.Clock();
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
@@ -2100,15 +2062,25 @@
                 const intersects = raycaster.intersectObject(modeloGlobal, true);
                 let nuevoPisoHover = -1;
 
-                // Filtrar intersección válida que no esté recortada por clippingPlanes
                 for (let i = 0; i < intersects.length; i++) {
                     const hit = intersects[i];
                     if (!hit.object || hit.object.visible === false) continue;
                     const pt = hit.point;
-                    if (planoInferior && planoInferior.distanceToPoint(pt) < -0.001) continue;
-                    if (planoSuperior && planoSuperior.distanceToPoint(pt) < -0.001) continue;
+                    
+                    if (planoInferior && planoInferior.distanceToPoint(pt) < -0.01) continue;
+                    if (planoSuperior && planoSuperior.distanceToPoint(pt) < -0.01) continue;
 
-                    nuevoPisoHover = indicePisoPorAltura(pt.y);
+                    // Identificación por pertenencia directa de malla
+                    for (let pIdx = 0; pIdx < pisosMeshes.length; pIdx++) {
+                        if (pisosMeshes[pIdx].includes(hit.object)) {
+                            nuevoPisoHover = pIdx;
+                            break;
+                        }
+                    }
+
+                    if (nuevoPisoHover === -1) {
+                        nuevoPisoHover = indicePisoPorAltura(pt.y);
+                    }
                     break;
                 }
 
@@ -2163,25 +2135,28 @@
 
                 const intersects = raycaster.intersectObject(modeloGlobal, true);
                 
-                // Buscar la primera intersección visible que cumpla los planos de corte (unclipped)
                 for (let i = 0; i < intersects.length; i++) {
                     const hit = intersects[i];
                     if (!hit.object || hit.object.visible === false) continue;
                     const pt = hit.point;
-                    if (planoInferior && planoInferior.distanceToPoint(pt) < -0.001) continue;
-                    if (planoSuperior && planoSuperior.distanceToPoint(pt) < -0.001) continue;
 
-                    indicePisoFinal = indicePisoPorAltura(pt.y);
-                    
-                    // Respaldo en caso de que la detección por altura falle
-                    if (indicePisoFinal === -1 && hit.object) {
-                        for (let k = 0; k < pisosMeshes.length; k++) {
-                            if (pisosMeshes[k].includes(hit.object)) {
-                                indicePisoFinal = k;
-                                break;
-                            }
+                    // Ignorar si el punto está recortado por los planos
+                    if (planoInferior && planoInferior.distanceToPoint(pt) < -0.01) continue;
+                    if (planoSuperior && planoSuperior.distanceToPoint(pt) < -0.01) continue;
+
+                    // Método 1: Búsqueda por la lista de mallas previamente agrupadas
+                    for (let pIdx = 0; pIdx < pisosMeshes.length; pIdx++) {
+                        if (pisosMeshes[pIdx].includes(hit.object)) {
+                            indicePisoFinal = pIdx;
+                            break;
                         }
                     }
+
+                    // Método 2: Respaldo por mapeo de altura estricto
+                    if (indicePisoFinal === -1) {
+                        indicePisoFinal = indicePisoPorAltura(pt.y);
+                    }
+                    
                     break;
                 }
 
@@ -2251,9 +2226,6 @@
                     const boxGlobal = new THREE.Box3().setFromObject(modeloGlobal);
                     alturaMinModel = boxGlobal.min.y;
                     alturaMaxModel = boxGlobal.max.y;
-                    const alturaTotal = alturaMaxModel - alturaMinModel;
-                    pasoPisoGlobal = alturaTotal / 5;
-                    calcularNiveles(modeloGlobal);
 
                     planoInferior.constant = -(alturaMinModel - 50);
                     planoSuperior.constant = alturaMaxModel + 100;
@@ -2314,8 +2286,6 @@
                             btn.classList.add('active');
                             aislarRangoAltura(basePiso, techoPiso);
                             
-                            pisoActivoSeleccionado = idx;
-                            
                             if (window.actualizarPanelDetallePiso3D) {
                                 window.actualizarPanelDetallePiso3D(nombre);
                             }
@@ -2327,8 +2297,6 @@
                         document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
                         this.classList.add('active');
                         aislarRangoAltura(alturaMinModel - 50, alturaMaxModel + 100);
-                        
-                        pisoActivoSeleccionado = -1;
                         
                         if (window.actualizarPanelDetallePiso3D) {
                             window.actualizarPanelDetallePiso3D("Edificio Completo");
