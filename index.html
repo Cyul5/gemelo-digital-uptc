@@ -274,6 +274,49 @@
 
         .loading-spinner { width: 12px; height: 12px; border: 2px solid var(--text-muted); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== BIENVENIDA / AYUDA ===== */
+        #welcome-overlay { position: fixed; inset: 0; background: rgba(7,13,25,0.78); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(3px); }
+        #welcome-overlay.show { display: flex; }
+        .welcome-card { background: var(--bg-panel); color: var(--text-main); width: min(760px, 100%); max-height: 92vh; overflow-y: auto; border-radius: 14px; border: 1px solid #1e293b; box-shadow: 0 20px 60px rgba(0,0,0,0.5); padding: 26px 28px; }
+        .welcome-card h1 { font-size: 22px; margin-bottom: 4px; }
+        .welcome-card h1 span { color: var(--accent); }
+        .welcome-lead { color: var(--text-muted); font-size: 13px; line-height: 1.5; margin-bottom: 18px; }
+        .welcome-steps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+        .welcome-step { background: var(--bg-card); border: 1px solid #1e293b; border-radius: 10px; padding: 12px 14px; font-size: 12px; line-height: 1.5; color: #cbd5e1; }
+        .welcome-step b { display: block; color: var(--accent); font-size: 13px; margin-bottom: 4px; }
+        .welcome-step kbd { background: #1e293b; border-radius: 4px; padding: 1px 6px; font-size: 11px; color: #fff; }
+        .welcome-nav { background: var(--bg-card); border: 1px dashed #334155; border-radius: 10px; padding: 10px 14px; font-size: 12px; color: #cbd5e1; margin-bottom: 18px; line-height: 1.6; }
+        .welcome-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+        .welcome-footer label { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; cursor: pointer; }
+        .btn-primario { background: #0284c7; color: #fff; border: none; border-radius: 8px; padding: 10px 22px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .2s; }
+        .btn-primario:hover { background: #0369a1; }
+        .btn-ayuda { background: transparent; border: 1px solid #334155; color: var(--text-main); border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; transition: .2s; }
+        .btn-ayuda:hover { background: #0284c7; border-color: #0284c7; }
+        @media (max-width: 640px) { .welcome-steps { grid-template-columns: 1fr; } }
+
+        /* ===== LISTA DE EDIFICIOS (MAPA GENERAL) ===== */
+        #panel-edificios { position: absolute; top: 14px; left: 14px; z-index: 30; width: 290px; font-size: 12px; }
+        #btn-lista-edificios { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--bg-header); color: #f8fafc; border: 1px solid #1e293b; border-radius: 8px; padding: 9px 12px; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+        #btn-lista-edificios:hover { background: #0b1324; border-color: var(--accent); }
+        #btn-lista-edificios .flecha { transition: transform .2s; color: var(--accent); }
+        #panel-edificios.abierto #btn-lista-edificios .flecha { transform: rotate(180deg); }
+        #lista-edificios-box { display: none; margin-top: 6px; background: var(--bg-header); border: 1px solid #1e293b; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); overflow: hidden; }
+        #panel-edificios.abierto #lista-edificios-box { display: block; }
+        #buscar-edificio { width: 100%; background: #0f172a; border: none; border-bottom: 1px solid #1e293b; color: #fff; padding: 9px 12px; font-size: 12px; outline: none; }
+        #lista-edificios { max-height: min(55vh, 440px); overflow-y: auto; list-style: none; }
+        #lista-edificios li { display: flex; align-items: center; gap: 8px; padding: 7px 12px; color: #e2e8f0; cursor: pointer; border-bottom: 1px solid #0f172a; }
+        #lista-edificios li:hover { background: #1e293b; }
+        #lista-edificios li .cod { min-width: 22px; font-weight: 700; color: var(--accent); text-align: right; }
+        #lista-edificios li .sw { width: 12px; height: 12px; border-radius: 3px; flex: none; border: 1px solid rgba(255,255,255,0.35); }
+        #lista-edificios li .nom { flex: 1; line-height: 1.25; }
+        #lista-edificios li .pin { font-size: 11px; opacity: .9; }
+        #lista-edificios li.sin-geo { color: #94a3b8; }
+        #lista-edificios li.sin-geo .pin { opacity: .25; filter: grayscale(1); }
+        #lista-vacia { display: none; padding: 12px; color: var(--text-muted); text-align: center; }
+        #aviso-mapa { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(10px); background: var(--bg-header); color: #f8fafc; border: 1px solid var(--accent); padding: 9px 16px; border-radius: 8px; font-size: 12px; z-index: 40; opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; max-width: 80%; text-align: center; }
+        #aviso-mapa.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        #map-viewport.animando { transition: transform .65s cubic-bezier(.4,0,.2,1); }
     </style>
 </head>
 <body>
@@ -287,6 +330,7 @@
         </div>
 
         <div class="header-right">
+            <button class="btn-ayuda" onclick="abrirBienvenida()" title="Ver la guía de uso">❓ Ayuda</button>
             <div class="excel-status" id="excel-status-tag">
                 <span class="dot" style="background:#eab308;"></span> Leyendo Excel...
             </div>
@@ -308,6 +352,19 @@
                 <div id="map-viewport">
                     <object id="svg-object" type="image/svg+xml" data="plano_uptc.svg"></object>
                 </div>
+                <!-- LISTA DESPLEGABLE DE EDIFICIOS -->
+                <div id="panel-edificios">
+                    <button id="btn-lista-edificios" type="button">
+                        <span>🏛️ Edificios del campus <span id="contador-edificios" style="color:#94a3b8;font-weight:400;"></span></span>
+                        <span class="flecha">▾</span>
+                    </button>
+                    <div id="lista-edificios-box">
+                        <input id="buscar-edificio" type="text" placeholder="Buscar por nombre o número..." autocomplete="off">
+                        <ul id="lista-edificios"></ul>
+                        <div id="lista-vacia">Sin resultados</div>
+                    </div>
+                </div>
+                <div id="aviso-mapa"></div>
                 <div id="map-controls">
                     <button id="zoom-in" title="Acercar">+</button>
                     <button id="zoom-out" title="Alejar">&minus;</button>
@@ -386,6 +443,51 @@
             <div class="excel-box">
                 <div><strong>Archivo:</strong> Plantilla_Levantamiento_Edificio.xlsx</div>
                 <div id="hoja-excel-indicador"><strong>Hoja:</strong> Datos Generales</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CARTEL DE BIENVENIDA -->
+    <div id="welcome-overlay" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+        <div class="welcome-card">
+            <h1 id="welcome-title">👋 Bienvenido a <span>UPTC GIC</span></h1>
+            <p class="welcome-lead">
+                El <strong>Gestor de Información del Campus</strong> te permite explorar la sede desde el plano general
+                hasta cada aula de un edificio, y consultar su inventario, mobiliario y horarios de uso.
+            </p>
+
+            <div class="welcome-steps">
+                <div class="welcome-step">
+                    <b>🌐 1. Plano general</b>
+                    Arrastra con el mouse para moverte y usa la <kbd>rueda</kbd> o los botones <kbd>+</kbd> <kbd>−</kbd> para hacer zoom.
+                    Abre la lista <strong>🏛️ Edificios del campus</strong> (arriba a la izquierda) y haz clic en uno para acercarte a él.
+                </div>
+                <div class="welcome-step">
+                    <b>🏢 2. Modelo 3D</b>
+                    Pasa el cursor sobre el edificio <strong>Hunza (30)</strong> y haz clic para abrir su modelo 3D.
+                    Gira con clic izquierdo, desplaza con clic derecho y acerca con la <kbd>rueda</kbd>.
+                </div>
+                <div class="welcome-step">
+                    <b>🧱 3. Elegir un piso</b>
+                    En el 3D, haz clic sobre un piso del edificio para abrir su plano, o usa el panel derecho
+                    (<em>Niveles</em>) para aislar un piso o volver a ver el edificio completo.
+                </div>
+                <div class="welcome-step">
+                    <b>📐 4. Plano 2D y datos</b>
+                    Haz clic en un aula del plano para ver su ficha. Con el selector <em>Consulta</em> cambias entre
+                    inventario, mobiliario y horarios (día y franja) para ver qué aulas están libres u ocupadas.
+                </div>
+            </div>
+
+            <div class="welcome-nav">
+                <strong>Barra izquierda:</strong> 🌐 Plano general &nbsp;·&nbsp; 🏢 Modelo 3D &nbsp;·&nbsp; 📐 Plano 2D<br>
+                <strong>Botones azules:</strong> «⬅ Volver al Modelo 3D» y «🗺️ Volver al Mapa General» te devuelven un paso atrás.<br>
+                <strong>❓ Ayuda</strong> (arriba a la derecha) vuelve a mostrar esta guía.
+            </div>
+
+            <div class="welcome-footer">
+                <label><input type="checkbox" id="welcome-no-mostrar"> No volver a mostrar al entrar</label>
+                <button class="btn-primario" onclick="cerrarBienvenida()">Comenzar</button>
             </div>
         </div>
     </div>
@@ -1578,7 +1680,7 @@
 
             const onDown = (e) => {
                 if (e.button !== 0) return;
-                if (e.target.closest && e.target.closest('#map-controls')) return;
+                if (e.target.closest && e.target.closest('#map-controls, #panel-edificios')) return;
                 panning = true;
                 hasMoved = false;
                 movidoPx = 0;
@@ -1638,8 +1740,132 @@
             window.addEventListener('resize', setTransform);
         }
 
+
+        // ===== BIENVENIDA =====
+        function abrirBienvenida() {
+            const o = document.getElementById('welcome-overlay');
+            if (o) o.classList.add('show');
+        }
+        function cerrarBienvenida() {
+            const o = document.getElementById('welcome-overlay');
+            const chk = document.getElementById('welcome-no-mostrar');
+            if (chk && chk.checked) { try { localStorage.setItem('uptc_gic_bienvenida_vista', '1'); } catch (e) {} }
+            else { try { localStorage.removeItem('uptc_gic_bienvenida_vista'); } catch (e) {} }
+            if (o) o.classList.remove('show');
+        }
+        function inicializarBienvenida() {
+            let yaVista = false;
+            try { yaVista = localStorage.getItem('uptc_gic_bienvenida_vista') === '1'; } catch (e) {}
+            if (!yaVista) abrirBienvenida();
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarBienvenida(); });
+            const o = document.getElementById('welcome-overlay');
+            if (o) o.addEventListener('mousedown', (e) => { if (e.target === o) cerrarBienvenida(); });
+        }
+
+        // ===== LISTA DE EDIFICIOS DEL MAPA =====
+        // svgId = id del elemento en plano_uptc.svg. Cuando agregues más edificios al SVG,
+        // solo completa su svgId aquí (ej: {cod: 26, ..., svgId: 'BIBLIOTECA'}).
+        const EDIFICIOS_CAMPUS = [{"cod": 1, "nombre": "Entrada Principal", "color": "#ef1c1c", "svgId": null}, {"cod": 2, "nombre": "Entrada R", "color": "#ef1c1c", "svgId": null}, {"cod": 3, "nombre": "Entrada L", "color": "#ef1c1c", "svgId": null}, {"cod": 4, "nombre": "Acceso La Colina", "color": "#d9d9d9", "svgId": null}, {"cod": 5, "nombre": "Escenarios Deportivos", "color": "#c6e5b3", "svgId": null}, {"cod": 6, "nombre": "Laboratorio de Materiales", "color": "#8fc8ee", "svgId": null}, {"cod": 8, "nombre": "Lab Psicológicos", "color": "#a0701e", "svgId": null}, {"cod": 9, "nombre": "Bienestar", "color": "#f1f19a", "svgId": null}, {"cod": 10, "nombre": "Matemáticas", "color": "#c9d44c", "svgId": null}, {"cod": 11, "nombre": "ENSST", "color": "#3fa63f", "svgId": null}, {"cod": 12, "nombre": "Restaurante", "color": "#eab04a", "svgId": null}, {"cod": 13, "nombre": "Admisiones y Registro", "color": "#c05fb5", "svgId": null}, {"cod": 14, "nombre": "Gym S. Generales", "color": "#e8825a", "svgId": null}, {"cod": 15, "nombre": "Cafetín Profesores", "color": "#6f93c8", "svgId": null}, {"cod": 16, "nombre": "Granja Las Flores", "color": "#2c4a9c", "svgId": null}, {"cod": 17, "nombre": "Archivo Histórico", "color": "#b7a6d8", "svgId": null}, {"cod": 18, "nombre": "Ingeniería", "color": "#c0399e", "svgId": null}, {"cod": 19, "nombre": "Lab Antiguos", "color": "#6e2a6a", "svgId": null}, {"cod": 20, "nombre": "Estación Metereológica", "color": "#a5d99a", "svgId": null}, {"cod": 21, "nombre": "Lab Bioplasma", "color": "#8bbcdc", "svgId": null}, {"cod": 22, "nombre": "Metalurgia", "color": "#d9603f", "svgId": null}, {"cod": 23, "nombre": "Central", "color": "#5fb35f", "svgId": null}, {"cod": 26, "nombre": "Biblioteca Jorge Palacios", "color": "#dbb43a", "svgId": null}, {"cod": 27, "nombre": "Coliseo", "color": "#9c2f1c", "svgId": null}, {"cod": 28, "nombre": "Centro de Servicios", "color": "#5fc0a8", "svgId": null}, {"cod": 29, "nombre": "Rafael Azula", "color": "#7a3b8f", "svgId": null}, {"cod": 30, "nombre": "Aulas Hunza", "color": "#6c86b8", "svgId": "HUNZA"}, {"cod": 31, "nombre": "Aulas Julius Sieber", "color": "#6aae4a", "svgId": null}, {"cod": 32, "nombre": "Administrativo", "color": "#4aa3e8", "svgId": null}, {"cod": 33, "nombre": "Talleres y Carpintería", "color": "#d868b0", "svgId": null}, {"cod": 34, "nombre": "Fesad", "color": "#a56bc4", "svgId": null}, {"cod": 35, "nombre": "Derecho", "color": "#5a2a78", "svgId": null}, {"cod": 36, "nombre": "Cafetín Estudiantes", "color": "#7fd1b0", "svgId": null}, {"cod": 37, "nombre": "Invernadero", "color": "#d8e88a", "svgId": null}, {"cod": 38, "nombre": "Sede Iniag", "color": "#b4d43c", "svgId": null}, {"cod": 40, "nombre": "La Casona", "color": "#4aa8e8", "svgId": null}, {"cod": 41, "nombre": "Casa Colina", "color": "#e070b8", "svgId": null}, {"cod": 42, "nombre": "Incitema", "color": "#b9a0d8", "svgId": null}, {"cod": 43, "nombre": "Laboratorio Recursos Nucleares", "color": "#b02c58", "svgId": null}, {"cod": 44, "nombre": "Centro de Laboratorios", "color": "#35bfa6", "svgId": null}, {"cod": 45, "nombre": "Artes", "color": "#e0663c", "svgId": null}, {"cod": 46, "nombre": "Música", "color": "#8a4fb0", "svgId": null}, {"cod": 48, "nombre": "Clínica Veterinaria", "color": "#4cb04c", "svgId": null}, {"cod": 49, "nombre": "Posgrados", "color": "#a89fc0", "svgId": null}, {"cod": 61, "nombre": "Depósito residuos sólidos", "color": "#e8c83c", "svgId": null}, {"cod": 62, "nombre": "Laboratorios Ingeniería (EDILAB)", "color": "#7fbf5f", "svgId": null}];
+
+        function buscarElementoSvgMapa(doc, id) {
+            if (!doc || !id) return null;
+            return doc.getElementById(id) || doc.getElementById(id.toLowerCase()) ||
+                   doc.querySelector('[id="' + id + '"]') || doc.querySelector('[id*="' + id + '" i]');
+        }
+
+        let avisoTimer = null;
+        function mostrarAvisoMapa(texto) {
+            const a = document.getElementById('aviso-mapa');
+            if (!a) return;
+            a.textContent = texto;
+            a.classList.add('show');
+            clearTimeout(avisoTimer);
+            avisoTimer = setTimeout(() => a.classList.remove('show'), 2800);
+        }
+
+        function zoomAEdificio(ed) {
+            const svgObj = document.getElementById('svg-object');
+            const doc = svgObj && svgObj.contentDocument;
+            const el = ed.svgId ? buscarElementoSvgMapa(doc, ed.svgId) : null;
+            if (!el) {
+                mostrarAvisoMapa('El edificio ' + ed.cod + ' · ' + ed.nombre + ' aún no está disponible en el mapa interactivo.');
+                return;
+            }
+            const cont = document.getElementById('vista-mapa');
+            const vp = document.getElementById('map-viewport');
+            const r = el.getBoundingClientRect();           // coordenadas dentro del SVG (sin la transformación del visor)
+            if (!r.width || !r.height) return;
+
+            const W = cont.clientWidth, H = cont.clientHeight;
+            const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+            const destino = Math.min(W / r.width, H / r.height) * 0.35;   // el edificio ocupa ~35% de la pantalla
+            scale = Math.max(MAPA_ZOOM_MIN, Math.min(MAPA_ZOOM_MAX, destino));
+            pointX = W / 2 - cx * scale;
+            pointY = H / 2 - cy * scale;
+
+            vp.classList.add('animando');
+            setTransform();
+            setTimeout(() => vp.classList.remove('animando'), 700);
+
+            // Resaltado temporal
+            el.style.transition = 'filter 0.3s';
+            el.style.filter = 'drop-shadow(0px 0px 10px #00b4d8) drop-shadow(0px 0px 4px #00b4d8)';
+            setTimeout(() => { el.style.filter = 'none'; }, 2500);
+        }
+
+        function inicializarListaEdificios() {
+            const panel = document.getElementById('panel-edificios');
+            const btn = document.getElementById('btn-lista-edificios');
+            const ul = document.getElementById('lista-edificios');
+            const buscador = document.getElementById('buscar-edificio');
+            const vacia = document.getElementById('lista-vacia');
+            const contador = document.getElementById('contador-edificios');
+            if (!panel || !btn || !ul) return;
+
+            contador.textContent = '(' + EDIFICIOS_CAMPUS.length + ')';
+
+            // Evitar que el paneo / zoom del mapa interfiera con la lista
+            ['mousedown', 'wheel', 'dblclick'].forEach(ev =>
+                panel.addEventListener(ev, (e) => e.stopPropagation(), { passive: ev !== 'wheel' })
+            );
+
+            const normalizar = (t) => String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+            function pintar(filtro) {
+                const f = normalizar(filtro || '');
+                ul.innerHTML = '';
+                let n = 0;
+                EDIFICIOS_CAMPUS.forEach(ed => {
+                    if (f && !(normalizar(ed.nombre).includes(f) || String(ed.cod).startsWith(f))) return;
+                    n++;
+                    const li = document.createElement('li');
+                    if (!ed.svgId) li.classList.add('sin-geo');
+                    li.title = ed.svgId ? 'Clic para acercar en el mapa' : 'Aún sin geometría en el mapa';
+                    li.innerHTML = '<span class="cod">' + ed.cod + '</span>' +
+                                   '<span class="sw" style="background:' + ed.color + '"></span>' +
+                                   '<span class="nom">' + ed.nombre + '</span>' +
+                                   '<span class="pin">📍</span>';
+                    li.addEventListener('click', () => {
+                        zoomAEdificio(ed);
+                        if (ed.svgId) panel.classList.remove('abierto');
+                    });
+                    ul.appendChild(li);
+                });
+                vacia.style.display = n === 0 ? 'block' : 'none';
+            }
+
+            pintar('');
+            btn.addEventListener('click', () => {
+                panel.classList.toggle('abierto');
+                if (panel.classList.contains('abierto')) { buscador.value = ''; pintar(''); buscador.focus(); }
+            });
+            buscador.addEventListener('input', () => pintar(buscador.value));
+        }
+
         window.addEventListener('load', () => {
             inicializarFranjasHorarias();
+            inicializarListaEdificios();
+            inicializarBienvenida();
             cargarExcelRealRepo();
             inicializarZoomPanMapa();
 
@@ -1721,6 +1947,62 @@
         let planoInferior = null, planoSuperior = null;
         let alturaMinModel = 0, alturaMaxModel = 100;
         let pasoPisoGlobal = 20;
+
+        // --- NIVELES REALES DE PISO ---
+        // Si la detección automática no coincide con tu modelo, escribe aquí la altura (desde la base del
+        // modelo, en unidades del modelo) a la que empieza cada piso. Ejemplo: [0, 4.2, 8.4, 12.6, 16.8]
+        const NIVELES_MANUAL = null;
+        let nivelesBase = [];
+
+        function calcularNiveles(modelo) {
+            const total = alturaMaxModel - alturaMinModel;
+            const iguales = () => Array.from({ length: 5 }, (_, i) => alturaMinModel + (i * total) / 5);
+            let bases = null;
+
+            if (Array.isArray(NIVELES_MANUAL) && NIVELES_MANUAL.length === 5) {
+                bases = NIVELES_MANUAL.map(v => alturaMinModel + v);
+            } else {
+                // Detecta las losas (mallas anchas y delgadas) y las agrupa por altura
+                const boxM = new THREE.Box3().setFromObject(modelo);
+                const sM = boxM.getSize(new THREE.Vector3());
+                const anchoMax = Math.max(sM.x, sM.z);
+                const losas = [];
+                modelo.traverse(c => {
+                    if (!c.isMesh) return;
+                    const b = new THREE.Box3().setFromObject(c);
+                    const s = b.getSize(new THREE.Vector3());
+                    if (s.y < total * 0.04 && Math.max(s.x, s.z) > anchoMax * 0.15) losas.push(b.min.y);
+                });
+                losas.sort((a, b) => a - b);
+                const tol = total * 0.03;
+                const grupos = [];
+                losas.forEach(y => {
+                    const g = grupos[grupos.length - 1];
+                    if (g !== undefined && y - g < tol) return;
+                    grupos.push(y);
+                });
+                if (grupos.length && grupos[0] > alturaMinModel + total * 0.08) grupos.unshift(alturaMinModel);
+                if (grupos.length >= 5) bases = grupos.slice(0, 5);
+            }
+
+            nivelesBase = bases || iguales();
+            console.log('[GIC] Alturas base de cada piso (' + (bases ? 'detectadas' : 'división igual, sin losas detectadas') + '):',
+                nivelesBase.map(v => +(v - alturaMinModel).toFixed(2)));
+        }
+
+        function indicePisoPorAltura(y) {
+            const eps = (alturaMaxModel - alturaMinModel) * 0.005;
+            let idx = 0;
+            for (let i = 1; i < 5; i++) if (y >= nivelesBase[i] - eps) idx = i;
+            return idx;
+        }
+
+        function rangoPiso(idx) {
+            const eps = (alturaMaxModel - alturaMinModel) * 0.005;
+            const base = idx === 0 ? alturaMinModel - 50 : nivelesBase[idx] - eps;
+            const techo = idx < 4 ? nivelesBase[idx + 1] - eps : alturaMaxModel + 100;
+            return { base, techo };
+        }
 
         let pisosMeshes = [[], [], [], [], []];
         let pisoHoveredActual = -1;
@@ -1820,9 +2102,7 @@
                 if (intersects.length > 0) {
                     container.style.cursor = 'pointer';
                     const puntoIntersec = intersects[0].point;
-                    const alturaRelativa = puntoIntersec.y - alturaMinModel;
-                    nuevoPisoHover = Math.floor(alturaRelativa / pasoPisoGlobal);
-                    nuevoPisoHover = Math.max(0, Math.min(nuevoPisoHover, 4));
+                    nuevoPisoHover = indicePisoPorAltura(puntoIntersec.y);
                 } else {
                     container.style.cursor = 'default';
                 }
@@ -1876,9 +2156,7 @@
                     const intersects = raycaster.intersectObject(modeloGlobal, true);
                     if (intersects.length > 0) {
                         const puntoIntersec = intersects[0].point;
-                        const alturaRelativa = puntoIntersec.y - alturaMinModel;
-                        indicePisoFinal = Math.floor(alturaRelativa / pasoPisoGlobal);
-                        indicePisoFinal = Math.max(0, Math.min(indicePisoFinal, nombresPisos.length - 1));
+                        indicePisoFinal = indicePisoPorAltura(puntoIntersec.y);
                     }
                 }
 
@@ -1950,6 +2228,7 @@
                     alturaMaxModel = boxGlobal.max.y;
                     const alturaTotal = alturaMaxModel - alturaMinModel;
                     pasoPisoGlobal = alturaTotal / 5;
+                    calcularNiveles(modeloGlobal);
 
                     planoInferior.constant = -(alturaMinModel - 50);
                     planoSuperior.constant = alturaMaxModel + 100;
@@ -1978,8 +2257,7 @@
 
                             const boxMalla = new THREE.Box3().setFromObject(child);
                             const centerY = boxMalla.getCenter(new THREE.Vector3()).y;
-                            let idxPiso = Math.floor((centerY - alturaMinModel) / pasoPisoGlobal);
-                            idxPiso = Math.max(0, Math.min(idxPiso, 4));
+                            const idxPiso = indicePisoPorAltura(centerY);
                             pisosMeshes[idxPiso].push(child);
                         }
                     });
@@ -2001,8 +2279,7 @@
                     const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
 
                     nombresPisos.forEach((nombre, idx) => {
-                        const basePiso = alturaMinModel + (idx * pasoPisoGlobal);
-                        const techoPiso = alturaMinModel + ((idx + 1) * pasoPisoGlobal);
+                        const { base: basePiso, techo: techoPiso } = rangoPiso(idx);
 
                         const btn = document.createElement('button');
                         btn.className = 'btn-nivel';
