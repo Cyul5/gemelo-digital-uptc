@@ -123,7 +123,6 @@
             pointer-events: auto;
         }
 
-        /* Controles de zoom del mapa */
         #map-controls {
             position: absolute;
             left: 16px;
@@ -354,7 +353,7 @@
                 <!-- LISTA DESPLEGABLE DE EDIFICIOS -->
                 <div id="panel-edificios">
                     <button id="btn-lista-edificios" type="button">
-                        <span>🏛️️ Edificios del campus <span id="contador-edificios" style="color:#94a3b8;font-weight:400;"></span></span>
+                        <span>🏛️ Edificios del campus <span id="contador-edificios" style="color:#94a3b8;font-weight:400;"></span></span>
                         <span class="flecha">▾</span>
                     </button>
                     <div id="lista-edificios-box">
@@ -378,12 +377,28 @@
 
             <!-- VISTA 3: PLANTA 2D DINÁMICA -->
             <div id="vista-2d" class="vista">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <div>
-                        <h2 id="titulo-vista-2d" style="color: #0284c7; font-size: 16px;">Planta 2D - Piso 1</h2>
-                        <p style="color: #64748b; font-size: 12px;">Haz clic en un aula para consultar el detalle completo de la misma.</p>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div>
+                            <h2 id="titulo-vista-2d" style="color: #0284c7; font-size: 16px;">Planta 2D - Piso 1</h2>
+                            <p style="color: #64748b; font-size: 12px;">Haz clic en un aula para consultar el detalle completo de la misma.</p>
+                        </div>
                     </div>
-                    <button class="btn-regresar" style="display:inline-block; margin-bottom: 0; width: auto;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
+                    
+                    <!-- NUEVA LISTA DESPLEGABLE INDEPENDIENTE PARA PLANOS 2D -->
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #475569; font-weight: 600;">
+                            <span>🏢 Seleccionar Planta:</span>
+                            <select id="select-piso-2d" class="filter-select" style="width: 160px;" onchange="irAVista2DPiso(this.value)">
+                                <option value="Piso 1">Piso 1</option>
+                                <option value="Piso 2">Piso 2</option>
+                                <option value="Piso 3">Piso 3</option>
+                                <option value="Piso 4">Piso 4</option>
+                                <option value="Piso 5 / Cubierta">Piso 5 / Cubierta</option>
+                            </select>
+                        </div>
+                        <button class="btn-regresar" style="display:inline-block; margin-bottom: 0; width: auto;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
+                    </div>
                 </div>
                 <div class="container-svg-2d" id="svg-2d-wrapper">
                     <object id="svg-2d-object" type="image/svg+xml" data="PLANTA_1_HUNZA.svg"></object>
@@ -1047,6 +1062,10 @@
                 if(titulo2d) titulo2d.innerText = `Planta 2D - ${pisoActual2D}`;
                 if(breadcrumb) breadcrumb.innerText = `Edificio 30 Hunza (${pisoActual2D})`;
                 
+                // Sincronizar el selector desplegable con el piso actual
+                const selectPiso2D = document.getElementById('select-piso-2d');
+                if(selectPiso2D) selectPiso2D.value = pisoActual2D;
+
                 aulaSeleccionadaActual = null;
                 mostrarResumenPlanta2D();
                 setTimeout(actualizarEstadoAulas2D, 150);
@@ -1064,6 +1083,11 @@
             pisoActual2D = nombrePiso || "Piso 1";
             const archivoSVG = MAPA_ARCHIVOS_PISOS[pisoActual2D] || "PLANTA_1_HUNZA.svg";
             
+            const selectPiso2D = document.getElementById('select-piso-2d');
+            if (selectPiso2D && selectPiso2D.value !== pisoActual2D) {
+                selectPiso2D.value = pisoActual2D;
+            }
+
             const wrapper = document.getElementById('svg-2d-wrapper');
             if (wrapper) {
                 wrapper.innerHTML = `<object id="svg-2d-object" type="image/svg+xml" data="${archivoSVG}" style="width:100%; height:100%; border:none; object-fit:contain; background-color:#ffffff;"></object>`;
@@ -1472,7 +1496,7 @@
                         </div>
                         <div class="info-group">
                             <div class="info-label">Capacidad Observada:</div>
-                            <div class="info-val">👥 Estudiantes: <strong>${inv.capEstudiantes || 'N/A'}</strong> | 👨‍‍‍🏫 Docente: <strong>${inv.capDocente || 'N/A'}</strong></div>
+                            <div class="info-val">👥 Estudiantes: <strong>${inv.capEstudiantes || 'N/A'}</strong> | 👨‍🏫 Docente: <strong>${inv.capDocente || 'N/A'}</strong></div>
                         </div>
 
                         <div class="info-section-title">🚪 Puertas y Ventanas</div>
@@ -1941,8 +1965,6 @@
         let planoInferior = null, planoSuperior = null;
         let alturaMinModel = 0, alturaMaxModel = 100;
 
-        // MAPEO RIGUROSO DE INTERVALOS DE ALTURA DE PISO (Y MIN - Y MAX)
-        // Basado en el origen normalizado del modelo en Y=0.
         const MAPPING_PISOS = [
             { idx: 0, nombre: "Piso 1", minY: -50.0, maxY: 4.80 },
             { idx: 1, nombre: "Piso 2", minY: 4.80,  maxY: 8.50 },
@@ -1958,7 +1980,7 @@
                     return MAPPING_PISOS[i].idx;
                 }
             }
-            return 0; // Por defecto Piso 1 si es una coordenada inferior
+            return 0;
         }
 
         function rangoPiso(idx) {
@@ -2070,7 +2092,6 @@
                     if (planoInferior && planoInferior.distanceToPoint(pt) < -0.01) continue;
                     if (planoSuperior && planoSuperior.distanceToPoint(pt) < -0.01) continue;
 
-                    // Identificación por pertenencia directa de malla
                     for (let pIdx = 0; pIdx < pisosMeshes.length; pIdx++) {
                         if (pisosMeshes[pIdx].includes(hit.object)) {
                             nuevoPisoHover = pIdx;
@@ -2140,11 +2161,9 @@
                     if (!hit.object || hit.object.visible === false) continue;
                     const pt = hit.point;
 
-                    // Ignorar si el punto está recortado por los planos
                     if (planoInferior && planoInferior.distanceToPoint(pt) < -0.01) continue;
                     if (planoSuperior && planoSuperior.distanceToPoint(pt) < -0.01) continue;
 
-                    // Método 1: Búsqueda por la lista de mallas previamente agrupadas
                     for (let pIdx = 0; pIdx < pisosMeshes.length; pIdx++) {
                         if (pisosMeshes[pIdx].includes(hit.object)) {
                             indicePisoFinal = pIdx;
@@ -2152,7 +2171,6 @@
                         }
                     }
 
-                    // Método 2: Respaldo por mapeo de altura estricto
                     if (indicePisoFinal === -1) {
                         indicePisoFinal = indicePisoPorAltura(pt.y);
                     }
