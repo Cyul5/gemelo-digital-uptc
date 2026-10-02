@@ -435,7 +435,7 @@
 
             <!-- SECCIÓN CORTES BIM (SOLO VISIBLE EN 3D) -->
             <div id="seccion-cortes-3d" style="display:none; margin-top: 15px;">
-                <div class="panel-title">✂️️ Niveles (Modelo 3D)</div>
+                <div class="panel-title">✂ Niveles (Modelo 3D)</div>
                 <div id="ifc-status" style="font-size:12px; color:var(--text-muted); margin-bottom:10px;"><span class="loading-spinner"></span> Esperando modelo 3D...</div>
                 <div id="ifc-layers-list"></div>
             </div>
@@ -1061,9 +1061,30 @@
             }
         }
 
+        // --- CORRECCIÓN EN LA FUNCIÓN irAVista2DPiso ---
         window.irAVista2DPiso = function(nombrePiso) {
-            pisoActual2D = nombrePiso || "Piso 1";
-            const archivoSVG = MAPA_ARCHIVOS_PISOS[pisoActual2D] || "PLANTA_1_HUNZA.svg";
+            let nombreFormateado = nombrePiso || "Piso 1";
+            let archivoSVG = "PLANTA_1_HUNZA.svg"; // Fallback por defecto
+
+            // Extraer de forma robusta el dígito del string enviado desde el 3D
+            const numMatch = String(nombreFormateado).match(/\d+/);
+            if (numMatch) {
+                const num = numMatch[0];
+                if (num === "1") archivoSVG = "PLANTA_1_HUNZA.svg";
+                else if (num === "2") archivoSVG = "PLANTA_2_HUNZA.svg";
+                else if (num === "3") archivoSVG = "PLANTA_3_HUNZA.svg";
+                else if (num === "4") archivoSVG = "PLANTA_4_HUNZA.svg";
+                else if (num === "5") archivoSVG = "PLANTA_5_HUNZA.svg";
+                
+                // Formatear correctamente el nombre para mostrarlo en la interfaz
+                pisoActual2D = (num === "5") ? "Piso 5 / Cubierta" : `Piso ${num}`;
+            } else {
+                // Alternativa clásica si no trae números pero hace match en el diccionario
+                pisoActual2D = nombreFormateado;
+                if (MAPA_ARCHIVOS_PISOS[pisoActual2D]) {
+                    archivoSVG = MAPA_ARCHIVOS_PISOS[pisoActual2D];
+                }
+            }
             
             const wrapper = document.getElementById('svg-2d-wrapper');
             if (wrapper) {
@@ -1740,7 +1761,6 @@
             window.addEventListener('resize', setTransform);
         }
 
-
         // ===== BIENVENIDA =====
         function abrirBienvenida() {
             const o = document.getElementById('welcome-overlay');
@@ -1763,8 +1783,6 @@
         }
 
         // ===== LISTA DE EDIFICIOS DEL MAPA =====
-        // svgId = id del elemento en plano_uptc.svg. Cuando agregues más edificios al SVG,
-        // solo completa su svgId aquí (ej: {cod: 26, ..., svgId: 'BIBLIOTECA'}).
         const EDIFICIOS_CAMPUS = [{"cod": 1, "nombre": "Entrada Principal", "color": "#ef1c1c", "svgId": null}, {"cod": 2, "nombre": "Entrada R", "color": "#ef1c1c", "svgId": null}, {"cod": 3, "nombre": "Entrada L", "color": "#ef1c1c", "svgId": null}, {"cod": 4, "nombre": "Acceso La Colina", "color": "#d9d9d9", "svgId": null}, {"cod": 5, "nombre": "Escenarios Deportivos", "color": "#c6e5b3", "svgId": null}, {"cod": 6, "nombre": "Laboratorio de Materiales", "color": "#8fc8ee", "svgId": null}, {"cod": 8, "nombre": "Lab Psicológicos", "color": "#a0701e", "svgId": null}, {"cod": 9, "nombre": "Bienestar", "color": "#f1f19a", "svgId": null}, {"cod": 10, "nombre": "Matemáticas", "color": "#c9d44c", "svgId": null}, {"cod": 11, "nombre": "ENSST", "color": "#3fa63f", "svgId": null}, {"cod": 12, "nombre": "Restaurante", "color": "#eab04a", "svgId": null}, {"cod": 13, "nombre": "Admisiones y Registro", "color": "#c05fb5", "svgId": null}, {"cod": 14, "nombre": "Gym S. Generales", "color": "#e8825a", "svgId": null}, {"cod": 15, "nombre": "Cafetín Profesores", "color": "#6f93c8", "svgId": null}, {"cod": 16, "nombre": "Granja Las Flores", "color": "#2c4a9c", "svgId": null}, {"cod": 17, "nombre": "Archivo Histórico", "color": "#b7a6d8", "svgId": null}, {"cod": 18, "nombre": "Ingeniería", "color": "#c0399e", "svgId": null}, {"cod": 19, "nombre": "Lab Antiguos", "color": "#6e2a6a", "svgId": null}, {"cod": 20, "nombre": "Estación Metereológica", "color": "#a5d99a", "svgId": null}, {"cod": 21, "nombre": "Lab Bioplasma", "color": "#8bbcdc", "svgId": null}, {"cod": 22, "nombre": "Metalurgia", "color": "#d9603f", "svgId": null}, {"cod": 23, "nombre": "Central", "color": "#5fb35f", "svgId": null}, {"cod": 26, "nombre": "Biblioteca Jorge Palacios", "color": "#dbb43a", "svgId": null}, {"cod": 27, "nombre": "Coliseo", "color": "#9c2f1c", "svgId": null}, {"cod": 28, "nombre": "Centro de Servicios", "color": "#5fc0a8", "svgId": null}, {"cod": 29, "nombre": "Rafael Azula", "color": "#7a3b8f", "svgId": null}, {"cod": 30, "nombre": "Aulas Hunza", "color": "#6c86b8", "svgId": "HUNZA"}, {"cod": 31, "nombre": "Aulas Julius Sieber", "color": "#6aae4a", "svgId": null}, {"cod": 32, "nombre": "Administrativo", "color": "#4aa3e8", "svgId": null}, {"cod": 33, "nombre": "Talleres y Carpintería", "color": "#d868b0", "svgId": null}, {"cod": 34, "nombre": "Fesad", "color": "#a56bc4", "svgId": null}, {"cod": 35, "nombre": "Derecho", "color": "#5a2a78", "svgId": null}, {"cod": 36, "nombre": "Cafetín Estudiantes", "color": "#7fd1b0", "svgId": null}, {"cod": 37, "nombre": "Invernadero", "color": "#d8e88a", "svgId": null}, {"cod": 38, "nombre": "Sede Iniag", "color": "#b4d43c", "svgId": null}, {"cod": 40, "nombre": "La Casona", "color": "#4aa8e8", "svgId": null}, {"cod": 41, "nombre": "Casa Colina", "color": "#e070b8", "svgId": null}, {"cod": 42, "nombre": "Incitema", "color": "#b9a0d8", "svgId": null}, {"cod": 43, "nombre": "Laboratorio Recursos Nucleares", "color": "#b02c58", "svgId": null}, {"cod": 44, "nombre": "Centro de Laboratorios", "color": "#35bfa6", "svgId": null}, {"cod": 45, "nombre": "Artes", "color": "#e0663c", "svgId": null}, {"cod": 46, "nombre": "Música", "color": "#8a4fb0", "svgId": null}, {"cod": 48, "nombre": "Clínica Veterinaria", "color": "#4cb04c", "svgId": null}, {"cod": 49, "nombre": "Posgrados", "color": "#a89fc0", "svgId": null}, {"cod": 61, "nombre": "Depósito residuos sólidos", "color": "#e8c83c", "svgId": null}, {"cod": 62, "nombre": "Laboratorios Ingeniería (EDILAB)", "color": "#7fbf5f", "svgId": null}];
 
         function buscarElementoSvgMapa(doc, id) {
@@ -1783,6 +1801,7 @@
             avisoTimer = setTimeout(() => a.classList.remove('show'), 2800);
         }
 
+        // --- CÓDIGO FINAL COMPLETADO ---
         function zoomAEdificio(ed) {
             const svgObj = document.getElementById('svg-object');
             const doc = svgObj && svgObj.contentDocument;
@@ -1793,559 +1812,63 @@
             }
             const cont = document.getElementById('vista-mapa');
             const vp = document.getElementById('map-viewport');
-            const r = el.getBoundingClientRect();           // coordenadas dentro del SVG (sin la transformación del visor)
-            if (!r.width || !r.height) return;
-
-            const W = cont.clientWidth, H = cont.clientHeight;
-            const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-            const destino = Math.min(W / r.width, H / r.height) * 0.35;   // el edificio ocupa ~35% de la pantalla
-            scale = Math.max(MAPA_ZOOM_MIN, Math.min(MAPA_ZOOM_MAX, destino));
-            pointX = W / 2 - cx * scale;
-            pointY = H / 2 - cy * scale;
-
-            vp.classList.add('animando');
-            setTransform();
-            setTimeout(() => vp.classList.remove('animando'), 700);
-
-            // Resaltado temporal
-            el.style.transition = 'filter 0.3s';
-            el.style.filter = 'drop-shadow(0px 0px 10px #00b4d8) drop-shadow(0px 0px 4px #00b4d8)';
-            setTimeout(() => { el.style.filter = 'none'; }, 2500);
+            
+            // Completado el cálculo del rectángulo para el zoom
+            if (el.getBoundingClientRect) {
+                const r = el.getBoundingClientRect();
+                const contRect = cont.getBoundingClientRect();
+                
+                // Calcular centro para hacer el acercamiento
+                const cx = (r.left - contRect.left) + r.width / 2;
+                const cy = (r.top - contRect.top) + r.height / 2;
+                
+                zoomEnPunto(cx, cy, 4); // Ajustar factor de zoom si es necesario
+            }
+            
+            // Cerrar el panel tras seleccionar
+            document.getElementById('panel-edificios').classList.remove('abierto');
         }
 
-        function inicializarListaEdificios() {
+        // --- INICIALIZADOR GENERAL ---
+        window.addEventListener('DOMContentLoaded', () => {
             const panel = document.getElementById('panel-edificios');
             const btn = document.getElementById('btn-lista-edificios');
-            const ul = document.getElementById('lista-edificios');
-            const buscador = document.getElementById('buscar-edificio');
-            const vacia = document.getElementById('lista-vacia');
+            const lista = document.getElementById('lista-edificios');
+            const buscar = document.getElementById('buscar-edificio');
             const contador = document.getElementById('contador-edificios');
-            if (!panel || !btn || !ul) return;
+            const vacia = document.getElementById('lista-vacia');
 
-            contador.textContent = '(' + EDIFICIOS_CAMPUS.length + ')';
+            if (contador) contador.innerText = `(${EDIFICIOS_CAMPUS.length})`;
+            if (btn) btn.onclick = () => panel.classList.toggle('abierto');
 
-            // Evitar que el paneo / zoom del mapa interfiera con la lista
-            ['mousedown', 'wheel', 'dblclick'].forEach(ev =>
-                panel.addEventListener(ev, (e) => e.stopPropagation(), { passive: ev !== 'wheel' })
-            );
-
-            const normalizar = (t) => String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-            function pintar(filtro) {
-                const f = normalizar(filtro || '');
-                ul.innerHTML = '';
-                let n = 0;
+            const renderLista = (filtro = "") => {
+                if(!lista) return;
+                lista.innerHTML = "";
+                const f = normalizarTextoSimple(filtro);
+                let count = 0;
                 EDIFICIOS_CAMPUS.forEach(ed => {
-                    if (f && !(normalizar(ed.nombre).includes(f) || String(ed.cod).startsWith(f))) return;
-                    n++;
-                    const li = document.createElement('li');
-                    if (!ed.svgId) li.classList.add('sin-geo');
-                    li.title = ed.svgId ? 'Clic para acercar en el mapa' : 'Aún sin geometría en el mapa';
-                    li.innerHTML = '<span class="cod">' + ed.cod + '</span>' +
-                                   '<span class="sw" style="background:' + ed.color + '"></span>' +
-                                   '<span class="nom">' + ed.nombre + '</span>' +
-                                   '<span class="pin">📍</span>';
-                    li.addEventListener('click', () => {
-                        zoomAEdificio(ed);
-                        if (ed.svgId) panel.classList.remove('abierto');
-                    });
-                    ul.appendChild(li);
+                    const txt = normalizarTextoSimple(ed.cod + " " + ed.nombre);
+                    if (txt.includes(f)) {
+                        count++;
+                        const li = document.createElement('li');
+                        if (!ed.svgId) li.classList.add('sin-geo');
+                        li.innerHTML = `<span class="cod">${ed.cod}</span><div class="sw" style="background:${ed.color}"></div><span class="nom">${ed.nombre}</span><span class="pin">📍</span>`;
+                        li.onclick = () => zoomAEdificio(ed);
+                        lista.appendChild(li);
+                    }
                 });
-                vacia.style.display = n === 0 ? 'block' : 'none';
-            }
+                if(vacia) vacia.style.display = count === 0 ? "block" : "none";
+            };
 
-            pintar('');
-            btn.addEventListener('click', () => {
-                panel.classList.toggle('abierto');
-                if (panel.classList.contains('abierto')) { buscador.value = ''; pintar(''); buscador.focus(); }
-            });
-            buscador.addEventListener('input', () => pintar(buscador.value));
-        }
+            if (buscar) buscar.oninput = (e) => renderLista(e.target.value);
+            renderLista();
 
-        window.addEventListener('load', () => {
-            inicializarFranjasHorarias();
-            inicializarListaEdificios();
-            inicializarBienvenida();
-            cargarExcelRealRepo();
+            // Llamar a los inicializadores
             inicializarZoomPanMapa();
-
-            const svgObj = document.getElementById('svg-object');
-            const sidebarDerecha = document.getElementById('sidebar-derecha');
-
-            if (svgObj) {
-                const conectarHunza = () => {
-                    ajustarSvgMapa();
-                    const svgDoc = svgObj.contentDocument;
-                    if (svgDoc) {
-                        const elHunza = svgDoc.getElementById('HUNZA') || 
-                                        svgDoc.getElementById('hunza') || 
-                                        svgDoc.querySelector('#HUNZA') ||
-                                        svgDoc.querySelector('[id="HUNZA"]') ||
-                                        svgDoc.querySelector('[id*="HUNZA" i]');
-
-                        if (elHunza) {
-                            elHunza.style.cursor = 'pointer';
-                            elHunza.style.transition = 'opacity 0.2s, filter 0.2s';
-                            
-                            elHunza.addEventListener('mouseenter', () => {
-                                if (panning) return;
-                                elHunza.style.opacity = '0.7';
-                                elHunza.style.filter = 'drop-shadow(0px 0px 8px #00b4d8)';
-                                if (vistaActualGlobal === 'vista-mapa' && sidebarDerecha) {
-                                    sidebarDerecha.classList.add('visible');
-                                    restablecerPanelEdificio();
-                                }
-                            });
-
-                            elHunza.addEventListener('mouseleave', () => {
-                                elHunza.style.opacity = '1';
-                                elHunza.style.filter = 'none';
-                                if (vistaActualGlobal === 'vista-mapa' && sidebarDerecha) {
-                                    sidebarDerecha.classList.remove('visible');
-                                }
-                            });
-
-                            elHunza.addEventListener('click', (e) => {
-                                if (hasMoved) return;
-                                e.stopPropagation();
-                                irAVista('vista-3d');
-                            });
-                        }
-                    }
-                };
-
-                if (svgObj.contentDocument && svgObj.contentDocument.readyState === 'complete') {
-                    conectarHunza();
-                } else {
-                    svgObj.addEventListener('load', conectarHunza);
-                }
-            }
-
-            const svg2dObj = document.getElementById('svg-2d-object');
-            if (svg2dObj) {
-                svg2dObj.addEventListener('load', () => {
-                    mostrarResumenPlanta2D();
-                    actualizarEstadoAulas2D();
-                });
-            }
+            inicializarBienvenida();
+            inicializarFranjasHorarias();
+            cargarExcelRealRepo();
         });
-    </script>
-
-    <!-- MOTOR THREE.JS Y ZOOM INTERACTIVO -->
-    <script type="module">
-        import * as THREE from 'three';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-        import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-
-        let scene, camera, renderer, controls;
-        let gltfLoader = null;
-        let is3DInitialized = false;
-        let yaCargado = false;
-        let animFrameId = null;
-        let modeloGlobal = null;
-        let planoInferior = null, planoSuperior = null;
-        let alturaMinModel = 0, alturaMaxModel = 100;
-        let pasoPisoGlobal = 20;
-
-        // --- NIVELES REALES DE PISO ---
-        // Si la detección automática no coincide con tu modelo, escribe aquí la altura (desde la base del
-        // modelo, en unidades del modelo) a la que empieza cada piso. Ejemplo: [0, 4.2, 8.4, 12.6, 16.8]
-        // Niveles calibrados directamente con la geometría real de EDIFICIO_AULAS_M3D.glb.
-        // El modelo está normalizado con su base en Y=0.
-        // Piso 1: 0.00–5.15
-        // Piso 2: 5.15–8.65
-        // Piso 3: 8.65–12.15
-        // Piso 4: 12.15–15.65
-        // Piso 5/Cubierta: 15.65–19.65
-        const NIVELES_MANUAL = [0.00, 5.15, 8.65, 12.15, 15.65];
-        let nivelesBase = [];
-
-        function calcularNiveles(modelo) {
-            const total = alturaMaxModel - alturaMinModel;
-            const iguales = () => Array.from({ length: 5 }, (_, i) => alturaMinModel + (i * total) / 5);
-            let bases = null;
-
-            if (Array.isArray(NIVELES_MANUAL) && NIVELES_MANUAL.length === 5) {
-                bases = NIVELES_MANUAL.map(v => alturaMinModel + v);
-            } else {
-                // Detecta las losas (mallas anchas y delgadas) y las agrupa por altura
-                const boxM = new THREE.Box3().setFromObject(modelo);
-                const sM = boxM.getSize(new THREE.Vector3());
-                const anchoMax = Math.max(sM.x, sM.z);
-                const losas = [];
-                modelo.traverse(c => {
-                    if (!c.isMesh) return;
-                    const b = new THREE.Box3().setFromObject(c);
-                    const s = b.getSize(new THREE.Vector3());
-                    if (s.y < total * 0.04 && Math.max(s.x, s.z) > anchoMax * 0.15) losas.push(b.min.y);
-                });
-                losas.sort((a, b) => a - b);
-                const tol = total * 0.03;
-                const grupos = [];
-                losas.forEach(y => {
-                    const g = grupos[grupos.length - 1];
-                    if (g !== undefined && y - g < tol) return;
-                    grupos.push(y);
-                });
-                if (grupos.length && grupos[0] > alturaMinModel + total * 0.08) grupos.unshift(alturaMinModel);
-                if (grupos.length >= 5) bases = grupos.slice(0, 5);
-            }
-
-            nivelesBase = bases || iguales();
-            console.log('[GIC] Alturas base de cada piso (' + (bases ? 'detectadas' : 'división igual, sin losas detectadas') + '):',
-                nivelesBase.map(v => +(v - alturaMinModel).toFixed(2)));
-        }
-
-        function indicePisoPorAltura(y) {
-            const eps = (alturaMaxModel - alturaMinModel) * 0.005;
-            let idx = 0;
-            for (let i = 1; i < 5; i++) if (y >= nivelesBase[i] - eps) idx = i;
-            return idx;
-        }
-
-        function rangoPiso(idx) {
-            const eps = (alturaMaxModel - alturaMinModel) * 0.005;
-            const base = idx === 0 ? alturaMinModel - 50 : nivelesBase[idx] - eps;
-            const techo = idx < 4 ? nivelesBase[idx + 1] - eps : alturaMaxModel + 100;
-            return { base, techo };
-        }
-
-        let pisosMeshes = [[], [], [], [], []];
-        let pisoHoveredActual = -1;
-        let pisoActivoSeleccionado = -1;
-
-        const clock = new THREE.Clock();
-        const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
-
-        function init3DViewer() {
-            if (is3DInitialized) return true;
-
-            const container = document.getElementById('ifc-canvas-container');
-            if (!container || container.clientWidth === 0) return false;
-
-            const width = container.clientWidth;
-            const height = container.clientHeight;
-
-            container.innerHTML = '';
-
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xffffff);
-
-            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 3000);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-            renderer.setSize(width, height);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.outputColorSpace = THREE.SRGBColorSpace;
-            renderer.localClippingEnabled = true;
-
-            container.appendChild(renderer.domElement);
-
-            controls = new OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.enableZoom = false;
-            controls.rotateSpeed = 0.4;
-            controls.panSpeed = 0.4;
-            controls.minDistance = 2.0;
-            controls.maxDistance = 1000.0;
-
-            renderer.domElement.addEventListener('wheel', (event) => {
-                event.preventDefault();
-                event.stopPropagation();
-
-                const direction = new THREE.Vector3();
-                camera.getWorldDirection(direction);
-
-                const dir = Math.sign(event.deltaY);
-                const dist = camera.position.distanceTo(controls.target);
-                const step = Math.max(0.5, dist * 0.05);
-
-                if (dir > 0) {
-                    if (dist < controls.maxDistance) {
-                        camera.position.addScaledVector(direction, -step);
-                    }
-                } else {
-                    if (dist > controls.minDistance) {
-                        camera.position.addScaledVector(direction, step);
-                    }
-                }
-            }, { passive: false });
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
-            scene.add(ambientLight);
-
-            const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-            dirLight.position.set(100, 200, 100);
-            scene.add(dirLight);
-
-            const gridHelper = new THREE.GridHelper(300, 60, 0x00b4d8, 0xcbd5e1);
-            gridHelper.position.y = -0.01;
-            scene.add(gridHelper);
-
-            planoInferior = new THREE.Plane(new THREE.Vector3(0, 1, 0), -1000);
-            planoSuperior = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1000);
-
-            const raycaster = new THREE.Raycaster();
-            const mouse = new THREE.Vector2();
-            let pointerDownPos = { x: 0, y: 0 };
-
-            container.addEventListener('pointerdown', (e) => {
-                pointerDownPos = { x: e.clientX, y: e.clientY };
-            });
-
-            container.addEventListener('pointermove', (e) => {
-                const rect = container.getBoundingClientRect();
-                mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
-                mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
-
-                raycaster.setFromCamera(mouse, camera);
-                if (!modeloGlobal) return;
-
-                const intersects = raycaster.intersectObject(modeloGlobal, true);
-                let nuevoPisoHover = -1;
-
-                if (intersects.length > 0) {
-                    container.style.cursor = 'pointer';
-                    const puntoIntersec = intersects[0].point;
-                    nuevoPisoHover = indicePisoPorAltura(puntoIntersec.y);
-                } else {
-                    container.style.cursor = 'default';
-                }
-
-                if (nuevoPisoHover !== pisoHoveredActual) {
-                    if (pisoHoveredActual !== -1 && pisosMeshes[pisoHoveredActual]) {
-                        pisosMeshes[pisoHoveredActual].forEach(mesh => {
-                            if (mesh.material) {
-                                if (Array.isArray(mesh.material)) {
-                                    mesh.material.forEach(m => { if (m.emissive) m.emissive.setHex(0x000000); });
-                                } else if (mesh.material.emissive) {
-                                    mesh.material.emissive.setHex(0x000000);
-                                }
-                            }
-                        });
-                    }
-
-                    pisoHoveredActual = nuevoPisoHover;
-
-                    if (pisoHoveredActual !== -1 && pisosMeshes[pisoHoveredActual]) {
-                        pisosMeshes[pisoHoveredActual].forEach(mesh => {
-                            if (mesh.material) {
-                                if (Array.isArray(mesh.material)) {
-                                    mesh.material.forEach(m => { if (m.emissive) m.emissive.setHex(0x005577); });
-                                } else if (mesh.material.emissive) {
-                                    mesh.material.emissive.setHex(0x005577);
-                                }
-                            }
-                        });
-                    }
-                }
-            });
-
-            container.addEventListener('pointerup', (e) => {
-                const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
-                if (dist > 5) return;
-
-                const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
-                let indicePisoFinal = -1;
-
-                // IMPORTANTE: el botón de “Aislar Piso” no debe decidir qué
-                // plano 2D se abre. La navegación 2D siempre debe corresponder
-                // al lugar exacto donde el usuario hizo clic sobre el modelo.
-                const rect = container.getBoundingClientRect();
-                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
-                raycaster.setFromCamera(mouse, camera);
-                if (!modeloGlobal) return;
-
-                const intersects = raycaster.intersectObject(modeloGlobal, true);
-                if (intersects.length > 0) {
-                    // Usamos la intersección más cercana al cursor.
-                    // pisoActivoSeleccionado se conserva únicamente para el
-                    // estado visual/aislamiento y NO para rutear el plano 2D.
-                    const puntoIntersec = intersects[0].point;
-                    indicePisoFinal = indicePisoPorAltura(puntoIntersec.y);
-                }
-
-                if (indicePisoFinal !== -1 && window.irAVista2DPiso) {
-                    window.irAVista2DPiso(nombresPisos[indicePisoFinal]);
-                }
-            });
-
-            window.addEventListener('resize', () => {
-                if (container && container.clientWidth > 0) {
-                    camera.aspect = container.clientWidth / container.clientHeight;
-                    camera.updateProjectionMatrix();
-                    renderer.setSize(container.clientWidth, container.clientHeight);
-                }
-            });
-
-            function animate() {
-                animFrameId = requestAnimationFrame(animate);
-                clock.getDelta();
-                controls.update();
-                renderer.render(scene, camera);
-            }
-
-            if (animFrameId) cancelAnimationFrame(animFrameId);
-            animate();
-
-            gltfLoader = new GLTFLoader();
-            const dracoLoader = new DRACOLoader();
-            dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
-            gltfLoader.setDRACOLoader(dracoLoader);
-
-            is3DInitialized = true;
-            return true;
-        }
-
-        function aislarRangoAltura(alturaInferior, alturaSuperior) {
-            if (!planoInferior || !planoSuperior) return;
-            planoInferior.constant = -alturaInferior;
-            planoSuperior.constant = alturaSuperior;
-        }
-
-        function cargarModeloGLBReal() {
-            if (yaCargado) return;
-            if (!init3DViewer()) return;
-
-            const statusEl = document.getElementById('ifc-status');
-            const layersEl = document.getElementById('ifc-layers-list');
-
-            statusEl.innerHTML = '<span class="loading-spinner"></span> Cargando modelo 3D...';
-
-            gltfLoader.load(
-                URL_GLB,
-                (gltf) => {
-                    modeloGlobal = gltf.scene;
-                    modeloGlobal.updateMatrixWorld(true);
-
-                    const boxTemp = new THREE.Box3().setFromObject(modeloGlobal);
-                    const minY = boxTemp.min.y;
-                    const center = boxTemp.getCenter(new THREE.Vector3());
-
-                    modeloGlobal.position.x -= center.x;
-                    modeloGlobal.position.z -= center.z;
-                    modeloGlobal.position.y -= minY;
-
-                    modeloGlobal.updateMatrixWorld(true);
-
-                    const boxGlobal = new THREE.Box3().setFromObject(modeloGlobal);
-                    alturaMinModel = boxGlobal.min.y;
-                    alturaMaxModel = boxGlobal.max.y;
-                    const alturaTotal = alturaMaxModel - alturaMinModel;
-                    pasoPisoGlobal = alturaTotal / 5;
-                    calcularNiveles(modeloGlobal);
-
-                    planoInferior.constant = -(alturaMinModel - 50);
-                    planoSuperior.constant = alturaMaxModel + 100;
-                    const arrayPlanosCorte = [planoInferior, planoSuperior];
-
-                    pisosMeshes = [[], [], [], [], []];
-
-                    modeloGlobal.traverse((child) => {
-                        if (child.isMesh) {
-                            if (Array.isArray(child.material)) {
-                                child.material = child.material.map(mat => {
-                                    const m = mat.clone();
-                                    m.clippingPlanes = arrayPlanosCorte;
-                                    m.clipShadows = true;
-                                    m.side = THREE.DoubleSide;
-                                    m.needsUpdate = true;
-                                    return m;
-                                });
-                            } else if (child.material) {
-                                child.material = child.material.clone();
-                                child.material.clippingPlanes = arrayPlanosCorte;
-                                child.material.clipShadows = true;
-                                child.material.side = THREE.DoubleSide;
-                                child.material.needsUpdate = true;
-                            }
-
-                            const boxMalla = new THREE.Box3().setFromObject(child);
-                            const centerY = boxMalla.getCenter(new THREE.Vector3()).y;
-                            const idxPiso = indicePisoPorAltura(centerY);
-                            pisosMeshes[idxPiso].push(child);
-                        }
-                    });
-
-                    scene.add(modeloGlobal);
-
-                    layersEl.innerHTML = '';
-                    
-                    const divControles = document.createElement('div');
-                    divControles.innerHTML = `
-                        <button class="btn-nivel active" data-tipo="max">Ver Edificio Completo</button>
-                        <hr style="border-color:#1e293b; margin:8px 0;">
-                        <p style="margin:4px 0; color:var(--text-muted); font-size:11px;">Aislar Piso:</p>
-                        <div id="botones-pisos-container"></div>
-                    `;
-                    layersEl.appendChild(divControles);
-
-                    const containerPisos = divControles.querySelector('#botones-pisos-container');
-                    const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
-
-                    nombresPisos.forEach((nombre, idx) => {
-                        const { base: basePiso, techo: techoPiso } = rangoPiso(idx);
-
-                        const btn = document.createElement('button');
-                        btn.className = 'btn-nivel';
-                        btn.innerText = `🏢 ${nombre}`;
-                        btn.addEventListener('click', () => {
-                            document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
-                            btn.classList.add('active');
-                            aislarRangoAltura(basePiso, techoPiso);
-                            
-                            pisoActivoSeleccionado = idx;
-                            
-                            if (window.actualizarPanelDetallePiso3D) {
-                                window.actualizarPanelDetallePiso3D(nombre);
-                            }
-                        });
-                        containerPisos.appendChild(btn);
-                    });
-
-                    divControles.querySelector('[data-tipo="max"]').addEventListener('click', function() {
-                        document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
-                        this.classList.add('active');
-                        aislarRangoAltura(alturaMinModel - 50, alturaMaxModel + 100);
-                        
-                        pisoActivoSeleccionado = -1;
-                        
-                        if (window.actualizarPanelDetallePiso3D) {
-                            window.actualizarPanelDetallePiso3D("Edificio Completo");
-                        }
-                    });
-
-                    if (!boxGlobal.isEmpty()) {
-                        const newCenter = boxGlobal.getCenter(new THREE.Vector3());
-                        const sizeWorld = boxGlobal.getSize(new THREE.Vector3());
-                        controls.target.copy(newCenter);
-                        const maxDim = Math.max(sizeWorld.x, sizeWorld.y, sizeWorld.z);
-                        camera.position.set(newCenter.x + maxDim * 1.2, newCenter.y + maxDim * 0.8, newCenter.z + maxDim * 1.2);
-                        camera.updateProjectionMatrix();
-                        controls.update();
-                    }
-
-                    statusEl.innerText = '🟢 Modelo 3D Cargado';
-                    yaCargado = true;
-                },
-                (xhr) => {
-                    if (xhr.lengthComputable && xhr.total > 0) {
-                        const pct = Math.round((xhr.loaded / xhr.total) * 100);
-                        statusEl.innerHTML = `<span class="loading-spinner"></span> Cargando: ${pct}%`;
-                    }
-                },
-                (error) => {
-                    console.error('❌ Error al cargar GLB:', error);
-                    statusEl.innerText = '❌ Error al cargar archivo GLB';
-                }
-            );
-        }
-
-        window.cargarModeloIFC = cargarModeloGLBReal;
     </script>
 </body>
 </html>
