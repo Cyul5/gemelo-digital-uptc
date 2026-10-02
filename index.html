@@ -378,7 +378,7 @@
 
             <!-- SECCIÓN CORTES BIM (SOLO VISIBLE EN 3D) -->
             <div id="seccion-cortes-3d" style="display:none; margin-top: 15px;">
-                <div class="panel-title">✂️ Niveles (Modelo 3D)</div>
+                <div class="panel-title">✂️️ Niveles (Modelo 3D)</div>
                 <div id="ifc-status" style="font-size:12px; color:var(--text-muted); margin-bottom:10px;"><span class="loading-spinner"></span> Esperando modelo 3D...</div>
                 <div id="ifc-layers-list"></div>
             </div>
@@ -1488,9 +1488,7 @@
         }
 
         // --- SISTEMA DE ZOOM Y PANEO DEL MAPA GENERAL ---
-        // Nota: los eventos del mouse sobre un <object> SVG NO suben al documento
-        // padre, por eso los listeners se registran también dentro del SVG.
-        const MAPA_MODO_AJUSTE = 'slice';   // 'slice' = cubre todo el área | 'meet' = muestra el mapa completo
+        const MAPA_MODO_AJUSTE = 'slice';
         const MAPA_ZOOM_MIN = 1;
         const MAPA_ZOOM_MAX = 12;
 
@@ -1507,7 +1505,6 @@
             const cont = document.getElementById('vista-mapa');
             if (!cont) return;
             const W = cont.clientWidth, H = cont.clientHeight;
-            // El mapa siempre debe cubrir el contenedor (sin huecos blancos)
             pointX = Math.min(0, Math.max(W - W * scale, pointX));
             pointY = Math.min(0, Math.max(H - H * scale, pointY));
         }
@@ -1520,7 +1517,6 @@
             }
         }
 
-        // Zoom manteniendo fijo el punto (cx, cy) en coordenadas del contenedor
         function zoomEnPunto(cx, cy, factor) {
             const nuevo = Math.max(MAPA_ZOOM_MIN, Math.min(scale * factor, MAPA_ZOOM_MAX));
             if (nuevo === scale) return;
@@ -1537,7 +1533,6 @@
             setTransform();
         }
 
-        // Ajusta el SVG para que llene todo el contenedor (en vez de su tamaño fijo original)
         function ajustarSvgMapa() {
             const svgObj = document.getElementById('svg-object');
             if (!svgObj || !svgObj.contentDocument) return;
@@ -1546,9 +1541,9 @@
 
             let vb = null;
             try {
-                const bb = svg.getBBox();               // área real del contenido
+                const bb = svg.getBBox();
                 if (bb.width > 0 && bb.height > 0) vb = [bb.x, bb.y, bb.width, bb.height];
-            } catch (e) { /* se usa el respaldo */ }
+            } catch (e) {}
 
             if (!vb) {
                 const attr = svg.getAttribute('viewBox');
@@ -1575,7 +1570,6 @@
             const vistaMapa = document.getElementById('vista-mapa');
             if (!vistaMapa) return;
 
-            // Convierte un evento (del documento padre o del SVG interno) a coordenadas del contenedor
             const puntoContenedor = (e, interno) => {
                 if (interno) return { x: pointX + e.clientX * scale, y: pointY + e.clientY * scale };
                 const r = vistaMapa.getBoundingClientRect();
@@ -1599,7 +1593,7 @@
                 lastScreenX = e.screenX;
                 lastScreenY = e.screenY;
                 movidoPx += Math.abs(dx) + Math.abs(dy);
-                if (movidoPx > 4) hasMoved = true;   // evita confundir un clic con un arrastre
+                if (movidoPx > 4) hasMoved = true;
                 pointX += dx;
                 pointY += dy;
                 setTransform();
@@ -1615,13 +1609,11 @@
                 zoomEnPunto(p.x, p.y, e.deltaY < 0 ? 1.15 : 1 / 1.15);
             };
 
-            // Documento padre
             vistaMapa.addEventListener('mousedown', onDown);
             vistaMapa.addEventListener('wheel', onWheel(false), { passive: false });
             window.addEventListener('mousemove', onMove);
             window.addEventListener('mouseup', onUp);
 
-            // Documento interno del SVG (se conecta cada vez que el SVG termina de cargar)
             const svgObj = document.getElementById('svg-object');
             const conectarInterno = () => {
                 const doc = svgObj && svgObj.contentDocument;
@@ -1638,7 +1630,6 @@
                 if (svgObj.contentDocument && svgObj.contentDocument.readyState === 'complete') conectarInterno();
             }
 
-            // Botones
             const centro = () => ({ x: vistaMapa.clientWidth / 2, y: vistaMapa.clientHeight / 2 });
             document.getElementById('zoom-in').addEventListener('click', () => { const c = centro(); zoomEnPunto(c.x, c.y, 1.4); });
             document.getElementById('zoom-out').addEventListener('click', () => { const c = centro(); zoomEnPunto(c.x, c.y, 1 / 1.4); });
@@ -1689,7 +1680,7 @@
                             });
 
                             elHunza.addEventListener('click', (e) => {
-                                if (hasMoved) return; // Si arrastró el mapa, no cuenta como clic en el edificio
+                                if (hasMoved) return;
                                 e.stopPropagation();
                                 irAVista('vista-3d');
                             });
