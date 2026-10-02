@@ -7,6 +7,7 @@
     
     <!-- LECTURA REAL DE EXCEL (SheetJS Actualizado) -->
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <!-- Import Maps para Three.js -->
     <script type="importmap">
@@ -314,6 +315,42 @@
         #lista-vacia { display: none; padding: 12px; color: var(--text-muted); text-align: center; }
         #aviso-mapa { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(10px); background: var(--bg-header); color: #f8fafc; border: 1px solid var(--accent); padding: 9px 16px; border-radius: 8px; font-size: 12px; z-index: 40; opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; max-width: 80%; text-align: center; }
         #aviso-mapa.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        #info-archivo-2d { font-size: 11px; color: #64748b; max-width: 340px; line-height: 1.3; }
+        #info-archivo-2d.alerta { color: #b45309; font-weight: 600; }
+        #toast-piso { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); background: #070d19; color: #f8fafc; border: 1px solid #00b4d8; border-radius: 8px; padding: 8px 14px; font-size: 12px; z-index: 900; opacity: 0; pointer-events: none; transition: opacity .25s; max-width: 90%; text-align: center; }
+        #toast-piso.show { opacity: 1; }
+        .btn-calib { background: var(--bg-card); color: var(--text-main); border: 1px solid #1e293b; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; }
+        .btn-calib:hover { border-color: var(--accent); background: #1e293b; }
+        .calib-fila { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; font-size: 11px; color: #cbd5e1; }
+        .calib-fila input { width: 80px; background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 4px; padding: 4px 6px; font-size: 12px; }
+
+        /* ===== GALERÍA ===== */
+        #btn-galeria { position: absolute; top: 14px; right: 14px; z-index: 30; background: var(--bg-header); color: #f8fafc; border: 1px solid #1e293b; border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+        #btn-galeria:hover { border-color: var(--accent); background: #0b1324; }
+        #galeria-overlay { position: fixed; inset: 0; background: rgba(7,13,25,0.88); z-index: 950; display: none; flex-direction: column; padding: 18px 22px; }
+        #galeria-overlay.show { display: flex; }
+        .galeria-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; color: var(--text-main); }
+        .galeria-top h2 { font-size: 18px; margin-right: 10px; }
+        .galeria-top select, .galeria-top input { background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 6px; padding: 7px 10px; font-size: 12px; outline: none; }
+        .galeria-top input { width: 220px; }
+        #galeria-contador { color: var(--text-muted); font-size: 12px; margin-left: auto; }
+        .galeria-cerrar { background: #0284c7; color: #fff; border: none; border-radius: 6px; padding: 8px 14px; font-size: 12px; font-weight: 700; cursor: pointer; }
+        #galeria-grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; align-content: start; padding-right: 4px; }
+        .galeria-card { background: var(--bg-card); border: 1px solid #1e293b; border-radius: 10px; overflow: hidden; cursor: pointer; transition: border-color .2s, transform .2s; }
+        .galeria-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+        .galeria-card img { width: 100%; height: 150px; object-fit: cover; display: block; background: #0f172a; }
+        .galeria-card .info { padding: 8px 10px; font-size: 11px; color: #cbd5e1; line-height: 1.35; }
+        .galeria-card .info b { color: var(--accent); font-size: 12px; }
+        .galeria-card .tag { display: inline-block; margin-top: 4px; padding: 1px 6px; border-radius: 4px; background: #1e293b; color: #94a3b8; font-size: 10px; }
+        .galeria-msg { grid-column: 1 / -1; color: var(--text-muted); text-align: center; padding: 40px 10px; font-size: 13px; line-height: 1.6; }
+        #galeria-visor { position: fixed; inset: 0; background: rgba(0,0,0,0.93); z-index: 960; display: none; align-items: center; justify-content: center; flex-direction: column; padding: 20px; }
+        #galeria-visor.show { display: flex; }
+        #galeria-visor img { max-width: 94vw; max-height: 78vh; object-fit: contain; border-radius: 6px; }
+        #galeria-visor .pie { color: #e2e8f0; font-size: 13px; margin-top: 12px; text-align: center; max-width: 90vw; line-height: 1.5; }
+        #galeria-visor .pie small { color: #94a3b8; }
+        .visor-btn { position: absolute; background: rgba(255,255,255,0.12); border: none; color: #fff; width: 44px; height: 44px; border-radius: 50%; font-size: 22px; cursor: pointer; }
+        .visor-btn:hover { background: rgba(0,180,216,0.6); }
+        #visor-prev { left: 18px; top: 50%; } #visor-next { right: 18px; top: 50%; } #visor-cerrar { right: 18px; top: 18px; }
         #map-viewport.animando { transition: transform .65s cubic-bezier(.4,0,.2,1); }
     </style>
 </head>
@@ -373,6 +410,7 @@
             <!-- VISTA 2: MODELO 3D -->
             <div id="vista-3d" class="vista">
                 <div id="ifc-canvas-container"></div>
+                <button id="btn-galeria" type="button" onclick="abrirGaleria()" title="Ver todas las fotos del levantamiento">🖼️ Galería</button>
             </div>
 
             <!-- VISTA 3: PLANTA 2D DINÁMICA -->
@@ -397,6 +435,7 @@
                                 <option value="Piso 5 / Cubierta">Piso 5 / Cubierta</option>
                             </select>
                         </div>
+                        <span id="info-archivo-2d"></span>
                         <button class="btn-regresar" style="display:inline-block; margin-bottom: 0; width: auto;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
                     </div>
                 </div>
@@ -461,6 +500,36 @@
         </div>
     </div>
 
+    <div id="toast-piso"></div>
+
+    <!-- GALERÍA DE FOTOS -->
+    <div id="galeria-overlay" role="dialog" aria-modal="true" aria-label="Galería de fotos">
+        <div class="galeria-top">
+            <h2>🖼️ Galería del levantamiento</h2>
+            <select id="galeria-filtro-origen" onchange="renderizarGaleria()">
+                <option value="">Todas las hojas</option>
+                <option value="Inventario Espacios">Inventario Espacios</option>
+                <option value="Mobiliario y Equipo">Mobiliario y Equipo</option>
+            </select>
+            <select id="galeria-filtro-piso" onchange="renderizarGaleria()">
+                <option value="">Todos los pisos</option>
+                <option value="1">Piso 1</option><option value="2">Piso 2</option><option value="3">Piso 3</option>
+                <option value="4">Piso 4</option><option value="5">Piso 5</option>
+            </select>
+            <input id="galeria-buscar" type="text" placeholder="Buscar código o referencia..." oninput="renderizarGaleria()" autocomplete="off">
+            <span id="galeria-contador"></span>
+            <button class="galeria-cerrar" onclick="cerrarGaleria()">Cerrar ✕</button>
+        </div>
+        <div id="galeria-grid"></div>
+    </div>
+    <div id="galeria-visor">
+        <button class="visor-btn" id="visor-cerrar" onclick="cerrarVisorFoto()">✕</button>
+        <button class="visor-btn" id="visor-prev" onclick="navegarVisorFoto(-1)">‹</button>
+        <button class="visor-btn" id="visor-next" onclick="navegarVisorFoto(1)">›</button>
+        <img id="visor-img" alt="">
+        <div class="pie" id="visor-pie"></div>
+    </div>
+
     <!-- CARTEL DE BIENVENIDA -->
     <div id="welcome-overlay" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
         <div class="welcome-card">
@@ -496,7 +565,8 @@
             <div class="welcome-nav">
                 <strong>Barra izquierda:</strong> 🌐 Plano general &nbsp;·&nbsp; 🏢 Modelo 3D &nbsp;·&nbsp; 📐 Plano 2D<br>
                 <strong>Botones azules:</strong> «⬅ Volver al Modelo 3D» y «🗺️ Volver al Mapa General» te devuelven un paso atrás.<br>
-                <strong>❓ Ayuda</strong> (arriba a la derecha) vuelve a mostrar esta guía.
+                <strong>❓ Ayuda</strong> (arriba a la derecha) vuelve a mostrar esta guía.<br>
+                <strong>🖼️ Galería</strong> (esquina superior derecha del Modelo 3D) muestra todas las fotos del levantamiento.
             </div>
 
             <div class="welcome-footer">
@@ -602,6 +672,9 @@
 
                 const arrayBuffer = await response.arrayBuffer();
                 const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                excelBufferGlobal = arrayBuffer;
+                excelWorkbookGlobal = workbook;
+                galeriaFotos = null; galeriaPromesa = null;
                 const sheetNames = Object.keys(workbook.Sheets);
 
                 const hGen = sheetNames.find(n => normalizarTextoSimple(n).includes("DATOS GENERALES") || normalizarTextoSimple(n).includes("GENERALES"));
@@ -976,6 +1049,7 @@
                 }
 
                 if (statusTag) statusTag.innerHTML = `<span class="dot"></span> Excel Conectado`;
+                autoMapearPlantas();
                 
                 if (vistaActualGlobal === 'vista-3d') {
                     actualizarPanelDetallePiso3D("Edificio Completo");
@@ -1079,31 +1153,511 @@
             }
         }
 
+        // ===== GALERÍA: lectura de fotos incrustadas en el Excel =====
+        const NS_REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+        let excelBufferGlobal = null;
+        let excelWorkbookGlobal = null;
+        let galeriaFotos = null;
+        let galeriaPromesa = null;
+
+        function xmlDesdeTexto(texto) { return new DOMParser().parseFromString(texto, 'application/xml'); }
+
+        function nodosLocal(nodo, local) {
+            const out = [];
+            const todos = nodo.getElementsByTagName('*');
+            for (let i = 0; i < todos.length; i++) if (todos[i].localName === local) out.push(todos[i]);
+            return out;
+        }
+
+        function atributoRel(nodo, nombre) {
+            return nodo.getAttribute('r:' + nombre) || (nodo.getAttributeNS && nodo.getAttributeNS(NS_REL, nombre)) || null;
+        }
+
+        function resolverRutaZip(archivoBase, destino) {
+            if (destino.startsWith('/')) return destino.slice(1);
+            const partes = archivoBase.split('/');
+            partes.pop();
+            destino.split('/').forEach(p => {
+                if (p === '..') partes.pop();
+                else if (p !== '.' && p !== '') partes.push(p);
+            });
+            return partes.join('/');
+        }
+
+        async function leerRelsZip(zip, ruta) {
+            const i = ruta.lastIndexOf('/');
+            const f = zip.file(ruta.slice(0, i) + '/_rels/' + ruta.slice(i + 1) + '.rels');
+            const mapa = {};
+            if (!f) return mapa;
+            const doc = xmlDesdeTexto(await f.async('string'));
+            nodosLocal(doc, 'Relationship').forEach(r => {
+                mapa[r.getAttribute('Id')] = { target: resolverRutaZip(ruta, r.getAttribute('Target') || ''), type: r.getAttribute('Type') || '' };
+            });
+            return mapa;
+        }
+
+        async function mapaHojasZip(zip) {
+            const wb = xmlDesdeTexto(await zip.file('xl/workbook.xml').async('string'));
+            const rels = await leerRelsZip(zip, 'xl/workbook.xml');
+            const out = {};
+            nodosLocal(wb, 'sheet').forEach(s => {
+                const rel = rels[atributoRel(s, 'id')];
+                if (rel) out[s.getAttribute('name')] = rel.target;
+            });
+            return out;
+        }
+
+        // Imágenes "en celda" de Excel 365 (Insertar > Imagen > Colocar en celda): vm -> ruta del medio
+        async function mapaImagenesEnCelda(zip) {
+            const out = {};
+            const fMeta = zip.file('xl/metadata.xml');
+            const fRv = zip.file('xl/richData/rdrichvalue.xml');
+            const fRel = zip.file('xl/richData/richValueRel.xml');
+            if (!fMeta || !fRv || !fRel) return out;
+
+            const meta = xmlDesdeTexto(await fMeta.async('string'));
+            const rv = xmlDesdeTexto(await fRv.async('string'));
+            const rvRel = xmlDesdeTexto(await fRel.async('string'));
+            const relsRv = await leerRelsZip(zip, 'xl/richData/richValueRel.xml');
+            const listaMedios = nodosLocal(rvRel, 'rel').map(n => (relsRv[atributoRel(n, 'id')] || {}).target || null);
+
+            const posClave = [];
+            const fEst = zip.file('xl/richData/rdrichvaluestructure.xml');
+            if (fEst) {
+                const est = xmlDesdeTexto(await fEst.async('string'));
+                nodosLocal(est, 's').forEach(s => {
+                    const claves = nodosLocal(s, 'k').map(k => k.getAttribute('n') || '');
+                    const p = claves.findIndex(n => /LocalImageIdentifier/i.test(n));
+                    posClave.push(p >= 0 ? p : 0);
+                });
+            }
+
+            const valores = nodosLocal(rv, 'rv').map(n => {
+                const vs = nodosLocal(n, 'v');
+                const s = parseInt(n.getAttribute('s') || '0', 10);
+                const pos = posClave[s] !== undefined ? posClave[s] : 0;
+                const idx = vs[pos] ? parseInt(vs[pos].textContent, 10) : NaN;
+                return Number.isFinite(idx) ? listaMedios[idx] || null : null;
+            });
+
+            const futuros = [];
+            nodosLocal(meta, 'futureMetadata').filter(n => n.getAttribute('name') === 'XLRICHVALUE').forEach(fm => {
+                nodosLocal(fm, 'bk').forEach(bk => {
+                    const rvb = nodosLocal(bk, 'rvb')[0];
+                    futuros.push(rvb ? parseInt(rvb.getAttribute('i'), 10) : null);
+                });
+            });
+
+            const vmeta = nodosLocal(meta, 'valueMetadata')[0];
+            if (vmeta) {
+                nodosLocal(vmeta, 'bk').forEach((bk, i) => {
+                    const rc = nodosLocal(bk, 'rc')[0];
+                    if (!rc) return;
+                    const iRv = futuros[parseInt(rc.getAttribute('v'), 10)];
+                    if (iRv !== null && iRv !== undefined && valores[iRv]) out[i + 1] = valores[iRv];
+                });
+            }
+            return out;
+        }
+
+        function decodificarCelda(ref) {
+            const m = /^([A-Z]+)(\d+)$/.exec(ref || '');
+            if (!m) return null;
+            let c = 0;
+            for (const ch of m[1]) c = c * 26 + (ch.charCodeAt(0) - 64);
+            return { fila: parseInt(m[2], 10) - 1, col: c - 1 };
+        }
+
+        // Devuelve [{ fila, col, medio }] con posición ABSOLUTA (0-based) de cada imagen de la hoja
+        async function imagenesDeHoja(zip, rutaHoja, imgEnCelda) {
+            const res = [];
+            const relsHoja = await leerRelsZip(zip, rutaHoja);
+
+            for (const rel of Object.values(relsHoja)) {
+                if (!/\/drawing$/.test(rel.type)) continue;
+                const fDib = zip.file(rel.target);
+                if (!fDib) continue;
+                const dib = xmlDesdeTexto(await fDib.async('string'));
+                const relsDib = await leerRelsZip(zip, rel.target);
+                const anclas = nodosLocal(dib, 'twoCellAnchor').concat(nodosLocal(dib, 'oneCellAnchor'));
+                anclas.forEach(a => {
+                    const from = nodosLocal(a, 'from')[0];
+                    if (!from) return;
+                    const col = parseInt(nodosLocal(from, 'col')[0].textContent, 10);
+                    const fila = parseInt(nodosLocal(from, 'row')[0].textContent, 10);
+                    nodosLocal(a, 'blip').forEach(b => {
+                        const r = relsDib[atributoRel(b, 'embed')];
+                        if (r) res.push({ fila, col, medio: r.target });
+                    });
+                });
+            }
+
+            const fHoja = zip.file(rutaHoja);
+            if (fHoja && Object.keys(imgEnCelda).length) {
+                const hoja = xmlDesdeTexto(await fHoja.async('string'));
+                nodosLocal(hoja, 'c').forEach(c => {
+                    const vm = c.getAttribute('vm');
+                    if (!vm || !imgEnCelda[vm]) return;
+                    const pos = decodificarCelda(c.getAttribute('r'));
+                    if (pos) res.push({ fila: pos.fila, col: pos.col, medio: imgEnCelda[vm] });
+                });
+            }
+            return res;
+        }
+
+        const REGEX_CODIGO_FILA = /^(A|L|HUNZA|SALA|ESPACIO)[-\s]?\d+/i;
+        function esCodigoEspacio(v) {
+            const t = String(v === undefined || v === null ? '' : v).trim().toUpperCase();
+            return REGEX_CODIGO_FILA.test(t) || /^\d{3}$/.test(t);
+        }
+
+        function pisoDesdeCodigoEspacio(codigo) {
+            const m = String(codigo || '').toUpperCase().match(/(\d{3,4})/);
+            if (!m) return null;
+            const d = parseInt(m[1].charAt(0), 10);
+            return d >= 1 && d <= 5 ? d : null;
+        }
+
+        function codigoDeFila(matriz, idxFila) {
+            for (let r = idxFila; r >= Math.max(0, idxFila - 25); r--) {
+                const fila = matriz[r];
+                if (!fila) continue;
+                for (let c = 0; c < Math.min(8, fila.length); c++) {
+                    if (esCodigoEspacio(fila[c])) return String(fila[c]).trim().toUpperCase();
+                }
+            }
+            return '';
+        }
+
+        function mimeDeRuta(ruta) {
+            const e = (ruta.split('.').pop() || '').toLowerCase();
+            return { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp' }[e] || null;
+        }
+
+        async function construirGaleriaDesdeExcel(opts) {
+            const { buffer, workbook, hojas, registrosInv } = opts;
+            const zip = await JSZip.loadAsync(buffer);
+            const rutasHojas = await mapaHojasZip(zip);
+            const imgEnCelda = await mapaImagenesEnCelda(zip);
+            const cacheBlobs = {};
+            const fotos = [];
+            const diag = [];
+
+            for (const h of hojas) {
+                const hoja = workbook.Sheets[h.nombre];
+                const rutaHoja = rutasHojas[h.nombre];
+                if (!hoja || !rutaHoja) { diag.push('Hoja no encontrada: ' + h.nombre); continue; }
+
+                const matriz = obtenerMatrizConMerges(hoja);
+                const rango = XLSX.utils.decode_range(hoja['!ref'] || 'A1');
+                const imagenes = await imagenesDeHoja(zip, rutaHoja, imgEnCelda);
+                diag.push(h.nombre + ': ' + imagenes.length + ' imagen(es) incrustada(s)');
+
+                // Columnas "Referencia" y "Foto" (texto) según los encabezados
+                const colsRef = [], colsFotoTexto = [];
+                let filaEncabezado = -1;
+                for (let r = 0; r < Math.min(15, matriz.length); r++) {
+                    (matriz[r] || []).forEach((v, c) => {
+                        const t = normalizarTextoSimple(v);
+                        if (t.includes('REFERENCIA') && !colsRef.includes(c)) colsRef.push(c);
+                        if ((t === 'FOTO' || t === 'FOTOS' || t === 'FOTOGRAFIA') && !colsFotoTexto.includes(c)) { colsFotoTexto.push(c); if (filaEncabezado < r) filaEncabezado = r; }
+                    });
+                }
+                const refMasCercana = (c) => colsRef.length ? colsRef.reduce((a, b) => Math.abs(b - c) < Math.abs(a - c) ? b : a) : -1;
+
+                const agregar = async (srcUrl, idxFila, idxCol, medio) => {
+                    const codigo = codigoDeFila(matriz, idxFila);
+                    const cRef = refMasCercana(idxCol);
+                    let referencia = '';
+                    if (cRef >= 0 && matriz[idxFila] && matriz[idxFila][cRef] !== undefined) referencia = String(matriz[idxFila][cRef]).trim();
+                    if (normalizarTextoSimple(referencia).includes('REFERENCIA') && referencia.length < 14) referencia = '';
+                    const reg = codigo ? buscarRegistroPorCodigo(registrosInv, codigo) : null;
+                    fotos.push({
+                        origen: h.etiqueta,
+                        codigo: codigo || 'Sin código',
+                        piso: pisoDesdeCodigoEspacio(codigo),
+                        referencia,
+                        detalle: reg && reg.uso && reg.uso !== 'N/A' ? reg.uso : (reg && reg.categoria && reg.categoria !== 'N/A' ? reg.categoria : ''),
+                        src: srcUrl,
+                        fila: idxFila + rango.s.r + 1,
+                        medio: medio || ''
+                    });
+                };
+
+                for (const im of imagenes) {
+                    const idxFila = im.fila - rango.s.r, idxCol = im.col - rango.s.c;
+                    if (idxFila < 0) continue;
+                    if (!cacheBlobs[im.medio]) {
+                        const mime = mimeDeRuta(im.medio);
+                        const f = zip.file(im.medio);
+                        if (!f || !mime) { diag.push('Formato no soportado o archivo ausente: ' + im.medio); continue; }
+                        cacheBlobs[im.medio] = URL.createObjectURL(new Blob([await f.async('uint8array')], { type: mime }));
+                    }
+                    await agregar(cacheBlobs[im.medio], idxFila, idxCol, im.medio);
+                }
+
+                // Respaldo: la columna "Foto" trae una ruta o URL escrita como texto
+                for (const cF of colsFotoTexto) {
+                    for (let r = filaEncabezado + 1; r < matriz.length; r++) {
+                        const v = String((matriz[r] || [])[cF] || '').trim();
+                        if (/^(https?:\/\/|\.?\/?[\w\-./%]+)\.(jpe?g|png|gif|webp|bmp)$/i.test(v)) await agregar(v, r, cF, v);
+                    }
+                }
+            }
+
+            fotos.sort((a, b) => a.origen.localeCompare(b.origen) || (a.piso || 9) - (b.piso || 9) || a.codigo.localeCompare(b.codigo, undefined, { numeric: true }));
+            return { fotos, diag };
+        }
+
+        let galeriaVisible = [];
+        let galeriaIndiceVisor = -1;
+
+        function abrirGaleria() {
+            const ov = document.getElementById('galeria-overlay');
+            const grid = document.getElementById('galeria-grid');
+            ov.classList.add('show');
+            if (galeriaFotos) { renderizarGaleria(); return; }
+            grid.innerHTML = '<div class="galeria-msg">⏳ Leyendo las fotos del Excel…</div>';
+            if (!excelBufferGlobal || !excelWorkbookGlobal) {
+                grid.innerHTML = '<div class="galeria-msg">El Excel todavía no se ha cargado. Espera a que aparezca «Excel Conectado» y vuelve a abrir la galería.</div>';
+                return;
+            }
+            if (typeof JSZip === 'undefined') {
+                grid.innerHTML = '<div class="galeria-msg">No se pudo cargar la librería JSZip (revisa tu conexión a internet).</div>';
+                return;
+            }
+            if (!galeriaPromesa) {
+                galeriaPromesa = construirGaleriaDesdeExcel({
+                    buffer: excelBufferGlobal,
+                    workbook: excelWorkbookGlobal,
+                    registrosInv: registrosInventarioExcel,
+                    hojas: [
+                        { nombre: nombreHojaInventarioReal, etiqueta: 'Inventario Espacios' },
+                        { nombre: nombreHojaMobiliarioReal, etiqueta: 'Mobiliario y Equipo' }
+                    ]
+                }).then(res => {
+                    galeriaFotos = res.fotos;
+                    console.log('[GIC] Galería:', res.diag, '| total fotos:', res.fotos.length);
+                    renderizarGaleria();
+                }).catch(err => {
+                    console.error('[GIC] Error leyendo fotos del Excel:', err);
+                    galeriaPromesa = null;
+                    grid.innerHTML = '<div class="galeria-msg">No se pudieron leer las fotos del Excel: ' + (err && err.message ? err.message : err) + '</div>';
+                });
+            }
+        }
+
+        function cerrarGaleria() {
+            cerrarVisorFoto();
+            document.getElementById('galeria-overlay').classList.remove('show');
+        }
+
+        function renderizarGaleria() {
+            const grid = document.getElementById('galeria-grid');
+            const cont = document.getElementById('galeria-contador');
+            if (!galeriaFotos) return;
+            const fOrigen = document.getElementById('galeria-filtro-origen').value;
+            const fPiso = document.getElementById('galeria-filtro-piso').value;
+            const q = normalizarTextoSimple(document.getElementById('galeria-buscar').value);
+
+            galeriaVisible = galeriaFotos.filter(f =>
+                (!fOrigen || f.origen === fOrigen) &&
+                (!fPiso || String(f.piso) === fPiso) &&
+                (!q || normalizarTextoSimple(f.codigo + ' ' + f.referencia + ' ' + f.detalle).includes(q))
+            );
+            cont.textContent = galeriaVisible.length + ' de ' + galeriaFotos.length + ' fotos';
+            grid.innerHTML = '';
+
+            if (!galeriaFotos.length) {
+                grid.innerHTML = '<div class="galeria-msg">No se encontraron fotos en las hojas «Inventario Espacios» ni «Mobiliario y Equipo».<br>Las imágenes deben estar insertadas en el Excel (flotantes o «en celda») dentro de la columna «Foto».</div>';
+                return;
+            }
+            if (!galeriaVisible.length) {
+                grid.innerHTML = '<div class="galeria-msg">Ninguna foto coincide con el filtro.</div>';
+                return;
+            }
+
+            galeriaVisible.forEach((f, i) => {
+                const card = document.createElement('div');
+                card.className = 'galeria-card';
+                const img = document.createElement('img');
+                img.loading = 'lazy'; img.decoding = 'async'; img.alt = f.codigo; img.src = f.src;
+                const info = document.createElement('div');
+                info.className = 'info';
+                const b = document.createElement('b'); b.textContent = f.codigo;
+                info.appendChild(b);
+                if (f.referencia) { info.appendChild(document.createElement('br')); info.appendChild(document.createTextNode(f.referencia)); }
+                else if (f.detalle) { info.appendChild(document.createElement('br')); info.appendChild(document.createTextNode(f.detalle)); }
+                info.appendChild(document.createElement('br'));
+                const tag = document.createElement('span'); tag.className = 'tag';
+                tag.textContent = (f.piso ? 'Piso ' + f.piso + ' · ' : '') + f.origen;
+                info.appendChild(tag);
+                card.appendChild(img); card.appendChild(info);
+                card.addEventListener('click', () => abrirVisorFoto(i));
+                grid.appendChild(card);
+            });
+        }
+
+        function abrirVisorFoto(i) {
+            if (!galeriaVisible.length) return;
+            galeriaIndiceVisor = (i + galeriaVisible.length) % galeriaVisible.length;
+            const f = galeriaVisible[galeriaIndiceVisor];
+            document.getElementById('visor-img').src = f.src;
+            const pie = document.getElementById('visor-pie');
+            pie.innerHTML = '';
+            const t = document.createElement('div'); t.innerHTML = '<b></b>'; t.firstChild.textContent = f.codigo + (f.piso ? ' · Piso ' + f.piso : '');
+            pie.appendChild(t);
+            if (f.referencia) { const d = document.createElement('div'); d.textContent = f.referencia; pie.appendChild(d); }
+            const s = document.createElement('small'); s.textContent = f.origen + ' · fila ' + f.fila + '  (' + (galeriaIndiceVisor + 1) + '/' + galeriaVisible.length + ')';
+            pie.appendChild(s);
+            document.getElementById('galeria-visor').classList.add('show');
+        }
+        function cerrarVisorFoto() { galeriaIndiceVisor = -1; document.getElementById('galeria-visor').classList.remove('show'); }
+        function navegarVisorFoto(d) { if (galeriaIndiceVisor >= 0) abrirVisorFoto(galeriaIndiceVisor + d); }
+
+        document.addEventListener('keydown', (e) => {
+            const visor = document.getElementById('galeria-visor');
+            const ov = document.getElementById('galeria-overlay');
+            if (visor && visor.classList.contains('show')) {
+                if (e.key === 'Escape') { cerrarVisorFoto(); e.stopPropagation(); }
+                else if (e.key === 'ArrowLeft') navegarVisorFoto(-1);
+                else if (e.key === 'ArrowRight') navegarVisorFoto(1);
+            } else if (ov && ov.classList.contains('show') && e.key === 'Escape') cerrarGaleria();
+        }, true);
+
+        // ===== PLANTAS 2D: archivo correcto para cada piso =====
+        // Si algún día un archivo no coincide con su piso, fuerza la asignación aquí (siempre se respeta):
+        //   const ARCHIVOS_PISOS_FORZADOS = { "Piso 3": "PLANTA_3_HUNZA.svg" };
+        const ARCHIVOS_PISOS_FORZADOS = {};
+        const LISTA_PISOS_2D = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
+        let archivosPorPiso = Object.assign({}, MAPA_ARCHIVOS_PISOS, ARCHIVOS_PISOS_FORZADOS);
+
+        function pisoDesdeTexto(t) {
+            const s = normalizarTextoSimple(t);
+            if (!s) return null;
+            if (/PRIMER|PRIMERA/.test(s)) return 1;
+            if (/SEGUNDO|SEGUNDA/.test(s)) return 2;
+            if (/TERCER|TERCERA/.test(s)) return 3;
+            if (/CUARTO|CUARTA/.test(s)) return 4;
+            if (/QUINTO|QUINTA|CUBIERTA/.test(s)) return 5;
+            const m = s.match(/\b([1-5])\b/);
+            return m ? parseInt(m[1], 10) : null;
+        }
+
+        // Determina a qué piso pertenece un SVG por los códigos de sus aulas (A-301 -> 3) o, si no
+        // tienen número de 3 cifras, por la columna «Piso» del inventario.
+        function pisoDeIdsSvg(ids) {
+            const cuenta = {};
+            let total = 0;
+            ids.filter(id => /^(A|L)[-_\s]?\d/i.test(id)).forEach(id => {
+                let p = pisoDesdeCodigoEspacio(id);
+                if (!p) {
+                    const reg = buscarRegistroPorCodigo(registrosInventarioExcel, id.toUpperCase());
+                    p = reg ? pisoDesdeTexto(reg.piso) : null;
+                }
+                if (p) { cuenta[p] = (cuenta[p] || 0) + 1; total++; }
+            });
+            if (!total) return null;
+            const [mejor, n] = Object.entries(cuenta).sort((a, b) => b[1] - a[1])[0];
+            return n / total >= 0.6 ? parseInt(mejor, 10) : null;
+        }
+
+        async function autoMapearPlantas() {
+            const hallado = {};
+            await Promise.all(LISTA_PISOS_2D.map(async (nombre) => {
+                const archivo = MAPA_ARCHIVOS_PISOS[nombre];
+                try {
+                    const r = await fetch(archivo);
+                    if (!r.ok) return;
+                    const doc = new DOMParser().parseFromString(await r.text(), 'image/svg+xml');
+                    const ids = Array.from(doc.querySelectorAll('[id]')).map(e => e.id);
+                    const p = pisoDeIdsSvg(ids);
+                    if (p) hallado[archivo] = p;
+                } catch (e) { /* sin acceso al archivo: se mantiene el mapa por defecto */ }
+            }));
+
+            const reclamos = {};
+            Object.entries(hallado).forEach(([archivo, piso]) => { (reclamos[piso] = reclamos[piso] || []).push(archivo); });
+            const nuevo = {};
+            const usados = {};
+            // 1) Pisos cuyo plano quedó identificado sin ambigüedad por el contenido del SVG
+            Object.entries(reclamos).forEach(([piso, archivos]) => {
+                if (archivos.length === 1) { nuevo[LISTA_PISOS_2D[piso - 1]] = archivos[0]; usados[archivos[0]] = true; }
+            });
+            // 2) Resto de pisos: su archivo por defecto si está libre y no es de otro piso; si no, ninguno (nunca uno equivocado)
+            LISTA_PISOS_2D.forEach((nombre, i) => {
+                if (nuevo[nombre]) return;
+                const libre = (f) => !usados[f] && (!hallado[f] || hallado[f] === i + 1);
+                const def = MAPA_ARCHIVOS_PISOS[nombre];
+                const elegido = libre(def) ? def : (Object.values(MAPA_ARCHIVOS_PISOS).find(libre) || null);
+                nuevo[nombre] = elegido;
+                if (elegido) usados[elegido] = true;
+            });
+            archivosPorPiso = Object.assign(nuevo, ARCHIVOS_PISOS_FORZADOS);
+            console.log('[GIC] Piso que contiene cada SVG (según los códigos de aula):', hallado);
+            console.log('[GIC] Archivo asignado a cada piso:', archivosPorPiso);
+
+            if (vistaActualGlobal === 'vista-2d') {
+                const obj = document.getElementById('svg-2d-object');
+                const esperado = archivosPorPiso[pisoActual2D];
+                const actual = obj ? (obj.getAttribute('data') || '') : '';
+                if (!esperado || !obj || !actual.endsWith(esperado)) window.irAVista2DPiso(pisoActual2D);
+                else verificarPlantaCargada();
+            }
+        }
+
+        function verificarPlantaCargada() {
+            const info = document.getElementById('info-archivo-2d');
+            const obj = document.getElementById('svg-2d-object');
+            if (!info) return;
+            info.classList.remove('alerta');
+            const archivo = (pisoActual2D in archivosPorPiso) ? archivosPorPiso[pisoActual2D] : (MAPA_ARCHIVOS_PISOS[pisoActual2D] || '');
+            let txt = '📄 ' + (archivo || 'sin plano asignado');
+            try {
+                if (obj && obj.contentDocument) {
+                    const ids = Array.from(obj.contentDocument.querySelectorAll('[id]')).map(e => e.id);
+                    const detectado = pisoDeIdsSvg(ids);
+                    const esperado = LISTA_PISOS_2D.indexOf(pisoActual2D) + 1;
+                    if (detectado) {
+                        txt += ' · aulas del piso ' + detectado;
+                        if (detectado !== esperado) { txt += ' ⚠ no coincide con ' + pisoActual2D; info.classList.add('alerta'); }
+                    }
+                }
+            } catch (e) {}
+            info.textContent = txt;
+        }
+
         window.irAVista2DPiso = function(nombrePiso) {
             pisoActual2D = nombrePiso || "Piso 1";
-            const archivoSVG = MAPA_ARCHIVOS_PISOS[pisoActual2D] || "PLANTA_1_HUNZA.svg";
-            
+            const archivoSVG = (pisoActual2D in archivosPorPiso) ? archivosPorPiso[pisoActual2D] : (MAPA_ARCHIVOS_PISOS[pisoActual2D] || "PLANTA_1_HUNZA.svg");
+
             const selectPiso2D = document.getElementById('select-piso-2d');
             if (selectPiso2D && selectPiso2D.value !== pisoActual2D) {
                 selectPiso2D.value = pisoActual2D;
             }
 
             const wrapper = document.getElementById('svg-2d-wrapper');
-            if (wrapper) {
+            if (wrapper && !archivoSVG) {
+                wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#64748b;font-size:14px;text-align:center;padding:20px;">No hay un plano SVG asociado a este piso.<br>Revisa los archivos PLANTA_X_HUNZA.svg o fuerza la asignación en ARCHIVOS_PISOS_FORZADOS.</div>';
+            } else if (wrapper) {
                 wrapper.innerHTML = `<object id="svg-2d-object" type="image/svg+xml" data="${archivoSVG}" style="width:100%; height:100%; border:none; object-fit:contain; background-color:#ffffff;"></object>`;
-                
+
                 const nuevoSvgObj = document.getElementById('svg-2d-object');
-                if(nuevoSvgObj) {
+                if (nuevoSvgObj) {
                     nuevoSvgObj.addEventListener('load', () => {
                         aulaSeleccionadaActual = null;
                         mostrarResumenPlanta2D();
+                        verificarPlantaCargada();
                         setTimeout(actualizarEstadoAulas2D, 100);
                     });
                 }
             }
 
+            const info = document.getElementById('info-archivo-2d');
+            if (info) { info.classList.remove('alerta'); info.textContent = '📄 ' + (archivoSVG || 'sin plano asignado'); }
+
             const titulo2d = document.getElementById('titulo-vista-2d');
-            if(titulo2d) titulo2d.innerText = `Planta 2D - ${pisoActual2D}`;
+            if (titulo2d) titulo2d.innerText = `Planta 2D - ${pisoActual2D}`;
             irAVista('vista-2d');
         };
 
@@ -1965,29 +2519,76 @@
         let planoInferior = null, planoSuperior = null;
         let alturaMinModel = 0, alturaMaxModel = 100;
 
-        const MAPPING_PISOS = [
-            { idx: 0, nombre: "Piso 1", minY: -50.0, maxY: 4.80 },
-            { idx: 1, nombre: "Piso 2", minY: 4.80,  maxY: 8.50 },
-            { idx: 2, nombre: "Piso 3", minY: 8.50,  maxY: 12.00 },
-            { idx: 3, nombre: "Piso 4", minY: 12.00, maxY: 15.50 },
-            { idx: 4, nombre: "Piso 5 / Cubierta", minY: 15.50, maxY: 200.0 }
-        ];
+        // --- NIVELES DE PISO ---
+        // Alturas (desde la base del modelo, en unidades del modelo) donde TERMINA cada piso.
+        // Se pueden recalibrar desde el panel «⚙ Calibrar alturas de pisos» (se guardan en el navegador).
+        const LIMITES_PISOS_DEFECTO = [4.80, 8.50, 12.00, 15.50];
+        const NOMBRES_PISOS_3D = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
+        const CLAVE_LIMITES = 'uptc_gic_limites_pisos_v2';
+        let limitesPisos = LIMITES_PISOS_DEFECTO.slice();
+        try {
+            const g = JSON.parse(localStorage.getItem(CLAVE_LIMITES) || 'null');
+            if (Array.isArray(g) && g.length === 4 && g.every(Number.isFinite) && g.every((v, i) => v > 0 && (i === 0 || v > g[i - 1]))) limitesPisos = g;
+        } catch (e) {}
+
+        let MAPPING_PISOS = [];
+        function reconstruirMapping() {
+            const lim = [-1e6, ...limitesPisos, 1e6];
+            MAPPING_PISOS = NOMBRES_PISOS_3D.map((nombre, i) => ({ idx: i, nombre, minY: lim[i], maxY: lim[i + 1] }));
+        }
+        reconstruirMapping();
 
         function indicePisoPorAltura(yActual) {
             const yRelativa = yActual - alturaMinModel;
             for (let i = 0; i < MAPPING_PISOS.length; i++) {
-                if (yRelativa >= MAPPING_PISOS[i].minY && yRelativa < MAPPING_PISOS[i].maxY) {
-                    return MAPPING_PISOS[i].idx;
-                }
+                if (yRelativa >= MAPPING_PISOS[i].minY && yRelativa < MAPPING_PISOS[i].maxY) return MAPPING_PISOS[i].idx;
             }
-            return 0;
+            return MAPPING_PISOS.length - 1;
         }
 
         function rangoPiso(idx) {
             const config = MAPPING_PISOS[idx] || MAPPING_PISOS[0];
-            const base = alturaMinModel + config.minY;
-            const techo = alturaMinModel + config.maxY;
-            return { base, techo };
+            return {
+                base: Math.max(alturaMinModel + config.minY, alturaMinModel - 50),
+                techo: Math.min(alturaMinModel + config.maxY, alturaMaxModel + 100)
+            };
+        }
+
+        let pisoAislado = -1;
+        let bandaPiso = null;
+        let bboxModelo = null;
+        let toastTimer = null;
+
+        function toast3D(texto) {
+            const t = document.getElementById('toast-piso');
+            if (!t) return;
+            t.textContent = texto;
+            t.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+        }
+
+        // Banda translúcida que marca el rango de alturas del piso bajo el cursor
+        function mostrarBandaPiso(idx) {
+            if (!scene) return;
+            if (!bandaPiso) {
+                bandaPiso = new THREE.Mesh(
+                    new THREE.BoxGeometry(1, 1, 1),
+                    new THREE.MeshBasicMaterial({ color: 0x00b4d8, transparent: true, opacity: 0.22, depthWrite: false })
+                );
+                bandaPiso.raycast = () => {};
+                bandaPiso.renderOrder = 10;
+                bandaPiso.visible = false;
+                scene.add(bandaPiso);
+            }
+            if (idx < 0 || !bboxModelo) { bandaPiso.visible = false; return; }
+            const { base, techo } = rangoPiso(idx);
+            const y0 = Math.max(base, alturaMinModel), y1 = Math.min(techo, alturaMaxModel);
+            const size = bboxModelo.getSize(new THREE.Vector3());
+            const centro = bboxModelo.getCenter(new THREE.Vector3());
+            bandaPiso.scale.set(size.x * 1.03, Math.max(y1 - y0, 0.02), size.z * 1.03);
+            bandaPiso.position.set(centro.x, (y0 + y1) / 2, centro.z);
+            bandaPiso.visible = true;
         }
 
         let pisosMeshes = [[], [], [], [], []];
@@ -2073,114 +2674,47 @@
                 pointerDownPos = { x: e.clientX, y: e.clientY };
             });
 
-            container.addEventListener('pointermove', (e) => {
+            // El piso se decide SIEMPRE por la altura del punto tocado (no por la malla),
+            // porque una misma malla del modelo puede abarcar varios pisos.
+            function pisoBajoCursor(clientX, clientY) {
+                if (!modeloGlobal) return null;
                 const rect = container.getBoundingClientRect();
-                mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
-                mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
-
+                mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
                 raycaster.setFromCamera(mouse, camera);
-                if (!modeloGlobal) return;
-
-                const intersects = raycaster.intersectObject(modeloGlobal, true);
-                let nuevoPisoHover = -1;
-
-                for (let i = 0; i < intersects.length; i++) {
-                    const hit = intersects[i];
+                const hits = raycaster.intersectObject(modeloGlobal, true);
+                for (const hit of hits) {
                     if (!hit.object || hit.object.visible === false) continue;
                     const pt = hit.point;
-                    
                     if (planoInferior && planoInferior.distanceToPoint(pt) < -0.01) continue;
                     if (planoSuperior && planoSuperior.distanceToPoint(pt) < -0.01) continue;
-
-                    for (let pIdx = 0; pIdx < pisosMeshes.length; pIdx++) {
-                        if (pisosMeshes[pIdx].includes(hit.object)) {
-                            nuevoPisoHover = pIdx;
-                            break;
-                        }
-                    }
-
-                    if (nuevoPisoHover === -1) {
-                        nuevoPisoHover = indicePisoPorAltura(pt.y);
-                    }
-                    break;
+                    return { idx: indicePisoPorAltura(pt.y), y: pt.y - alturaMinModel };
                 }
+                return null;
+            }
 
-                if (nuevoPisoHover !== -1) {
-                    container.style.cursor = 'pointer';
-                } else {
-                    container.style.cursor = 'default';
+            container.addEventListener('pointermove', (e) => {
+                const res = pisoBajoCursor(e.clientX, e.clientY);
+                const nuevo = res ? res.idx : -1;
+                container.style.cursor = res ? 'pointer' : 'default';
+                if (nuevo !== pisoHoveredActual) {
+                    pisoHoveredActual = nuevo;
+                    mostrarBandaPiso(nuevo);
                 }
+            });
 
-                if (nuevoPisoHover !== pisoHoveredActual) {
-                    if (pisoHoveredActual !== -1 && pisosMeshes[pisoHoveredActual]) {
-                        pisosMeshes[pisoHoveredActual].forEach(mesh => {
-                            if (mesh.material) {
-                                if (Array.isArray(mesh.material)) {
-                                    mesh.material.forEach(m => { if (m.emissive) m.emissive.setHex(0x000000); });
-                                } else if (mesh.material.emissive) {
-                                    mesh.material.emissive.setHex(0x000000);
-                                }
-                            }
-                        });
-                    }
-
-                    pisoHoveredActual = nuevoPisoHover;
-
-                    if (pisoHoveredActual !== -1 && pisosMeshes[pisoHoveredActual]) {
-                        pisosMeshes[pisoHoveredActual].forEach(mesh => {
-                            if (mesh.material) {
-                                if (Array.isArray(mesh.material)) {
-                                    mesh.material.forEach(m => { if (m.emissive) m.emissive.setHex(0x005577); });
-                                } else if (mesh.material.emissive) {
-                                    mesh.material.emissive.setHex(0x005577);
-                                }
-                            }
-                        });
-                    }
-                }
+            container.addEventListener('pointerleave', () => {
+                if (pisoHoveredActual !== -1) { pisoHoveredActual = -1; mostrarBandaPiso(-1); }
             });
 
             container.addEventListener('pointerup', (e) => {
                 const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
                 if (dist > 5) return;
-
-                const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
-                let indicePisoFinal = -1;
-
-                const rect = container.getBoundingClientRect();
-                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
-                raycaster.setFromCamera(mouse, camera);
-                if (!modeloGlobal) return;
-
-                const intersects = raycaster.intersectObject(modeloGlobal, true);
-                
-                for (let i = 0; i < intersects.length; i++) {
-                    const hit = intersects[i];
-                    if (!hit.object || hit.object.visible === false) continue;
-                    const pt = hit.point;
-
-                    if (planoInferior && planoInferior.distanceToPoint(pt) < -0.01) continue;
-                    if (planoSuperior && planoSuperior.distanceToPoint(pt) < -0.01) continue;
-
-                    for (let pIdx = 0; pIdx < pisosMeshes.length; pIdx++) {
-                        if (pisosMeshes[pIdx].includes(hit.object)) {
-                            indicePisoFinal = pIdx;
-                            break;
-                        }
-                    }
-
-                    if (indicePisoFinal === -1) {
-                        indicePisoFinal = indicePisoPorAltura(pt.y);
-                    }
-                    
-                    break;
-                }
-
-                if (indicePisoFinal !== -1 && window.irAVista2DPiso) {
-                    window.irAVista2DPiso(nombresPisos[indicePisoFinal]);
-                }
+                const res = pisoBajoCursor(e.clientX, e.clientY);
+                if (!res) return;
+                console.log('[GIC] Clic 3D · altura', res.y.toFixed(2), '→', NOMBRES_PISOS_3D[res.idx], '| límites:', limitesPisos);
+                toast3D('Altura ' + res.y.toFixed(2) + ' → ' + NOMBRES_PISOS_3D[res.idx]);
+                if (window.irAVista2DPiso) window.irAVista2DPiso(NOMBRES_PISOS_3D[res.idx]);
             });
 
             window.addEventListener('resize', () => {
@@ -2208,6 +2742,127 @@
 
             is3DInitialized = true;
             return true;
+        }
+
+        // Detecta las losas (superficies horizontales grandes) y propone los 4 límites entre pisos
+        function detectarLimitesPisos() {
+            const total = alturaMaxModel - alturaMinModel;
+            if (!modeloGlobal || !(total > 0)) return { limites: null, candidatos: [] };
+            const paso = Math.max(total / 800, 0.005);
+            const nBins = Math.ceil(total / paso) + 2;
+            const area = new Float64Array(nBins);
+            const v = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+            const tol = paso * 0.75;
+            modeloGlobal.updateMatrixWorld(true);
+
+            modeloGlobal.traverse(m => {
+                if (!m.isMesh || !m.geometry || !m.geometry.attributes.position) return;
+                const pos = m.geometry.attributes.position, ind = m.geometry.index;
+                const n = ind ? ind.count : pos.count;
+                for (let i = 0; i + 2 < n; i += 3) {
+                    for (let k = 0; k < 3; k++) {
+                        v[k].fromBufferAttribute(pos, ind ? ind.getX(i + k) : i + k).applyMatrix4(m.matrixWorld);
+                    }
+                    if (Math.abs(v[0].y - v[1].y) > tol || Math.abs(v[0].y - v[2].y) > tol) continue;
+                    const a = 0.5 * Math.abs((v[1].x - v[0].x) * (v[2].z - v[0].z) - (v[2].x - v[0].x) * (v[1].z - v[0].z));
+                    if (!(a > 0)) continue;
+                    const b = Math.round((((v[0].y + v[1].y + v[2].y) / 3) - alturaMinModel) / paso);
+                    if (b >= 0 && b < nBins) area[b] += a;
+                }
+            });
+
+            // Agrupar bins cercanos (cara superior e inferior de una misma losa)
+            const hueco = Math.max(Math.round(Math.max(0.35, total * 0.012) / paso), 1);
+            const grupos = [];
+            let actual = null, vacios = 0;
+            for (let b = 0; b < nBins; b++) {
+                if (area[b] > 0) {
+                    if (!actual) { actual = { peso: 0, suma: 0 }; grupos.push(actual); }
+                    actual.peso += area[b];
+                    actual.suma += area[b] * b * paso;
+                    vacios = 0;
+                } else if (actual && ++vacios > hueco) { actual = null; }
+            }
+            const maxPeso = Math.max(...grupos.map(g => g.peso), 0);
+            const niveles = grupos
+                .filter(g => g.peso >= maxPeso * 0.15)
+                .map(g => +(g.suma / g.peso).toFixed(2))
+                .sort((a, b) => a - b);
+
+            const interiores = niveles.filter(y => y > total * 0.05);
+            const limites = interiores.length >= 4 ? interiores.slice(0, 4) : null;
+            return { limites, candidatos: niveles };
+        }
+
+        function construirPanelCalibracion(contenedor) {
+            const det = document.createElement('details');
+            det.style.marginTop = '10px';
+            det.innerHTML = `
+                <summary style="cursor:pointer; font-size:11px; color:var(--text-muted);">⚙ Calibrar alturas de pisos</summary>
+                <p style="font-size:10px; color:var(--text-muted); line-height:1.45; margin:6px 0;">
+                    Altura total del modelo: <b style="color:#fff;">${(alturaMaxModel - alturaMinModel).toFixed(2)}</b>.
+                    Escribe a qué altura termina cada piso: de eso depende qué plano 2D se abre al hacer clic.
+                    Al cambiar un valor se resalta el piso en el modelo.</p>
+                <div class="calib-filas"></div>
+                <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
+                    <button class="btn-calib" data-acc="auto">🔍 Autodetectar</button>
+                    <button class="btn-calib" data-acc="reset">↺ Restablecer</button>
+                </div>
+                <p class="calib-msg" style="font-size:10px; color:#94a3b8; line-height:1.4; margin-top:6px;"></p>`;
+            contenedor.appendChild(det);
+
+            const filas = det.querySelector('.calib-filas');
+            const msg = det.querySelector('.calib-msg');
+            const inputs = [];
+
+            function pintarValores() { inputs.forEach((inp, i) => { inp.value = limitesPisos[i]; }); }
+
+            function aplicar(nuevos, idxResaltar) {
+                limitesPisos = nuevos;
+                reconstruirMapping();
+                try { localStorage.setItem(CLAVE_LIMITES, JSON.stringify(limitesPisos)); } catch (e) {}
+                if (pisoAislado >= 0) { const r = rangoPiso(pisoAislado); aislarRangoAltura(r.base, r.techo); }
+                pintarValores();
+                if (idxResaltar !== undefined) {
+                    mostrarBandaPiso(idxResaltar);
+                    setTimeout(() => { if (pisoHoveredActual === -1) mostrarBandaPiso(-1); }, 2500);
+                }
+            }
+
+            for (let i = 0; i < 4; i++) {
+                const fila = document.createElement('div');
+                fila.className = 'calib-fila';
+                fila.innerHTML = `<span>${NOMBRES_PISOS_3D[i]} termina en</span>`;
+                const inp = document.createElement('input');
+                inp.type = 'number'; inp.step = '0.05'; inp.min = '0';
+                inp.addEventListener('change', () => {
+                    const vals = inputs.map(x => parseFloat(x.value));
+                    const total = alturaMaxModel - alturaMinModel;
+                    const ok = vals.every((v, k) => Number.isFinite(v) && v > 0 && v < total && (k === 0 || v > vals[k - 1]));
+                    if (!ok) { msg.textContent = '⚠ Los valores deben ir en orden creciente y dentro de la altura del modelo.'; pintarValores(); return; }
+                    msg.textContent = '✔ Límites aplicados.';
+                    aplicar(vals, i);
+                });
+                inputs.push(inp);
+                fila.appendChild(inp);
+                filas.appendChild(fila);
+            }
+            pintarValores();
+
+            det.querySelector('[data-acc="reset"]').addEventListener('click', () => {
+                aplicar(LIMITES_PISOS_DEFECTO.slice());
+                msg.textContent = 'Valores por defecto restablecidos.';
+            });
+            det.querySelector('[data-acc="auto"]').addEventListener('click', () => {
+                const r = detectarLimitesPisos();
+                if (r.limites) {
+                    aplicar(r.limites);
+                    msg.textContent = '✔ Detectado a partir de las losas del modelo. Niveles encontrados: ' + r.candidatos.join(', ');
+                } else {
+                    msg.textContent = '⚠ No se detectaron 4 losas claras. Niveles encontrados: ' + (r.candidatos.join(', ') || 'ninguno') + '. Ajusta los valores a mano.';
+                }
+                console.log('[GIC] Autodetección de pisos:', r);
+            });
         }
 
         function aislarRangoAltura(alturaInferior, alturaSuperior) {
@@ -2244,6 +2899,7 @@
                     const boxGlobal = new THREE.Box3().setFromObject(modeloGlobal);
                     alturaMinModel = boxGlobal.min.y;
                     alturaMaxModel = boxGlobal.max.y;
+                    bboxModelo = boxGlobal.clone();
 
                     planoInferior.constant = -(alturaMinModel - 50);
                     planoSuperior.constant = alturaMaxModel + 100;
@@ -2270,10 +2926,6 @@
                                 child.material.needsUpdate = true;
                             }
 
-                            const boxMalla = new THREE.Box3().setFromObject(child);
-                            const centerY = boxMalla.getCenter(new THREE.Vector3()).y;
-                            const idxPiso = indicePisoPorAltura(centerY);
-                            pisosMeshes[idxPiso].push(child);
                         }
                     });
 
@@ -2294,14 +2946,14 @@
                     const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
 
                     nombresPisos.forEach((nombre, idx) => {
-                        const { base: basePiso, techo: techoPiso } = rangoPiso(idx);
-
                         const btn = document.createElement('button');
                         btn.className = 'btn-nivel';
                         btn.innerText = `🏢 ${nombre}`;
                         btn.addEventListener('click', () => {
                             document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
                             btn.classList.add('active');
+                            pisoAislado = idx;
+                            const { base: basePiso, techo: techoPiso } = rangoPiso(idx);
                             aislarRangoAltura(basePiso, techoPiso);
                             
                             if (window.actualizarPanelDetallePiso3D) {
@@ -2314,12 +2966,15 @@
                     divControles.querySelector('[data-tipo="max"]').addEventListener('click', function() {
                         document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
                         this.classList.add('active');
+                        pisoAislado = -1;
                         aislarRangoAltura(alturaMinModel - 50, alturaMaxModel + 100);
                         
                         if (window.actualizarPanelDetallePiso3D) {
                             window.actualizarPanelDetallePiso3D("Edificio Completo");
                         }
                     });
+
+                    construirPanelCalibracion(divControles);
 
                     if (!boxGlobal.isEmpty()) {
                         const newCenter = boxGlobal.getCenter(new THREE.Vector3());
