@@ -2150,21 +2150,23 @@
                 const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
                 let indicePisoFinal = -1;
 
-                if (pisoActivoSeleccionado !== -1) {
-                    indicePisoFinal = pisoActivoSeleccionado;
-                } else {
-                    const rect = container.getBoundingClientRect();
-                    mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
-                    mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
+                // IMPORTANTE: el botón de “Aislar Piso” no debe decidir qué
+                // plano 2D se abre. La navegación 2D siempre debe corresponder
+                // al lugar exacto donde el usuario hizo clic sobre el modelo.
+                const rect = container.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
-                    raycaster.setFromCamera(mouse, camera);
-                    if (!modeloGlobal) return;
+                raycaster.setFromCamera(mouse, camera);
+                if (!modeloGlobal) return;
 
-                    const intersects = raycaster.intersectObject(modeloGlobal, true);
-                    if (intersects.length > 0) {
-                        const puntoIntersec = intersects[0].point;
-                        indicePisoFinal = indicePisoPorAltura(puntoIntersec.y);
-                    }
+                const intersects = raycaster.intersectObject(modeloGlobal, true);
+                if (intersects.length > 0) {
+                    // Usamos la intersección más cercana al cursor.
+                    // pisoActivoSeleccionado se conserva únicamente para el
+                    // estado visual/aislamiento y NO para rutear el plano 2D.
+                    const puntoIntersec = intersects[0].point;
+                    indicePisoFinal = indicePisoPorAltura(puntoIntersec.y);
                 }
 
                 if (indicePisoFinal !== -1 && window.irAVista2DPiso) {
