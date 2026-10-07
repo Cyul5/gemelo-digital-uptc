@@ -8,6 +8,9 @@
     <!-- LECTURA REAL DE EXCEL (SheetJS Actualizado) -->
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- GENERADOR DE INFORMES PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
     <!-- Import Maps para Three.js -->
     <script type="importmap">
@@ -352,6 +355,129 @@
         .visor-btn:hover { background: rgba(0,180,216,0.6); }
         #visor-prev { left: 18px; top: 50%; } #visor-next { right: 18px; top: 50%; } #visor-cerrar { right: 18px; top: 18px; }
         #map-viewport.animando { transition: transform .65s cubic-bezier(.4,0,.2,1); }
+    
+        /* ===== INFORMES PDF ===== */
+        .btn-informe-pdf {
+            background: #0284c7;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background .2s, transform .1s;
+        }
+        .btn-informe-pdf:hover { background: #0369a1; }
+        .btn-informe-pdf:active { transform: translateY(1px); }
+
+        #modal-informe-pdf {
+            position: fixed;
+            inset: 0;
+            background: rgba(7,13,25,.78);
+            z-index: 1100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            backdrop-filter: blur(3px);
+        }
+        #modal-informe-pdf.show { display: flex; }
+        .informe-pdf-card {
+            width: min(560px, 100%);
+            max-height: 90vh;
+            overflow-y: auto;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 14px;
+            box-shadow: 0 24px 70px rgba(0,0,0,.35);
+            padding: 22px;
+            color: #0f172a;
+        }
+        .informe-pdf-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .informe-pdf-head h3 { color: #0284c7; font-size: 18px; margin-bottom: 4px; }
+        .informe-pdf-head p { color: #64748b; font-size: 12px; line-height: 1.45; }
+        .informe-pdf-close {
+            border: none;
+            background: #f1f5f9;
+            color: #334155;
+            width: 32px;
+            height: 32px;
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 16px;
+            flex: none;
+        }
+        .informe-pdf-close:hover { background: #e2e8f0; }
+        .informe-pdf-field { margin-bottom: 13px; }
+        .informe-pdf-field label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: .35px;
+            margin-bottom: 5px;
+        }
+        .informe-pdf-field select {
+            width: 100%;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            color: #0f172a;
+            border-radius: 7px;
+            padding: 9px 10px;
+            font-size: 12px;
+            outline: none;
+        }
+        .informe-pdf-field select:focus { border-color: #0284c7; }
+        #informe-pdf-contexto {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 9px 10px;
+            color: #475569;
+            font-size: 11px;
+            line-height: 1.45;
+            margin-bottom: 15px;
+        }
+        .informe-pdf-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 18px;
+        }
+        .btn-informe-cancelar {
+            background: #f1f5f9;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            padding: 9px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-informe-generar {
+            background: #0284c7;
+            color: #fff;
+            border: none;
+            border-radius: 7px;
+            padding: 9px 15px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .btn-informe-generar:hover { background: #0369a1; }
+        @media (max-width: 720px) {
+            .informe-pdf-card { padding: 17px; }
+        }
+
     </style>
 </head>
 <body>
@@ -436,6 +562,7 @@
                             </select>
                         </div>
                         <span id="info-archivo-2d"></span>
+                        <button class="btn-informe-pdf" type="button" onclick="abrirModalInformePDF()" title="Generar un informe PDF con la información del Excel">📄 Informe PDF</button>
                         <button class="btn-regresar" style="display:inline-block; margin-bottom: 0; width: auto;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
                     </div>
                 </div>
@@ -530,8 +657,49 @@
         <div class="pie" id="visor-pie"></div>
     </div>
 
+    <!-- GENERADOR DE INFORMES PDF -->
+    <div id="modal-informe-pdf" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-informe">
+        <div class="informe-pdf-card">
+            <div class="informe-pdf-head">
+                <div>
+                    <h3 id="titulo-modal-informe">📄 Generar informe PDF</h3>
+                    <p>Selecciona el tipo de información que quieres descargar. El informe se organiza con nombres claros y sin repetir los textos del panel.</p>
+                </div>
+                <button class="informe-pdf-close" type="button" onclick="cerrarModalInformePDF()" title="Cerrar">✕</button>
+            </div>
+
+            <div id="informe-pdf-contexto"></div>
+
+            <div class="informe-pdf-field">
+                <label for="select-tipo-informe-pdf">Información a descargar</label>
+                <select id="select-tipo-informe-pdf" onchange="actualizarOpcionesInformePDF()">
+                    <option value="inventario">Inventario del espacio</option>
+                    <option value="patologias">Patologías y estado</option>
+                    <option value="mobiliario">Mobiliario y equipamiento</option>
+                    <option value="horarios">Horarios de uso</option>
+                    <option value="accesibilidad">Accesibilidad y seguridad</option>
+                    <option value="instalaciones">Instalaciones y acabados</option>
+                    <option value="datos_generales">Datos generales del edificio</option>
+                </select>
+            </div>
+
+            <div class="informe-pdf-field">
+                <label for="select-alcance-informe-pdf">Alcance del informe</label>
+                <select id="select-alcance-informe-pdf">
+                    <option value="seleccion">Espacio seleccionado</option>
+                    <option value="piso">Todos los espacios del piso actual</option>
+                </select>
+            </div>
+
+            <div class="informe-pdf-actions">
+                <button class="btn-informe-cancelar" type="button" onclick="cerrarModalInformePDF()">Cancelar</button>
+                <button class="btn-informe-generar" type="button" onclick="generarInformePDF()">⬇ Descargar PDF</button>
+            </div>
+        </div>
+    </div>
+
     <!-- CARTEL DE BIENVENIDA -->
-    <div id="welcome-overlay" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+    <div id="welcome-overlay role="dialog" aria-modal="true" aria-labelledby="welcome-title">
         <div class="welcome-card">
             <h1 id="welcome-title">👋 Bienvenido a <span>UPTC GIC</span></h1>
             <p class="welcome-lead">
@@ -2499,6 +2667,573 @@
                     mostrarResumenPlanta2D();
                     actualizarEstadoAulas2D();
                 });
+            }
+        });
+
+        // ==========================================================
+        // GENERADOR DE INFORMES PDF
+        // ==========================================================
+
+        const ETIQUETAS_INFORME_PDF = {
+            inventario: {
+                titulo: "Inventario del espacio",
+                hoja: () => nombreHojaInventarioReal,
+                campos: [
+                    ["codigo", "Código del espacio"],
+                    ["piso", "Piso"],
+                    ["categoria", "Categoría de espacio"],
+                    ["subcategoria", "Subcategoría"],
+                    ["uso", "Uso actual"],
+                    ["area", "Área (m²)"],
+                    ["altura", "Altura (m)"],
+                    ["capEstudiantes", "Capacidad observada de estudiantes"],
+                    ["capDocente", "Capacidad observada de docente"],
+                    ["puertasNum", "Número de puertas"],
+                    ["puertasEstado", "Estado de las puertas"],
+                    ["puertasObs", "Observaciones de las puertas"],
+                    ["ventanasNum", "Número de ventanas"],
+                    ["ventanasEstado", "Estado de las ventanas"],
+                    ["ventanasObs", "Observaciones de las ventanas"],
+                    ["cieloEstado", "Estado del cielo raso"],
+                    ["cieloObs", "Observaciones del cielo raso"],
+                    ["murosAcabado", "Acabado de muros"],
+                    ["murosEstado", "Estado de los muros"],
+                    ["murosObs", "Observaciones de los muros"],
+                    ["orientacion", "Orientación"],
+                    ["accesoLibre", "Acceso libre"],
+                    ["tipoControl", "Tipo de control de acceso"],
+                    ["responsableAcceso", "Responsable del acceso"],
+                    ["tipoPatologia", "Tipo de patología"],
+                    ["ubicacionPatologia", "Ubicación de la patología"],
+                    ["estadoGeneral", "Estado general"],
+                    ["observacionesPatologia", "Observaciones del estado"],
+                    ["fechaRegistro", "Fecha de registro"]
+                ]
+            },
+            patologias: {
+                titulo: "Patologías y estado del espacio",
+                hoja: () => nombreHojaInventarioReal,
+                campos: [
+                    ["codigo", "Código del espacio"],
+                    ["piso", "Piso"],
+                    ["tipoPatologia", "Tipo de patología"],
+                    ["ubicacionPatologia", "Ubicación de la patología"],
+                    ["estadoGeneral", "Estado general"],
+                    ["observacionesPatologia", "Observaciones"],
+                    ["fechaRegistro", "Fecha de registro"]
+                ]
+            },
+            mobiliario: {
+                titulo: "Mobiliario y equipamiento",
+                hoja: () => nombreHojaMobiliarioReal,
+                campos: [
+                    ["numSillas", "Número de sillas"],
+                    ["sillasProg", "Sillas programadas"],
+                    ["sillasBuenas", "Sillas en buen estado"],
+                    ["escritorioDocente", "Escritorio docente"],
+                    ["numTableros", "Número de tableros"],
+                    ["tipoTablero", "Tipo de tablero"],
+                    ["videoBeam", "Video beam"],
+                    ["pantallaInteligente", "Pantalla inteligente"],
+                    ["numComputadores", "Número de computadores"],
+                    ["tomacorrientes", "Número de tomacorrientes"],
+                    ["luminariasTotal", "Luminarias totales"],
+                    ["luminariasFunc", "Luminarias en funcionamiento"],
+                    ["tipoIluminacion", "Tipo de iluminación"],
+                    ["obsElectricas", "Observaciones eléctricas"],
+                    ["cortinas", "Cortinas"],
+                    ["estadoMobiliario", "Estado del mobiliario"],
+                    ["observacionesMob", "Observaciones"]
+                ]
+            }
+        };
+
+        function textoSeguroInformePDF(valor) {
+            if (valor === null || valor === undefined) return "";
+            const t = String(valor).trim();
+            if (!t || /^N\/?A$/i.test(t) || /^undefined$/i.test(t) || /^null$/i.test(t)) return "";
+            return t;
+        }
+
+        function limpiarNombreArchivoPDF(texto) {
+            return String(texto || "informe")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-zA-Z0-9_-]+/g, "_")
+                .replace(/^_+|_+$/g, "")
+                .slice(0, 90) || "informe";
+        }
+
+        function pisoNumeroActualInformePDF() {
+            return pisoDesdeTexto(pisoActual2D) || parseInt(String(pisoActual2D).replace(/\D/g, ""), 10) || null;
+        }
+
+        function registrosInventarioDelPisoPDF() {
+            const p = pisoNumeroActualInformePDF();
+            const vistos = new Set();
+            return Object.values(registrosInventarioExcel).filter(reg => {
+                if (!reg || !reg.codigo) return false;
+                const clave = normalizarCodigoEspacio(reg.codigo);
+                if (!clave || vistos.has(clave)) return false;
+
+                const pisoReg = pisoDesdeTexto(reg.piso) || pisoDesdeCodigoEspacio(reg.codigo);
+                if (p && pisoReg !== p) return false;
+
+                vistos.add(clave);
+                return true;
+            });
+        }
+
+        function registrosMobiliarioDelPisoPDF() {
+            const inventario = registrosInventarioDelPisoPDF();
+            const salida = [];
+            const vistos = new Set();
+
+            inventario.forEach(inv => {
+                const mob = buscarRegistroPorCodigo(registrosMobiliarioExcel, inv.codigo);
+                if (mob && !vistos.has(normalizarCodigoEspacio(inv.codigo))) {
+                    salida.push({ codigo: inv.codigo, piso: inv.piso, ...mob });
+                    vistos.add(normalizarCodigoEspacio(inv.codigo));
+                }
+            });
+
+            // Si no existe inventario para relacionar el piso, se usa el código del propio mobiliario.
+            if (!salida.length) {
+                Object.keys(registrosMobiliarioExcel).forEach(k => {
+                    const mob = registrosMobiliarioExcel[k];
+                    if (!mob || vistos.has(normalizarCodigoEspacio(k))) return;
+                    const p = pisoDesdeCodigoEspacio(k);
+                    if (p && p === pisoNumeroActualInformePDF()) {
+                        salida.push({ codigo: k, piso: "Piso " + p, ...mob });
+                        vistos.add(normalizarCodigoEspacio(k));
+                    }
+                });
+            }
+            return salida;
+        }
+
+        function filasHorariosAulaPDF(codigo) {
+            const norm = normalizarCodigoEspacio(codigo);
+            return registrosHorariosExcel.filter(r => {
+                const a = normalizarCodigoEspacio(r.aula);
+                return a === norm || a.endsWith(norm) || norm.endsWith(a);
+            });
+        }
+
+        function filasHorariosPisoPDF() {
+            const p = pisoNumeroActualInformePDF();
+            const codigosPiso = new Set(
+                registrosInventarioDelPisoPDF().map(r => normalizarCodigoEspacio(r.codigo))
+            );
+            return registrosHorariosExcel.filter(r => {
+                const a = normalizarCodigoEspacio(r.aula);
+                if (codigosPiso.has(a)) return true;
+                const piso = pisoDesdeCodigoEspacio(r.aula);
+                return p && piso === p;
+            });
+        }
+
+        function filasAccesibilidadPisoPDF() {
+            const p = pisoNumeroActualInformePDF();
+            if (!p) return registrosAccesibilidadExcel.slice();
+            return registrosAccesibilidadExcel.filter(row => {
+                const keys = Object.keys(row);
+                return keys.some(k => {
+                    const kn = normalizarTextoSimple(k);
+                    if (!kn.includes("PISO") && !kn.includes("NIVEL")) return false;
+                    const vn = normalizarTextoSimple(row[k]);
+                    return vn === String(p) || vn.includes(`PISO ${p}`) || vn.includes(`PISO${p}`);
+                });
+            });
+        }
+
+        function filasInstalacionesPisoPDF() {
+            const p = pisoNumeroActualInformePDF();
+            if (!p) return registrosInstalacionesExcel.slice();
+            return registrosInstalacionesExcel.filter(row => {
+                const keys = Object.keys(row);
+                return keys.some(k => {
+                    const kn = normalizarTextoSimple(k);
+                    if (!kn.includes("PISO") && !kn.includes("NIVEL")) return false;
+                    const vn = normalizarTextoSimple(row[k]);
+                    return vn === String(p) || vn.includes(`PISO ${p}`) || vn.includes(`PISO${p}`);
+                });
+            });
+        }
+
+        function encontrarAccesibilidadPorPisoPDF() {
+            return filasAccesibilidadPisoPDF();
+        }
+
+        function encontrarInstalacionesPorPisoPDF() {
+            return filasInstalacionesPisoPDF();
+        }
+
+        function obtenerDatosGeneralesPDF() {
+            const campos = [];
+            Object.keys(registrosDatosGeneralesExcel).forEach(key => {
+                if (["NOMBRE", "CODIGO", "INSTITUCION", "DIRECCION", "CIUDAD", "COORDENADAS", "USO_PRINCIPAL", "ANO_CONSTRUCCION", "NUM_PISOS", "AREA_TOTAL", "AREA_PISO", "ESCALERAS", "ESTADO_ESCALERAS", "ASCENSORES"].includes(key)) return;
+                const item = registrosDatosGeneralesExcel[key];
+                if (item && typeof item === "object" && "valor" in item) {
+                    if (textoSeguroInformePDF(item.valor)) campos.push([item.campo || key, item.valor]);
+                    if (textoSeguroInformePDF(item.notas)) campos.push(["Observaciones de " + (item.campo || key), item.notas]);
+                }
+            });
+
+            const directos = [
+                ["NOMBRE", "Nombre del edificio"],
+                ["CODIGO", "Código / identificador"],
+                ["INSTITUCION", "Institución / sede"],
+                ["DIRECCION", "Dirección"],
+                ["CIUDAD", "Ciudad"],
+                ["COORDENADAS", "Coordenadas"],
+                ["USO_PRINCIPAL", "Uso principal"],
+                ["ANO_CONSTRUCCION", "Año de construcción"],
+                ["NUM_PISOS", "Número de pisos"],
+                ["AREA_TOTAL", "Área total aproximada"],
+                ["AREA_PISO", "Área aproximada por piso"],
+                ["ESTADO_ESCALERAS", "Estado de las escaleras"],
+                ["ASCENSORES", "Número de ascensores"]
+            ];
+            directos.forEach(([key, label]) => {
+                const v = registrosDatosGeneralesExcel[key];
+                if (typeof v !== "object" && textoSeguroInformePDF(v)) campos.push([label, v]);
+            });
+
+            const esc = registrosDatosGeneralesExcel["ESCALERAS"];
+            if (esc && typeof esc === "object") {
+                if (textoSeguroInformePDF(esc.valor)) campos.push(["Número de escaleras", esc.valor]);
+                if (textoSeguroInformePDF(esc.notas)) campos.push(["Observaciones de las escaleras", esc.notas]);
+            }
+            return campos;
+        }
+
+        function obtenerContextoInformePDF() {
+            const codigo = aulaSeleccionadaActual
+                ? aulaSeleccionadaActual.toUpperCase().replace(/^ESPACIO\s+/i, "")
+                : "";
+            return codigo
+                ? `Piso actual: ${pisoActual2D} · Espacio seleccionado: ${codigo}`
+                : `Piso actual: ${pisoActual2D} · No hay un espacio seleccionado. Puedes generar un informe para todo el piso.`;
+        }
+
+        function actualizarOpcionesInformePDF() {
+            const tipo = document.getElementById("select-tipo-informe-pdf")?.value;
+            const alcance = document.getElementById("select-alcance-informe-pdf");
+            if (!alcance) return;
+
+            const requiereEspacio = !["datos_generales", "accesibilidad", "instalaciones"].includes(tipo);
+            const tieneEspacio = !!aulaSeleccionadaActual;
+
+            alcance.innerHTML = "";
+            if (requiereEspacio && tieneEspacio) {
+                alcance.add(new Option("Espacio seleccionado", "seleccion"));
+            }
+            alcance.add(new Option("Todos los espacios del piso actual", "piso"));
+
+            if (tipo === "datos_generales") {
+                alcance.innerHTML = "";
+                alcance.add(new Option("Edificio completo", "edificio"));
+            } else if (tipo === "accesibilidad" || tipo === "instalaciones") {
+                alcance.innerHTML = "";
+                alcance.add(new Option("Piso actual", "piso"));
+            }
+        }
+
+        function abrirModalInformePDF() {
+            const modal = document.getElementById("modal-informe-pdf");
+            if (!modal) return;
+
+            const contexto = document.getElementById("informe-pdf-contexto");
+            if (contexto) contexto.textContent = obtenerContextoInformePDF();
+
+            actualizarOpcionesInformePDF();
+            modal.classList.add("show");
+        }
+
+        function cerrarModalInformePDF() {
+            const modal = document.getElementById("modal-informe-pdf");
+            if (modal) modal.classList.remove("show");
+        }
+
+        function agregarFilaCampoPDF(filas, etiqueta, valor) {
+            const limpio = textoSeguroInformePDF(valor);
+            if (!limpio) return;
+            filas.push([etiqueta, limpio]);
+        }
+
+        function datosAccesibilidadPDF(row) {
+            const filas = [];
+            Object.keys(row || {}).forEach(key => {
+                const valor = textoSeguroInformePDF(row[key]);
+                if (valor) filas.push([key, valor]);
+            });
+            return filas;
+        }
+
+        function datosInstalacionesPDF(row) {
+            const filas = [];
+            Object.keys(row || {}).forEach(key => {
+                const valor = textoSeguroInformePDF(row[key]);
+                if (valor) filas.push([key, valor]);
+            });
+            return filas;
+        }
+
+        function obtenerDatosDetallePDF(tipo, codigo) {
+            const filas = [];
+            let titulo = ETIQUETAS_INFORME_PDF[tipo]?.titulo || "Informe";
+
+            if (tipo === "inventario" || tipo === "patologias") {
+                const inv = buscarRegistroPorCodigo(registrosInventarioExcel, codigo) || {};
+                const campos = ETIQUETAS_INFORME_PDF[tipo].campos;
+                campos.forEach(([key, label]) => agregarFilaCampoPDF(filas, label, inv[key]));
+                if (tipo === "inventario" && filas.length === 0) {
+                    titulo = "Inventario del espacio";
+                }
+            } else if (tipo === "mobiliario") {
+                const mob = buscarRegistroPorCodigo(registrosMobiliarioExcel, codigo) || {};
+                ETIQUETAS_INFORME_PDF.mobiliario.campos.forEach(([key, label]) => agregarFilaCampoPDF(filas, label, mob[key]));
+            } else if (tipo === "horarios") {
+                const horarios = filasHorariosAulaPDF(codigo);
+                horarios.forEach(r => {
+                    const dia = textoSeguroInformePDF(r.dia);
+                    const hora = textoSeguroInformePDF(r.hora);
+                    const detalle = textoSeguroInformePDF(r.detalle);
+                    if (dia || hora || detalle) filas.push([dia || "—", `${hora || "—"} · ${detalle || "Sin detalle"}`]);
+                });
+            }
+
+            return { titulo, filas };
+        }
+
+        function obtenerFilasPisoPDF(tipo) {
+            const filas = [];
+
+            if (tipo === "inventario") {
+                registrosInventarioDelPisoPDF().forEach(inv => {
+                    filas.push([
+                        textoSeguroInformePDF(inv.codigo) || "Sin código",
+                        textoSeguroInformePDF(inv.categoria),
+                        textoSeguroInformePDF(inv.uso),
+                        textoSeguroInformePDF(inv.area),
+                        textoSeguroInformePDF(inv.estadoGeneral)
+                    ]);
+                });
+                return {
+                    columnas: ["Espacio", "Categoría", "Uso actual", "Área (m²)", "Estado general"],
+                    filas
+                };
+            }
+
+            if (tipo === "patologias") {
+                registrosInventarioDelPisoPDF().forEach(inv => {
+                    const pat = textoSeguroInformePDF(inv.tipoPatologia);
+                    const estado = textoSeguroInformePDF(inv.estadoGeneral);
+                    const obs = textoSeguroInformePDF(inv.observacionesPatologia);
+                    if (pat || estado || obs) {
+                        filas.push([
+                            textoSeguroInformePDF(inv.codigo) || "Sin código",
+                            pat || "Sin registro",
+                            textoSeguroInformePDF(inv.ubicacionPatologia),
+                            estado,
+                            obs
+                        ]);
+                    }
+                });
+                return {
+                    columnas: ["Espacio", "Patología", "Ubicación", "Estado general", "Observaciones"],
+                    filas
+                };
+            }
+
+            if (tipo === "mobiliario") {
+                registrosMobiliarioDelPisoPDF().forEach(mob => {
+                    filas.push([
+                        textoSeguroInformePDF(mob.codigo) || "Sin código",
+                        textoSeguroInformePDF(mob.numSillas),
+                        textoSeguroInformePDF(mob.sillasBuenas),
+                        textoSeguroInformePDF(mob.numTableros),
+                        textoSeguroInformePDF(mob.numComputadores),
+                        textoSeguroInformePDF(mob.estadoMobiliario)
+                    ]);
+                });
+                return {
+                    columnas: ["Espacio", "Sillas", "Sillas en buen estado", "Tableros", "Computadores", "Estado del mobiliario"],
+                    filas
+                };
+            }
+
+            if (tipo === "horarios") {
+                filasHorariosPisoPDF().forEach(r => {
+                    const detalle = textoSeguroInformePDF(r.detalle);
+                    if (r.aula || r.dia || r.hora || detalle) {
+                        filas.push([
+                            textoSeguroInformePDF(r.aula) || "Sin código",
+                            textoSeguroInformePDF(r.dia),
+                            textoSeguroInformePDF(r.hora),
+                            detalle || "Sin detalle"
+                        ]);
+                    }
+                });
+                return {
+                    columnas: ["Espacio", "Día", "Franja", "Actividad"],
+                    filas
+                };
+            }
+
+            return { columnas: [], filas: [] };
+        }
+
+        function generarInformePDF() {
+            try {
+                if (!window.jspdf || !window.jspdf.jsPDF) {
+                    alert("No se pudo cargar el generador PDF. Revisa tu conexión a internet y vuelve a intentarlo.");
+                    return;
+                }
+
+                const tipo = document.getElementById("select-tipo-informe-pdf")?.value || "inventario";
+                const alcance = document.getElementById("select-alcance-informe-pdf")?.value || "seleccion";
+                const codigo = aulaSeleccionadaActual
+                    ? aulaSeleccionadaActual.toUpperCase().replace(/^ESPACIO\s+/i, "")
+                    : "";
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({
+                    orientation: (tipo === "horarios" || alcance === "piso") ? "landscape" : "portrait",
+                    unit: "mm",
+                    format: "a4"
+                });
+
+                const titulo = ETIQUETAS_INFORME_PDF[tipo]?.titulo || "Informe de información";
+                const nombreEdificio = textoSeguroInformePDF(registrosDatosGeneralesExcel["NOMBRE"]) || "Edificio Hunza";
+                const codigoEdificio = textoSeguroInformePDF(registrosDatosGeneralesExcel["CODIGO"]) || "30";
+                const fecha = new Date().toLocaleDateString("es-CO", { year: "numeric", month: "long", day: "numeric" });
+
+                // Encabezado limpio y único.
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(17);
+                doc.setTextColor(2, 132, 199);
+                doc.text("UPTC GIC", 14, 16);
+
+                doc.setFontSize(12);
+                doc.setTextColor(15, 23, 42);
+                doc.text(titulo, 14, 24);
+
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(9);
+                doc.setTextColor(71, 85, 105);
+                doc.text(`${nombreEdificio} · Código ${codigoEdificio}`, 14, 31);
+                doc.text(`Piso: ${pisoActual2D}`, 14, 36);
+                doc.text(`Fecha de generación: ${fecha}`, 14, 41);
+
+                let startY = 48;
+
+                if (tipo === "datos_generales") {
+                    const filas = obtenerDatosGeneralesPDF();
+                    if (!filas.length) {
+                        doc.setTextColor(100, 116, 139);
+                        doc.text("No hay datos generales disponibles para generar este informe.", 14, startY);
+                    } else {
+                        doc.autoTable({
+                            startY,
+                            head: [["Información", "Dato"]],
+                            body: filas,
+                            theme: "grid",
+                            styles: { font: "helvetica", fontSize: 9, cellPadding: 3, textColor: [15, 23, 42] },
+                            headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: "bold" },
+                            columnStyles: { 0: { cellWidth: 62, fontStyle: "bold" }, 1: { cellWidth: 115 } },
+                            margin: { left: 14, right: 14 }
+                        });
+                    }
+                } else if (tipo === "accesibilidad" || tipo === "instalaciones") {
+                    const registros = tipo === "accesibilidad"
+                        ? encontrarAccesibilidadPorPisoPDF()
+                        : encontrarInstalacionesPorPisoPDF();
+
+                    const filas = [];
+                    registros.forEach((row, idx) => {
+                        Object.keys(row || {}).forEach(key => {
+                            const valor = textoSeguroInformePDF(row[key]);
+                            if (valor) filas.push([idx + 1, key, valor]);
+                        });
+                    });
+
+                    doc.autoTable({
+                        startY,
+                        head: [["Registro", "Información", "Dato"]],
+                        body: filas.length ? filas : [["—", "Sin información", "No hay datos registrados para este piso."]],
+                        theme: "grid",
+                        styles: { font: "helvetica", fontSize: 8.5, cellPadding: 2.8, textColor: [15, 23, 42], overflow: "linebreak" },
+                        headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: "bold" },
+                        columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 60, fontStyle: "bold" }, 2: { cellWidth: 182 } },
+                        margin: { left: 14, right: 14 }
+                    });
+                } else if (alcance === "seleccion" && codigo) {
+                    const detalle = obtenerDatosDetallePDF(tipo, codigo);
+
+                    if (tipo === "horarios") {
+                        doc.autoTable({
+                            startY,
+                            head: [["Día", "Franja / actividad"]],
+                            body: detalle.filas.length ? detalle.filas : [["—", "No hay actividades registradas para este espacio."]],
+                            theme: "grid",
+                            styles: { font: "helvetica", fontSize: 9, cellPadding: 3, textColor: [15, 23, 42], overflow: "linebreak" },
+                            headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: "bold" },
+                            columnStyles: { 0: { cellWidth: 32, fontStyle: "bold" }, 1: { cellWidth: 220 } },
+                            margin: { left: 14, right: 14 }
+                        });
+                    } else {
+                        doc.autoTable({
+                            startY,
+                            head: [["Información", "Dato"]],
+                            body: detalle.filas.length ? detalle.filas : [["Sin información", "No hay datos registrados para este espacio."]],
+                            theme: "grid",
+                            styles: { font: "helvetica", fontSize: 9, cellPadding: 3, textColor: [15, 23, 42], overflow: "linebreak" },
+                            headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: "bold" },
+                            columnStyles: { 0: { cellWidth: 65, fontStyle: "bold" }, 1: { cellWidth: 112 } },
+                            margin: { left: 14, right: 14 }
+                        });
+                    }
+                } else {
+                    const resumen = obtenerFilasPisoPDF(tipo);
+                    doc.autoTable({
+                        startY,
+                        head: [resumen.columnas.length ? resumen.columnas : ["Información"]],
+                        body: resumen.filas.length ? resumen.filas : [["No hay datos registrados para el piso actual."]],
+                        theme: "grid",
+                        styles: { font: "helvetica", fontSize: 8, cellPadding: 2.6, textColor: [15, 23, 42], overflow: "linebreak" },
+                        headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: "bold" },
+                        margin: { left: 10, right: 10 },
+                        tableWidth: "auto"
+                    });
+                }
+
+                // Pie de página sin repetir información del contenido.
+                const totalPaginas = doc.internal.getNumberOfPages();
+                for (let i = 1; i <= totalPaginas; i++) {
+                    doc.setPage(i);
+                    const h = doc.internal.pageSize.getHeight();
+                    doc.setFont("helvetica", "normal");
+                    doc.setFontSize(7.5);
+                    doc.setTextColor(100, 116, 139);
+                    doc.text(`UPTC GIC · Informe generado desde el gestor de información · Página ${i} de ${totalPaginas}`, 14, h - 8);
+                }
+
+                const espacioNombre = codigo || pisoActual2D;
+                const nombreArchivo = `UPTC_GIC_${limpiarNombreArchivoPDF(titulo)}_${limpiarNombreArchivoPDF(espacioNombre)}.pdf`;
+                doc.save(nombreArchivo);
+                cerrarModalInformePDF();
+            } catch (error) {
+                console.error("[GIC] Error generando informe PDF:", error);
+                alert("No fue posible generar el PDF. Revisa la consola del navegador para más detalles.");
+            }
+        }
+
+        document.addEventListener("keydown", (e) => {
+            const modal = document.getElementById("modal-informe-pdf");
+            if (modal && modal.classList.contains("show") && e.key === "Escape") {
+                cerrarModalInformePDF();
             }
         });
     </script>
