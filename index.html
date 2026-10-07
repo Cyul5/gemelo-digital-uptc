@@ -9,10 +9,6 @@
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
-    <!-- GENERACIÓN DE INFORMES PDF (jsPDF + AutoTable) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-
     <!-- Import Maps para Three.js -->
     <script type="importmap">
         {
@@ -294,8 +290,6 @@
         .welcome-footer label { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; cursor: pointer; }
         .btn-primario { background: #0284c7; color: #fff; border: none; border-radius: 8px; padding: 10px 22px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .2s; }
         .btn-primario:hover { background: #0369a1; }
-        .btn-pdf { background: #10b981; color: #fff; border: none; border-radius: 6px; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; transition: background .2s; display: inline-flex; align-items: center; gap: 6px; }
-        .btn-pdf:hover { background: #059669; }
         .btn-ayuda { background: transparent; border: 1px solid #334155; color: var(--text-main); border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; transition: .2s; }
         .btn-ayuda:hover { background: #0284c7; border-color: #0284c7; }
         @media (max-width: 640px) { .welcome-steps { grid-template-columns: 1fr; } }
@@ -429,9 +423,8 @@
                         </div>
                     </div>
                     
-                    <!-- NUEVA LISTA DESPLEGABLE INDEPENDIENTE Y BOTÓN PDF EN PLANOS 2D -->
+                    <!-- NUEVA LISTA DESPLEGABLE INDEPENDIENTE PARA PLANOS 2D -->
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <button class="btn-pdf" onclick="descargarInformePDF()" title="Descargar informe actual en PDF">📄 Exportar PDF</button>
                         <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #475569; font-weight: 600;">
                             <span>🏢 Seleccionar Planta:</span>
                             <select id="select-piso-2d" class="filter-select" style="width: 160px;" onchange="irAVista2DPiso(this.value)">
@@ -572,7 +565,6 @@
             <div class="welcome-nav">
                 <strong>Barra izquierda:</strong> 🌐 Plano general &nbsp;·&nbsp; 🏢 Modelo 3D &nbsp;·&nbsp; 📐 Plano 2D<br>
                 <strong>Botones azules:</strong> «⬅ Volver al Modelo 3D» y «🗺️ Volver al Mapa General» te devuelven un paso atrás.<br>
-                <strong>📄 Exportar PDF:</strong> Genera y descarga informes en PDF según el modo o aula seleccionada.<br>
                 <strong>❓ Ayuda</strong> (arriba a la derecha) vuelve a mostrar esta guía.<br>
                 <strong>🖼️ Galería</strong> (esquina superior derecha del Modelo 3D) muestra todas las fotos del levantamiento.
             </div>
@@ -584,7 +576,7 @@
         </div>
     </div>
 
-    <!-- MOTOR LECTOR DE EXCEL REFINADO Y RUTEO -->
+   <!-- MOTOR LECTOR DE EXCEL REFINADO Y RUTEO -->
     <script>
         let registrosDatosGeneralesExcel = {};
         let registrosInventarioExcel = {};
@@ -1144,6 +1136,7 @@
                 if(titulo2d) titulo2d.innerText = `Planta 2D - ${pisoActual2D}`;
                 if(breadcrumb) breadcrumb.innerText = `Edificio 30 Hunza (${pisoActual2D})`;
                 
+                // Sincronizar el selector desplegable con el piso actual
                 const selectPiso2D = document.getElementById('select-piso-2d');
                 if(selectPiso2D) selectPiso2D.value = pisoActual2D;
 
@@ -1214,6 +1207,7 @@
             return out;
         }
 
+        // Imágenes "en celda" de Excel 365 (Insertar > Imagen > Colocar en celda): vm -> ruta del medio
         async function mapaImagenesEnCelda(zip) {
             const out = {};
             const fMeta = zip.file('xl/metadata.xml');
@@ -1274,6 +1268,7 @@
             return { fila: parseInt(m[2], 10) - 1, col: c - 1 };
         }
 
+        // Devuelve [{ fila, col, medio }] con posición ABSOLUTA (0-based) de cada imagen de la hoja
         async function imagenesDeHoja(zip, rutaHoja, imgEnCelda) {
             const res = [];
             const relsHoja = await leerRelsZip(zip, rutaHoja);
@@ -1358,6 +1353,7 @@
                 const imagenes = await imagenesDeHoja(zip, rutaHoja, imgEnCelda);
                 diag.push(h.nombre + ': ' + imagenes.length + ' imagen(es) incrustada(s)');
 
+                // Columnas "Referencia" y "Foto" (texto) según los encabezados
                 const colsRef = [], colsFotoTexto = [];
                 let filaEncabezado = -1;
                 for (let r = 0; r < Math.min(15, matriz.length); r++) {
@@ -1400,6 +1396,7 @@
                     await agregar(cacheBlobs[im.medio], idxFila, idxCol, im.medio);
                 }
 
+                // Respaldo: la columna "Foto" trae una ruta o URL escrita como texto
                 for (const cF of colsFotoTexto) {
                     for (let r = filaEncabezado + 1; r < matriz.length; r++) {
                         const v = String((matriz[r] || [])[cF] || '').trim();
@@ -1529,6 +1526,8 @@
         }, true);
 
         // ===== PLANTAS 2D: archivo correcto para cada piso =====
+        // Si algún día un archivo no coincide con su piso, fuerza la asignación aquí (siempre se respeta):
+        //   const ARCHIVOS_PISOS_FORZADOS = { "Piso 3": "PLANTA_3_HUNZA.svg" };
         const ARCHIVOS_PISOS_FORZADOS = {};
         const LISTA_PISOS_2D = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
         let archivosPorPiso = Object.assign({}, MAPA_ARCHIVOS_PISOS, ARCHIVOS_PISOS_FORZADOS);
@@ -1545,6 +1544,8 @@
             return m ? parseInt(m[1], 10) : null;
         }
 
+        // Determina a qué piso pertenece un SVG por los códigos de sus aulas (A-301 -> 3) o, si no
+        // tienen número de 3 cifras, por la columna «Piso» del inventario.
         function pisoDeIdsSvg(ids) {
             const cuenta = {};
             let total = 0;
@@ -1572,16 +1573,18 @@
                     const ids = Array.from(doc.querySelectorAll('[id]')).map(e => e.id);
                     const p = pisoDeIdsSvg(ids);
                     if (p) hallado[archivo] = p;
-                } catch (e) {}
+                } catch (e) { /* sin acceso al archivo: se mantiene el mapa por defecto */ }
             }));
 
             const reclamos = {};
             Object.entries(hallado).forEach(([archivo, piso]) => { (reclamos[piso] = reclamos[piso] || []).push(archivo); });
             const nuevo = {};
             const usados = {};
+            // 1) Pisos cuyo plano quedó identificado sin ambigüedad por el contenido del SVG
             Object.entries(reclamos).forEach(([piso, archivos]) => {
                 if (archivos.length === 1) { nuevo[LISTA_PISOS_2D[piso - 1]] = archivos[0]; usados[archivos[0]] = true; }
             });
+            // 2) Resto de pisos: su archivo por defecto si está libre y no es de otro piso; si no, ninguno (nunca uno equivocado)
             LISTA_PISOS_2D.forEach((nombre, i) => {
                 if (nuevo[nombre]) return;
                 const libre = (f) => !usados[f] && (!hallado[f] || hallado[f] === i + 1);
@@ -1591,7 +1594,7 @@
                 if (elegido) usados[elegido] = true;
             });
             archivosPorPiso = Object.assign(nuevo, ARCHIVOS_PISOS_FORZADOS);
-            console.log('[GIC] Piso que contiene cada SVG:', hallado);
+            console.log('[GIC] Piso que contiene cada SVG (según los códigos de aula):', hallado);
             console.log('[GIC] Archivo asignado a cada piso:', archivosPorPiso);
 
             if (vistaActualGlobal === 'vista-2d') {
@@ -1894,442 +1897,1112 @@
             }
         }
 
-        function mostrarDetalleAulaPanel(codigoAula) {
-            const codNorm = normalizarCodigoEspacio(codigoAula);
-            const inv = buscarRegistroPorCodigo(registrosInventarioExcel, codNorm) || {};
-            const mob = buscarRegistroPorCodigo(registrosMobiliarioExcel, codNorm) || {};
-            
-            const selDia = document.getElementById('select-dia');
-            const selFranja = document.getElementById('select-franja');
-            const diaSel = selDia ? selDia.value : "Lunes";
-            const franjaSel = selFranja ? selFranja.value : "7 -8";
-            
-            const hor = consultarHorarioAula(codigoAula, diaSel, franjaSel);
+        function actualizarPanelDetallePiso3D(nombrePiso) {
+            if (vistaActualGlobal !== 'vista-3d') return;
 
             const panelTitulo = document.getElementById('panel-derecho-titulo');
-            if(panelTitulo) panelTitulo.innerHTML = `📍 Aula ${codigoAula}`;
-
-            const badgeClase = hor.estado === "Ocupado" ? "badge-ocupado" : "badge-libre";
-
-            let html = `
-                <div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
-                    <span class="badge-estado ${badgeClase}">${hor.estado} (${hor.franja})</span>
-                    <button class="btn-calib" onclick="aulaSeleccionadaActual=null; mostrarResumenPlanta2D();">Cerrar Selección ✕</button>
-                </div>
-                
-                <div class="info-group">
-                    <div class="info-label">Uso / Asignación actual:</div>
-                    <div class="info-val" style="color:var(--accent); font-weight:700;">${hor.detalle}</div>
-                </div>
-
-                <div class="info-section-title">📋 1. Ficha de Inventario</div>
-                <div class="info-group">
-                    <div class="info-label">Categoría / Subcategoría:</div>
-                    <div class="info-val">${inv.categoria || 'N/A'} - ${inv.subcategoria || 'N/A'}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Uso Actual Registrado:</div>
-                    <div class="info-val">${inv.uso || 'N/A'}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Área / Altura:</div>
-                    <div class="info-val">${inv.area || 'N/A'} m² | ${inv.altura || 'N/A'} m</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Capacidad Estudiantes / Docente:</div>
-                    <div class="info-val">${inv.capEstudiantes || 'N/A'} Estudiantes | ${inv.capDocente || 'N/A'} Docentes</div>
-                </div>
-
-                <div class="info-section-title">🧱 2. Estado Físico & Patologías</div>
-                <div class="info-group">
-                    <div class="info-label">Puertas / Ventanas:</div>
-                    <div class="info-val">${inv.puertasNum || '0'} Puertas (${inv.puertasEstado || 'N/A'}) | ${inv.ventanasNum || '0'} Ventanas (${inv.ventanasEstado || 'N/A'})</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Muros / Cielo Raso:</div>
-                    <div class="info-val">Muros: ${inv.murosAcabado || 'N/A'} (${inv.murosEstado || 'N/A'}) | Cielo: ${inv.cieloEstado || 'N/A'}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Estado General:</div>
-                    <div class="info-val" style="color:${String(inv.estadoGeneral).toLowerCase().includes('regular') ? '#eab308':'#34d399'}; font-weight:700;">${inv.estadoGeneral || 'N/A'}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Patología / Mantenimiento:</div>
-                    <div class="info-val">${inv.tipoPatologia || 'Sin patología registrada'} (${inv.ubicacionPatologia || 'N/A'})</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Observaciones:</div>
-                    <div class="info-val">${inv.observacionesPatologia || 'Sin observaciones adicionales'}</div>
-                </div>
-
-                <div class="info-section-title">🪑 3. Mobiliario & Equipamiento</div>
-                <div class="info-group">
-                    <div class="info-label">Sillas Totales / Buenas / Programables:</div>
-                    <div class="info-val">${mob.numSillas || '0'} Sillas (${mob.sillasBuenas || '0'} buenas, ${mob.sillasProg || '0'} programables)</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Escritorio Docente / Tableros:</div>
-                    <div class="info-val">Escritorio: ${mob.escritorioDocente || 'N/A'} | Tableros: ${mob.numTableros || '0'} (${mob.tipoTablero || 'N/A'})</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Equipos / Tecnología:</div>
-                    <div class="info-val">VideoBeam: ${mob.videoBeam || 'N/A'} | Pantalla Int: ${mob.pantallaInteligente || 'N/A'} | PCs: ${mob.numComputadores || '0'}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Iluminación / Tomas:</div>
-                    <div class="info-val">Luminarias: ${mob.luminariasFunc || '0'}/${mob.luminariasTotal || '0'} func. (${mob.tipoIluminacion || 'N/A'}) | Tomas: ${mob.tomacorrientes || 'N/A'}</div>
-                </div>
-                <div class="info-group">
-                    <div class="info-label">Estado Mobiliario:</div>
-                    <div class="info-val">${mob.estadoMobiliario || 'N/A'} - ${mob.observacionesMob || 'Sin observaciones'}</div>
-                </div>
-            `;
-
             const panelContenido = document.getElementById('panel-contenido');
-            if(panelContenido) panelContenido.innerHTML = html;
-        }
+            const hojaIndicador = document.getElementById('hoja-excel-indicador');
 
-        function actualizarPanelDetallePiso3D(pisoNombre) {
-            const panelTitulo = document.getElementById('panel-derecho-titulo');
-            if (panelTitulo) panelTitulo.innerHTML = `🏢 Vista 3D - ${pisoNombre}`;
-            
-            const panelContenido = document.getElementById('panel-contenido');
-            if (panelContenido) {
-                panelContenido.innerHTML = `
-                    <div class="info-group">
-                        <div class="info-label">Nivel Seleccionado:</div>
-                        <div class="info-val">${pisoNombre}</div>
-                    </div>
-                    <div class="info-group">
-                        <div class="info-label">Instrucciones:</div>
-                        <div class="info-val">Usa los botones de nivel a continuación para aislar o recortar los pisos del modelo 3D. Haz clic en "Planos 2D" para ir a la vista interactiva.</div>
-                    </div>
-                `;
+            if (hojaIndicador) {
+                hojaIndicador.innerHTML = `<strong>Hojas:</strong> ${nombreHojaAccesibilidadReal} \vert{}${nombreHojaInstalacionesReal}`;
             }
-        }
 
-        function inicializarControles3D() {
-            const layersList = document.getElementById('ifc-layers-list');
-            if (!layersList) return;
-            
-            const niveles = [
-                { id: 'all', label: '🏢 Edificio Completo' },
-                { id: 'piso1', label: '📐 Piso 1', piso: 'Piso 1' },
-                { id: 'piso2', label: '📐 Piso 2', piso: 'Piso 2' },
-                { id: 'piso3', label: '📐 Piso 3', piso: 'Piso 3' },
-                { id: 'piso4', label: '📐 Piso 4', piso: 'Piso 4' },
-                { id: 'piso5', label: '📐 Piso 5 / Cubierta', piso: 'Piso 5 / Cubierta' }
-            ];
-
-            layersList.innerHTML = '';
-            niveles.forEach(n => {
-                const btn = document.createElement('button');
-                btn.className = `btn-nivel ${n.id === 'all' ? 'active' : ''}`;
-                btn.innerText = n.label;
-                btn.onclick = () => {
-                    document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    actualizarPanelDetallePiso3D(n.label);
-                    if (n.piso) {
-                        irAVista2DPiso(n.piso);
-                    }
-                };
-                layersList.appendChild(btn);
-            });
-
-            const ifcStatus = document.getElementById('ifc-status');
-            if (ifcStatus) ifcStatus.innerHTML = '✅ Modelo y niveles listos';
-        }
-
-        // ===== GENERACIÓN DE INFORMES EN PDF (jsPDF + AutoTable) =====
-        function descargarInformePDF() {
-            if (!window.jspdf) {
-                alert("La librería jsPDF se está cargando. Por favor, intenta de nuevo en un segundo.");
+            if (!nombrePiso || nombrePiso === "Edificio Completo") {
+                if(panelTitulo) panelTitulo.innerHTML = `🏢 EDIFICIO COMPLETO (3D)`;
+                if(panelContenido) {
+                    panelContenido.innerHTML = `
+                        <div style="padding:10px 0; color:var(--text-muted); font-size:12px;">
+                            <p>💡 Seleccione un nivel en el menú de aislamiento para desplegar las condiciones de <strong>Accesibilidad y Seguridad</strong> e <strong>Instalaciones y Acabados</strong> del piso.</p>
+                        </div>
+                    `;
+                }
                 return;
             }
 
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-            
-            const modoSel = document.getElementById('select-modo-consulta')?.value || 'inventario';
-            const diaSel = document.getElementById('select-dia')?.value || 'Lunes';
-            const franjaSel = document.getElementById('select-franja')?.value || '7 -8';
+            if(panelTitulo) panelTitulo.innerHTML = `🏢 ${nombrePiso.toUpperCase()}`;
 
-            // Encabezado corporativo UPTC GIC
-            doc.setFillColor(7, 13, 25);
-            doc.rect(0, 0, 297, 22, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(15);
-            doc.setFont('helvetica', 'bold');
-            doc.text('UPTC GIC - Informe Técnico del Campus', 14, 12);
-            
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'normal');
-            doc.text(`Edificio 30 Hunza - ${pisoActual2D}`, 14, 18);
+            const numeroPisoStr = String(nombrePiso).replace(/[^0-9]/g, '');
 
-            const fechaHora = new Date().toLocaleString('es-CO');
-            doc.text(`Emisión: ${fechaHora}`, 220, 15);
-
-            let tituloReporte = "";
-            let headers = [];
-            let rows = [];
-
-            if (aulaSeleccionadaActual) {
-                // Informe individual del aula seleccionada
-                const codNorm = normalizarCodigoEspacio(aulaSeleccionadaActual);
-                const inv = buscarRegistroPorCodigo(registrosInventarioExcel, codNorm) || {};
-                const mob = buscarRegistroPorCodigo(registrosMobiliarioExcel, codNorm) || {};
-                const hor = consultarHorarioAula(aulaSeleccionadaActual, diaSel, franjaSel);
-
-                tituloReporte = `FICHA TÉCNICA INDIVIDUAL: ${aulaSeleccionadaActual} (${pisoActual2D})`;
-                
-                doc.setTextColor(7, 13, 25);
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                doc.text(tituloReporte, 14, 30);
-
-                headers = [["Parámetro / Sección", "Detalle Registrado"]];
-                rows = [
-                    ["Código de Espacio", aulaSeleccionadaActual],
-                    ["Ubicación / Piso", pisoActual2D],
-                    ["Categoría & Subcategoría", `${inv.categoria || 'N/A'} - ${inv.subcategoria || 'N/A'}`],
-                    ["Uso Actual", inv.uso || 'N/A'],
-                    ["Área Construida & Altura", `${inv.area || 'N/A'} m² | Altura: ${inv.altura || 'N/A'} m`],
-                    ["Capacidad (Estudiantes / Docente)", `${inv.capEstudiantes || '0'} Estudiantes | ${inv.capDocente || '0'} Docente`],
-                    ["Puertas & Ventanas", `${inv.puertasNum || '0'} Puertas (${inv.puertasEstado || 'N/A'}) | ${inv.ventanasNum || '0'} Ventanas (${inv.ventanasEstado || 'N/A'})`],
-                    ["Muros & Cielo Raso", `Muros: ${inv.murosAcabado || 'N/A'} (${inv.murosEstado || 'N/A'}) | Cielo: ${inv.cieloEstado || 'N/A'}`],
-                    ["Estado General & Patologías", `Estado: ${inv.estadoGeneral || 'N/A'} | Patología: ${inv.tipoPatologia || 'Ninguna'} (${inv.ubicacionPatologia || 'N/A'})`],
-                    ["Observaciones de Mantenimiento", inv.observacionesPatologia || 'Sin observaciones'],
-                    ["Mobiliario (Sillas Totales / Buenas)", `${mob.numSillas || '0'} sillas (${mob.sillasBuenas || '0'} buenas, ${mob.sillasProg || '0'} programables)`],
-                    ["Escritorio Docente / Tableros", `Escritorio: ${mob.escritorioDocente || 'N/A'} | Tableros: ${mob.numTableros || '0'} (${mob.tipoTablero || 'N/A'})`],
-                    ["Equipamiento Tecnológico", `VideoBeam: ${mob.videoBeam || 'N/A'} | Pantalla Int.: ${mob.pantallaInteligente || 'N/A'} | PCs: ${mob.numComputadores || '0'}`],
-                    ["Iluminación & Tomacorrientes", `Luminarias: ${mob.luminariasFunc || '0'}/${mob.luminariasTotal || '0'} func. (${mob.tipoIluminacion || 'N/A'}) | Tomas: ${mob.tomacorrientes || 'N/A'}`],
-                    ["Estado Mobiliario & Obs.", `Estado: ${mob.estadoMobiliario || 'N/A'} | Obs: ${mob.observacionesMob || 'Sin obs'}`],
-                    [`Horario de Uso (${diaSel} - Franja ${hor.franja})`, `Estado: ${hor.estado} | Asignación: ${hor.detalle}`]
-                ];
-
-            } else if (modoSel === "inventario") {
-                tituloReporte = `INFORME DE INVENTARIO, INFRAESTRUCTURA Y PATOLOGÍAS - ${pisoActual2D.toUpperCase()}`;
-                doc.setTextColor(7, 13, 25);
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                doc.text(tituloReporte, 14, 30);
-
-                headers = [["Código", "Categoría", "Subcategoría", "Uso Actual", "Área (m²)", "Cap. Est.", "Puertas", "Ventanas", "Estado Gen.", "Patología Registrada"]];
-                
-                const codigosUnicos = new Set();
-                Object.keys(registrosInventarioExcel).forEach(k => {
-                    const reg = registrosInventarioExcel[k];
-                    if (reg && reg.codigo && !codigosUnicos.has(reg.codigo)) {
-                        if (!reg.piso || normalizarTextoSimple(reg.piso) === normalizarTextoSimple(pisoActual2D) || pisoDesdeCodigoEspacio(reg.codigo) === pisoDesdeTexto(pisoActual2D)) {
-                            codigosUnicos.add(reg.codigo);
-                            rows.push([
-                                reg.codigo,
-                                reg.categoria || 'N/A',
-                                reg.subcategoria || 'N/A',
-                                reg.uso || 'N/A',
-                                reg.area || 'N/A',
-                                reg.capEstudiantes || 'N/A',
-                                `${reg.puertasNum || 0} (${reg.puertasEstado || 'N/A'})`,
-                                `${reg.ventanasNum || 0} (${reg.ventanasEstado || 'N/A'})`,
-                                reg.estadoGeneral || 'N/A',
-                                reg.tipoPatologia && reg.tipoPatologia !== 'N/A' ? `${reg.tipoPatologia} (${reg.ubicacionPatologia || ''})` : 'Sin patología'
-                            ]);
+            const esFilaDePiso = (row) => {
+                const keys = Object.keys(row);
+                for (const key of keys) {
+                    const kNorm = normalizarTextoSimple(key);
+                    if (kNorm.includes("PISO") || kNorm.includes("NIVEL") || keys.indexOf(key) === 0) {
+                        const valNorm = normalizarTextoSimple(row[key]);
+                        if (valNorm === numeroPisoStr || valNorm.includes(`PISO ${numeroPisoStr}`) || valNorm.includes(`PISO${numeroPisoStr}`) || (numeroPisoStr && valNorm.includes(numeroPisoStr))) {
+                            return true;
                         }
                     }
-                });
+                }
+                return false;
+            };
 
-            } else if (modoSel === "mobiliario") {
-                tituloReporte = `INFORME DE MOBILIARIO, SILLAS Y EQUIPAMIENTO - ${pisoActual2D.toUpperCase()}`;
-                doc.setTextColor(7, 13, 25);
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                doc.text(tituloReporte, 14, 30);
+            const accMatch = registrosAccesibilidadExcel.find(row => esFilaDePiso(row)) || {};
+            const instMatches = registrosInstalacionesExcel.filter(row => esFilaDePiso(row));
 
-                headers = [["Código", "Sillas Totales", "Sillas Buenas", "Escritorio Doc.", "Tableros", "VideoBeam", "Pantalla Int.", "PCs", "Luminarias", "Estado Mob."]];
+            let html = ``;
 
-                const codigosUnicos = new Set();
-                Object.keys(registrosMobiliarioExcel).forEach(k => {
-                    const reg = registrosMobiliarioExcel[k];
-                    if (reg && !codigosUnicos.has(k)) {
-                        const inv = buscarRegistroPorCodigo(registrosInventarioExcel, k) || {};
-                        if (!inv.piso || normalizarTextoSimple(inv.piso) === normalizarTextoSimple(pisoActual2D) || pisoDesdeCodigoEspacio(k) === pisoDesdeTexto(pisoActual2D)) {
-                            codigosUnicos.add(k);
-                            rows.push([
-                                k,
-                                reg.numSillas || '0',
-                                reg.sillasBuenas || '0',
-                                reg.escritorioDocente || 'N/A',
-                                `${reg.numTableros || 0} (${reg.tipoTablero || 'N/A'})`,
-                                reg.videoBeam || 'N/A',
-                                reg.pantallaInteligente || 'N/A',
-                                reg.numComputadores || '0',
-                                `${reg.luminariasFunc || 0}/${reg.luminariasTotal || 0}`,
-                                reg.estadoMobiliario || 'N/A'
-                            ]);
-                        }
-                    }
-                });
+            html += `<div class="info-section-title">♿ ACCESIBILIDAD Y SEGURIDAD</div>`;
+            if (Object.keys(accMatch).length > 0) {
+                const keys = Object.keys(accMatch);
+                const getValAcc = (keyword) => {
+                    const foundKey = keys.find(k => normalizarTextoSimple(k).includes(normalizarTextoSimple(keyword)));
+                    return (foundKey && accMatch[foundKey] !== undefined && accMatch[foundKey] !== null && String(accMatch[foundKey]).trim() !== "") ? accMatch[foundKey] : 'N/A';
+                };
 
-            } else if (modoSel === "horarios") {
-                tituloReporte = `INFORME DE HORARIOS Y DISPONIBILIDAD (${diaSel.toUpperCase()} - FRANJA ${franjaSel}) - ${pisoActual2D.toUpperCase()}`;
-                doc.setTextColor(7, 13, 25);
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                doc.text(tituloReporte, 14, 30);
-
-                headers = [["Código Espacio", "Día", "Franja Horaria", "Estado Disponibilidad", "Detalle de Asignación / Asignatura"]];
-
-                const codigosUnicos = new Set();
-                Object.keys(registrosInventarioExcel).forEach(k => {
-                    const reg = registrosInventarioExcel[k];
-                    if (reg && reg.codigo && !codigosUnicos.has(reg.codigo)) {
-                        if (!reg.piso || normalizarTextoSimple(reg.piso) === normalizarTextoSimple(pisoActual2D) || pisoDesdeCodigoEspacio(reg.codigo) === pisoDesdeTexto(pisoActual2D)) {
-                            codigosUnicos.add(reg.codigo);
-                            const hor = consultarHorarioAula(reg.codigo, diaSel, franjaSel);
-                            rows.push([
-                                reg.codigo,
-                                diaSel,
-                                hor.franja,
-                                hor.estado,
-                                hor.detalle
-                            ]);
-                        }
-                    }
-                });
+                html += `
+                    <div class="info-group">
+                        <div class="info-label">Accesibilidad Universal:</div>
+                        <div class="info-val" style="font-size:11px;">
+                            • Acceso Silla Ruedas: <strong>${getValAcc('silla de ruedas')}</strong><br>
+                            • Rampa Cercana: <strong>${getValAcc('rampa')}</strong><br>
+                            • Ascensor Accesible: <strong>${getValAcc('ascensor')}</strong><br>
+                            • Baño Accesible: <strong>${getValAcc('baño accesible')}</strong>
+                        </div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Seguridad y Emergencia:</div>
+                        <div class="info-val" style="font-size:11px;">
+                            • Extintor Cercano: <strong>${getValAcc('extintor')}</strong><br>
+                            • Detector de Humo: <strong>${getValAcc('detector de humo')}</strong><br>
+                            • Alarma Incendios: <strong>${getValAcc('alarma')}</strong><br>
+                            • Ruta Evacuación: <strong>${getValAcc('ruta de evacuacion')}</strong>
+                        </div>
+                    </div>
+                `;
+            } else {
+                html += `<div class="info-group"><div class="info-val" style="color:var(--text-muted); font-size:11px;">Sin datos registrados de accesibilidad y seguridad para este piso.</div></div>`;
             }
 
-            if (rows.length === 0) {
-                rows.push(["Sin información registrada para el filtro o piso seleccionado.", "", "", "", ""]);
+            html += `<div class="info-section-title" style="margin-top:12px;">🔧 INSTALACIONES Y ACABADOS</div>`;
+            if (instMatches.length > 0) {
+                instMatches.forEach(item => {
+                    const keysInst = Object.keys(item);
+                    const getValInst = (keyword) => {
+                        const foundKey = keysInst.find(k => normalizarTextoSimple(k).includes(normalizarTextoSimple(keyword)));
+                        return (foundKey && item[foundKey] !== undefined && item[foundKey] !== null && String(item[foundKey]).trim() !== "") ? item[foundKey] : 'N/A';
+                    };
+
+                    const tipoBanoKey = keysInst.find(k => normalizarTextoSimple(k).includes("TIPO") || normalizarTextoSimple(k).includes("BAÑO") || normalizarTextoSimple(k).includes("SERVICIO"));
+                    const tipoBano = (tipoBanoKey && item[tipoBanoKey] && item[tipoBanoKey] !== 'N/A') ? item[tipoBanoKey] : 'Servicio';
+
+                    html += `
+                        <div class="info-group">
+                            <div class="info-label">Servicios Sanitarios (${tipoBano}):</div>
+                            <div class="info-val" style="font-size:11px;">
+                                • Cantidad: <strong>${getValInst('Cantidad')}</strong> | Lavamanos: <strong>${getValInst('lavamanos')}</strong>
+                            </div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Estado de Acabados:</div>
+                            <div class="info-val" style="font-size:11px;">
+                                • Pisos: <strong>${getValInst('Estado de pisos')}</strong> | Muros: <strong>${getValInst('Estado de muros')}</strong><br>
+                                • Cielo Raso: <strong>${getValInst('Estado de cielo raso')}</strong><br>
+                                • Filtraciones: <strong style="color:${String(getValInst('Filtraciones')).toLowerCase().includes('si') || String(getValInst('Filtraciones')).toLowerCase().includes('sí') ? '#ef4444' : '#34d399'}">${getValInst('Filtraciones')}</strong>
+                            </div>
+                        </div>
+                        ${getValInst('Observaciones') !== 'N/A' && getValInst('Observaciones') !== '' ? `
+                            <div class="info-group">
+                                <div class="info-label">Observaciones:</div>
+                                <div class="info-val" style="font-size:10px; color:#cbd5e1; font-style:italic;">${getValInst('Observaciones')}</div>
+                            </div>
+                        ` : ''}
+                    `;
+                });
+            } else {
+                html += `<div class="info-group"><div class="info-val" style="color:var(--text-muted); font-size:11px;">Sin datos registrados de instalaciones para este piso.</div></div>`;
             }
 
-            doc.autoTable({
-                startY: 35,
-                head: headers,
-                body: rows,
-                styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
-                headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: 'bold' },
-                alternateRowStyles: { fillColor: [245, 247, 250] },
-                margin: { left: 14, right: 14 }
-            });
-
-            const nombreArchivo = aulaSeleccionadaActual 
-                ? `Informe_GIC_${aulaSeleccionadaActual}.pdf` 
-                : `Informe_GIC_${pisoActual2D.replace(/[^a-zA-Z0-9]/g, '_')}_${modoSel}.pdf`;
-
-            doc.save(nombreArchivo);
+            if(panelContenido) panelContenido.innerHTML = html;
         }
 
-        let mapScale = 1;
-        let mapTranslateX = 0;
-        let mapTranslateY = 0;
-        let isDragging = false;
-        let startX = 0, startY = 0;
+        window.actualizarPanelDetallePiso3D = actualizarPanelDetallePiso3D;
+
+        function mostrarDetalleAulaPanel(codigoAula) {
+            const selModo = document.getElementById('select-modo-consulta');
+            const modo = selModo ? selModo.value : "inventario";
+            const panelTitulo = document.getElementById('panel-derecho-titulo');
+            const panelContenido = document.getElementById('panel-contenido');
+            const hojaIndicador = document.getElementById('hoja-excel-indicador');
+
+            const codigoMostrado = codigoAula.toUpperCase().replace(/^ESPACIO\s+/i, "");
+            if(panelTitulo) panelTitulo.innerHTML = `📌 ESPACIO ${codigoMostrado}`;
+
+            if (modo === "inventario") {
+                if(hojaIndicador) hojaIndicador.innerHTML = `<strong>Hoja:</strong> ${nombreHojaInventarioReal}`;
+                const inv = buscarRegistroPorCodigo(registrosInventarioExcel, codigoAula) || {};
+                
+                if(panelContenido) {
+                    panelContenido.innerHTML = `
+                        <div class="info-section-title">📐 Dimensiones y Uso</div>
+                        <div class="info-group">
+                            <div class="info-label">Categoría / Subcategoría:</div>
+                            <div class="info-val">${inv.categoria || 'N/A'} - ${inv.subcategoria || 'N/A'}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Uso Actual:</div>
+                            <div class="info-val">${inv.uso || 'N/A'}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Área / Altura Techo:</div>
+                            <div class="info-val">${inv.area && inv.area !== 'N/A' ? inv.area + ' m²' : 'N/A'} | H: ${inv.altura && inv.altura !== 'N/A' ? inv.altura + ' m' : 'N/A'}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Capacidad Observada:</div>
+                            <div class="info-val">👥 Estudiantes: <strong>${inv.capEstudiantes || 'N/A'}</strong> | 👨‍🏫 Docente: <strong>${inv.capDocente || 'N/A'}</strong></div>
+                        </div>
+
+                        <div class="info-section-title">🚪 Puertas y Ventanas</div>
+                        <div class="info-group">
+                            <div class="info-label">Puertas (N.º ${inv.puertasNum || '0'}):</div>
+                            <div class="info-val">Estado: ${inv.puertasEstado || 'N/A'}<br><small style="color:#94a3b8;">${inv.puertasObs && inv.puertasObs !== 'N/A' ? inv.puertasObs : ''}</small></div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Ventanas (N.º ${inv.ventanasNum || '0'}):</div>
+                            <div class="info-val">Estado: ${inv.ventanasEstado || 'N/A'}<br><small style="color:#94a3b8;">${inv.ventanasObs && inv.ventanasObs !== 'N/A' ? inv.ventanasObs : ''}</small></div>
+                        </div>
+
+                        <div class="info-section-title">🧱 Cielo Raso y Muros</div>
+                        <div class="info-group">
+                            <div class="info-label">Cielo Raso:</div>
+                            <div class="info-val">Estado: ${inv.cieloEstado || 'N/A'} ${inv.cieloObs && inv.cieloObs !== 'N/A' ? '(' + inv.cieloObs + ')' : ''}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Acabado y Estado de Muros:</div>
+                            <div class="info-val">${inv.murosAcabado || 'N/A'} (Estado: ${inv.murosEstado || 'N/A'})<br><small style="color:#94a3b8;">${inv.murosObs && inv.murosObs !== 'N/A' ? inv.murosObs : ''}</small></div>
+                        </div>
+
+                        <div class="info-section-title">🗝️ Acceso y Orientación</div>
+                        <div class="info-group">
+                            <div class="info-label">Orientación del Espacio:</div>
+                            <div class="info-val">${inv.orientacion || 'N/A'}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Acceso / Responsable:</div>
+                            <div class="info-val">Libre: ${inv.accesoLibre || 'N/A'} | Control: ${inv.tipoControl || 'N/A'}<br>Responsable: ${inv.responsableAcceso || 'N/A'}</div>
+                        </div>
+
+                        <div class="info-section-title">⚠️ Patología y Diagnóstico</div>
+                        <div class="info-group">
+                            <div class="info-label">Tipo de Patología:</div>
+                            <div class="info-val" style="color: #eab308; font-weight:700;">${inv.tipoPatologia || 'Ninguna'}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Ubicación Patología:</div>
+                            <div class="info-val">${inv.ubicacionPatologia || 'N/A'}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Estado General y Observaciones:</div>
+                            <div class="info-val" style="font-size:11px; color:#cbd5e1;">
+                                <strong>Estado:</strong> ${inv.estadoGeneral || 'N/A'}<br>
+                                ${inv.observacionesPatologia || 'Sin novedades'}
+                            </div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">📅 Fecha Registro:</div>
+                            <div class="info-val" style="font-size:11px; color:#94a3b8;">${inv.fechaRegistro || 'N/A'}</div>
+                        </div>
+                    `;
+                }
+            } else if (modo === "mobiliario") {
+                if(hojaIndicador) hojaIndicador.innerHTML = `<strong>Hoja:</strong> ${nombreHojaMobiliarioReal}`;
+                const mob = buscarRegistroPorCodigo(registrosMobiliarioExcel, codigoAula) || {};
+                if(panelContenido) {
+                    panelContenido.innerHTML = `
+                        <div class="info-group">
+                            <div class="info-label">Sillas Disponibles / Buen Estado:</div>
+                            <div class="info-val">${mob.numSillas || 'N/A'} totales / ${mob.sillasBuenas || 'N/A'} buenas</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Escritorio Docente:</div>
+                            <div class="info-val">${mob.escritorioDocente || 'N/A'}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Tableros & Proyección:</div>
+                            <div class="info-val">${mob.numTableros || '0'} ${mob.tipoTablero || ''} | Beam: ${mob.videoBeam || 'No'}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Iluminación & Tomas:</div>
+                            <div class="info-val">${mob.tipoIluminacion || 'N/A'} (${mob.luminariasFunc || '0'}/${mob.luminariasTotal || '0'}) | ${mob.tomacorrientes || '0'} tomas</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Observaciones Mobiliario:</div>
+                            <div class="info-val" style="font-size:11px; color:#cbd5e1;">${mob.obsElectricas || mob.observacionesMob || 'Sin novedad'}</div>
+                        </div>
+                    `;
+                }
+            } else if (modo === "horarios") {
+                if(hojaIndicador) hojaIndicador.innerHTML = `<strong>Hoja:</strong> ${nombreHojaHorariosReal}`;
+                const selDia = document.getElementById('select-dia');
+                const selFranja = document.getElementById('select-franja');
+                const info = consultarHorarioAula(codigoAula, selDia ? selDia.value : "Lunes", selFranja ? selFranja.value : "7 -8");
+                const badgeClase = info.estado === "Ocupado" ? "badge-ocupado" : "badge-libre";
+
+                if(panelContenido) {
+                    panelContenido.innerHTML = `
+                        <div class="info-group">
+                            <div class="info-label">Estado Actual:</div>
+                            <div class="info-val"><span class="badge-estado ${badgeClase}">${info.estado}</span></div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Planta:</div>
+                            <div class="info-val">${pisoActual2D}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Actividad / Asignatura:</div>
+                            <div class="info-val">${info.detalle}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Franja Horaria:</div>
+                            <div class="info-val">${info.franja}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Día:</div>
+                            <div class="info-val">${selDia ? selDia.value : "Lunes"}</div>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // --- SISTEMA DE ZOOM Y PANEO DEL MAPA GENERAL ---
+        const MAPA_MODO_AJUSTE = 'slice';
+        const MAPA_ZOOM_MIN = 1;
+        const MAPA_ZOOM_MAX = 12;
+
+        let scale = 1;
+        let panning = false;
+        let pointX = 0;
+        let pointY = 0;
+        let lastScreenX = 0;
+        let lastScreenY = 0;
+        let movidoPx = 0;
+        let hasMoved = false;
+
+        function limitarPaneo() {
+            const cont = document.getElementById('vista-mapa');
+            if (!cont) return;
+            const W = cont.clientWidth, H = cont.clientHeight;
+            pointX = Math.min(0, Math.max(W - W * scale, pointX));
+            pointY = Math.min(0, Math.max(H - H * scale, pointY));
+        }
 
         function setTransform() {
+            limitarPaneo();
             const viewport = document.getElementById('map-viewport');
             if (viewport) {
-                viewport.style.transform = `translate(${mapTranslateX}px, ${mapTranslateY}px) scale(${mapScale})`;
+                viewport.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
             }
         }
 
-        function inicializarControlesMapa() {
-            const container = document.getElementById('vista-mapa');
-            if (!container) return;
+        function zoomEnPunto(cx, cy, factor) {
+            const nuevo = Math.max(MAPA_ZOOM_MIN, Math.min(scale * factor, MAPA_ZOOM_MAX));
+            if (nuevo === scale) return;
+            const xs = (cx - pointX) / scale;
+            const ys = (cy - pointY) / scale;
+            scale = nuevo;
+            pointX = cx - xs * scale;
+            pointY = cy - ys * scale;
+            setTransform();
+        }
 
-            container.addEventListener('wheel', (e) => {
+        function resetearVistaMapa() {
+            scale = 1; pointX = 0; pointY = 0;
+            setTransform();
+        }
+
+        function ajustarSvgMapa() {
+            const svgObj = document.getElementById('svg-object');
+            if (!svgObj || !svgObj.contentDocument) return;
+            const svg = svgObj.contentDocument.documentElement;
+            if (!svg || svg.tagName.toLowerCase() !== 'svg') return;
+
+            let vb = null;
+            try {
+                const bb = svg.getBBox();
+                if (bb.width > 0 && bb.height > 0) vb = [bb.x, bb.y, bb.width, bb.height];
+            } catch (e) {}
+
+            if (!vb) {
+                const attr = svg.getAttribute('viewBox');
+                if (attr) {
+                    vb = attr.trim().split(/[\s,]+/).map(Number);
+                } else {
+                    const w = parseFloat(svg.getAttribute('width'));
+                    const h = parseFloat(svg.getAttribute('height'));
+                    if (w > 0 && h > 0) vb = [0, 0, w, h];
+                }
+            }
+
+            if (vb) svg.setAttribute('viewBox', vb.join(' '));
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', '100%');
+            svg.setAttribute('preserveAspectRatio', `xMidYMid ${MAPA_MODO_AJUSTE}`);
+            svg.style.width = '100%';
+            svg.style.height = '100%';
+            svg.style.display = 'block';
+            resetearVistaMapa();
+        }
+
+        function inicializarZoomPanMapa() {
+            const vistaMapa = document.getElementById('vista-mapa');
+            if (!vistaMapa) return;
+
+            const puntoContenedor = (e, interno) => {
+                if (interno) return { x: pointX + e.clientX * scale, y: pointY + e.clientY * scale };
+                const r = vistaMapa.getBoundingClientRect();
+                return { x: e.clientX - r.left, y: e.clientY - r.top };
+            };
+
+            const onDown = (e) => {
+                if (e.button !== 0) return;
+                if (e.target.closest && e.target.closest('#map-controls, #panel-edificios')) return;
+                panning = true;
+                hasMoved = false;
+                movidoPx = 0;
+                lastScreenX = e.screenX;
+                lastScreenY = e.screenY;
+                vistaMapa.classList.add('arrastrando');
+            };
+            const onMove = (e) => {
+                if (!panning) return;
+                const dx = e.screenX - lastScreenX;
+                const dy = e.screenY - lastScreenY;
+                lastScreenX = e.screenX;
+                lastScreenY = e.screenY;
+                movidoPx += Math.abs(dx) + Math.abs(dy);
+                if (movidoPx > 4) hasMoved = true;
+                pointX += dx;
+                pointY += dy;
+                setTransform();
+            };
+            const onUp = () => {
+                if (!panning) return;
+                panning = false;
+                vistaMapa.classList.remove('arrastrando');
+            };
+            const onWheel = (interno) => (e) => {
                 e.preventDefault();
-                const zoomFactor = 1.15;
-                const rect = container.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
+                const p = puntoContenedor(e, interno);
+                zoomEnPunto(p.x, p.y, e.deltaY < 0 ? 1.15 : 1 / 1.15);
+            };
 
-                let newScale = e.deltaY < 0 ? mapScale * zoomFactor : mapScale / zoomFactor;
-                newScale = Math.max(0.5, Math.min(newScale, 15));
-
-                mapTranslateX = mouseX - (mouseX - mapTranslateX) * (newScale / mapScale);
-                mapTranslateY = mouseY - (mouseY - mapTranslateY) * (newScale / mapScale);
-                mapScale = newScale;
-
-                setTransform();
-            }, { passive: false });
-
-            container.addEventListener('mousedown', (e) => {
-                if (e.target.closest('#panel-edificios') || e.target.closest('#map-controls')) return;
-                isDragging = true;
-                container.classList.add('arrastrando');
-                startX = e.clientX - mapTranslateX;
-                startY = e.clientY - mapTranslateY;
-            });
-
-            window.addEventListener('mousemove', (e) => {
-                if (!isDragging) return;
-                mapTranslateX = e.clientX - startX;
-                mapTranslateY = e.clientY - startY;
-                setTransform();
-            });
-
-            window.addEventListener('mouseup', () => {
-                isDragging = false;
-                container.classList.remove('arrastrando');
-            });
-
-            document.getElementById('zoom-in')?.addEventListener('click', () => {
-                mapScale *= 1.25;
-                setTransform();
-            });
-
-            document.getElementById('zoom-out')?.addEventListener('click', () => {
-                mapScale = Math.max(0.5, mapScale / 1.25);
-                setTransform();
-            });
-
-            document.getElementById('zoom-reset')?.addEventListener('click', () => {
-                mapScale = 1;
-                mapTranslateX = 0;
-                mapTranslateY = 0;
-                setTransform();
-            });
+            vistaMapa.addEventListener('mousedown', onDown);
+            vistaMapa.addEventListener('wheel', onWheel(false), { passive: false });
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onUp);
 
             const svgObj = document.getElementById('svg-object');
+            const conectarInterno = () => {
+                const doc = svgObj && svgObj.contentDocument;
+                if (!doc || doc.__zoomPanConectado) return;
+                doc.__zoomPanConectado = true;
+                doc.addEventListener('mousedown', onDown);
+                doc.addEventListener('mousemove', onMove);
+                doc.addEventListener('mouseup', onUp);
+                doc.addEventListener('wheel', onWheel(true), { passive: false });
+                doc.addEventListener('dragstart', (e) => e.preventDefault());
+            };
             if (svgObj) {
-                svgObj.addEventListener('load', () => {
+                svgObj.addEventListener('load', conectarInterno);
+                if (svgObj.contentDocument && svgObj.contentDocument.readyState === 'complete') conectarInterno();
+            }
+
+            const centro = () => ({ x: vistaMapa.clientWidth / 2, y: vistaMapa.clientHeight / 2 });
+            document.getElementById('zoom-in').addEventListener('click', () => { const c = centro(); zoomEnPunto(c.x, c.y, 1.4); });
+            document.getElementById('zoom-out').addEventListener('click', () => { const c = centro(); zoomEnPunto(c.x, c.y, 1 / 1.4); });
+            document.getElementById('zoom-reset').addEventListener('click', resetearVistaMapa);
+
+            window.addEventListener('resize', setTransform);
+        }
+
+        // ===== BIENVENIDA =====
+        function abrirBienvenida() {
+            const o = document.getElementById('welcome-overlay');
+            if (o) o.classList.add('show');
+        }
+        function cerrarBienvenida() {
+            const o = document.getElementById('welcome-overlay');
+            const chk = document.getElementById('welcome-no-mostrar');
+            if (chk && chk.checked) { try { localStorage.setItem('uptc_gic_bienvenida_vista', '1'); } catch (e) {} }
+            else { try { localStorage.removeItem('uptc_gic_bienvenida_vista'); } catch (e) {} }
+            if (o) o.classList.remove('show');
+        }
+        function inicializarBienvenida() {
+            let yaVista = false;
+            try { yaVista = localStorage.getItem('uptc_gic_bienvenida_vista') === '1'; } catch (e) {}
+            if (!yaVista) abrirBienvenida();
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarBienvenida(); });
+            const o = document.getElementById('welcome-overlay');
+            if (o) o.addEventListener('mousedown', (e) => { if (e.target === o) cerrarBienvenida(); });
+        }
+
+        // ===== LISTA DE EDIFICIOS DEL MAPA =====
+        const EDIFICIOS_CAMPUS = [{"cod": 1, "nombre": "Entrada Principal", "color": "#ef1c1c", "svgId": null}, {"cod": 2, "nombre": "Entrada R", "color": "#ef1c1c", "svgId": null}, {"cod": 3, "nombre": "Entrada L", "color": "#ef1c1c", "svgId": null}, {"cod": 4, "nombre": "Acceso La Colina", "color": "#d9d9d9", "svgId": null}, {"cod": 5, "nombre": "Escenarios Deportivos", "color": "#c6e5b3", "svgId": null}, {"cod": 6, "nombre": "Laboratorio de Materiales", "color": "#8fc8ee", "svgId": null}, {"cod": 8, "nombre": "Lab Psicológicos", "color": "#a0701e", "svgId": null}, {"cod": 9, "nombre": "Bienestar", "color": "#f1f19a", "svgId": null}, {"cod": 10, "nombre": "Matemáticas", "color": "#c9d44c", "svgId": null}, {"cod": 11, "nombre": "ENSST", "color": "#3fa63f", "svgId": null}, {"cod": 12, "nombre": "Restaurante", "color": "#eab04a", "svgId": null}, {"cod": 13, "nombre": "Admisiones y Registro", "color": "#c05fb5", "svgId": null}, {"cod": 14, "nombre": "Gym S. Generales", "color": "#e8825a", "svgId": null}, {"cod": 15, "nombre": "Cafetín Profesores", "color": "#6f93c8", "svgId": null}, {"cod": 16, "nombre": "Granja Las Flores", "color": "#2c4a9c", "svgId": null}, {"cod": 17, "nombre": "Archivo Histórico", "color": "#b7a6d8", "svgId": null}, {"cod": 18, "nombre": "Ingeniería", "color": "#c0399e", "svgId": null}, {"cod": 19, "nombre": "Lab Antiguos", "color": "#6e2a6a", "svgId": null}, {"cod": 20, "nombre": "Estación Metereológica", "color": "#a5d99a", "svgId": null}, {"cod": 21, "nombre": "Lab Bioplasma", "color": "#8bbcdc", "svgId": null}, {"cod": 22, "nombre": "Metalurgia", "color": "#d9603f", "svgId": null}, {"cod": 23, "nombre": "Central", "color": "#5fb35f", "svgId": null}, {"cod": 26, "nombre": "Biblioteca Jorge Palacios", "color": "#dbb43a", "svgId": null}, {"cod": 27, "nombre": "Coliseo", "color": "#9c2f1c", "svgId": null}, {"cod": 28, "nombre": "Centro de Servicios", "color": "#5fc0a8", "svgId": null}, {"cod": 29, "nombre": "Rafael Azula", "color": "#7a3b8f", "svgId": null}, {"cod": 30, "nombre": "Aulas Hunza", "color": "#6c86b8", "svgId": "HUNZA"}, {"cod": 31, "nombre": "Aulas Julius Sieber", "color": "#6aae4a", "svgId": null}, {"cod": 32, "nombre": "Administrativo", "color": "#4aa3e8", "svgId": null}, {"cod": 33, "nombre": "Talleres y Carpintería", "color": "#d868b0", "svgId": null}, {"cod": 34, "nombre": "Fesad", "color": "#a56bc4", "svgId": null}, {"cod": 35, "nombre": "Derecho", "color": "#5a2a78", "svgId": null}, {"cod": 36, "nombre": "Cafetín Estudiantes", "color": "#7fd1b0", "svgId": null}, {"cod": 37, "nombre": "Invernadero", "color": "#d8e88a", "svgId": null}, {"cod": 38, "nombre": "Sede Iniag", "color": "#b4d43c", "svgId": null}, {"cod": 40, "nombre": "La Casona", "color": "#4aa8e8", "svgId": null}, {"cod": 41, "nombre": "Casa Colina", "color": "#e070b8", "svgId": null}, {"cod": 42, "nombre": "Incitema", "color": "#b9a0d8", "svgId": null}, {"cod": 43, "nombre": "Laboratorio Recursos Nucleares", "color": "#b02c58", "svgId": null}, {"cod": 44, "nombre": "Centro de Laboratorios", "color": "#35bfa6", "svgId": null}, {"cod": 45, "nombre": "Artes", "color": "#e0663c", "svgId": null}, {"cod": 46, "nombre": "Música", "color": "#8a4fb0", "svgId": null}, {"cod": 48, "nombre": "Clínica Veterinaria", "color": "#4cb04c", "svgId": null}, {"cod": 49, "nombre": "Posgrados", "color": "#a89fc0", "svgId": null}, {"cod": 61, "nombre": "Depósito residuos sólidos", "color": "#e8c83c", "svgId": null}, {"cod": 62, "nombre": "Laboratorios Ingeniería (EDILAB)", "color": "#7fbf5f", "svgId": null}];
+
+        function buscarElementoSvgMapa(doc, id) {
+            if (!doc || !id) return null;
+            return doc.getElementById(id) || doc.getElementById(id.toLowerCase()) ||
+                   doc.querySelector('[id="' + id + '"]') || doc.querySelector('[id*="' + id + '" i]');
+        }
+
+        let avisoTimer = null;
+        function mostrarAvisoMapa(texto) {
+            const a = document.getElementById('aviso-mapa');
+            if (!a) return;
+            a.textContent = texto;
+            a.classList.add('show');
+            clearTimeout(avisoTimer);
+            avisoTimer = setTimeout(() => a.classList.remove('show'), 2800);
+        }
+
+        function zoomAEdificio(ed) {
+            const svgObj = document.getElementById('svg-object');
+            const doc = svgObj && svgObj.contentDocument;
+            const el = ed.svgId ? buscarElementoSvgMapa(doc, ed.svgId) : null;
+            if (!el) {
+                mostrarAvisoMapa('El edificio ' + ed.cod + ' · ' + ed.nombre + ' aún no está disponible en el mapa interactivo.');
+                return;
+            }
+            const cont = document.getElementById('vista-mapa');
+            const vp = document.getElementById('map-viewport');
+            const r = el.getBoundingClientRect();
+            if (!r.width || !r.height) return;
+
+            const W = cont.clientWidth, H = cont.clientHeight;
+            const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+            const destino = Math.min(W / r.width, H / r.height) * 0.35;
+            scale = Math.max(MAPA_ZOOM_MIN, Math.min(MAPA_ZOOM_MAX, destino));
+            pointX = W / 2 - cx * scale;
+            pointY = H / 2 - cy * scale;
+
+            vp.classList.add('animando');
+            setTransform();
+            setTimeout(() => vp.classList.remove('animando'), 700);
+
+            el.style.transition = 'filter 0.3s';
+            el.style.filter = 'drop-shadow(0px 0px 10px #00b4d8) drop-shadow(0px 0px 4px #00b4d8)';
+            setTimeout(() => { el.style.filter = 'none'; }, 2500);
+        }
+
+        function inicializarListaEdificios() {
+            const panel = document.getElementById('panel-edificios');
+            const btn = document.getElementById('btn-lista-edificios');
+            const ul = document.getElementById('lista-edificios');
+            const buscador = document.getElementById('buscar-edificio');
+            const vacia = document.getElementById('lista-vacia');
+            const contador = document.getElementById('contador-edificios');
+            if (!panel || !btn || !ul) return;
+
+            contador.textContent = '(' + EDIFICIOS_CAMPUS.length + ')';
+
+            ['mousedown', 'wheel', 'dblclick'].forEach(ev =>
+                panel.addEventListener(ev, (e) => e.stopPropagation(), { passive: ev !== 'wheel' })
+            );
+
+            const normalizar = (t) => String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+            function pintar(filtro) {
+                const f = normalizar(filtro || '');
+                ul.innerHTML = '';
+                let n = 0;
+                EDIFICIOS_CAMPUS.forEach(ed => {
+                    if (f && !(normalizar(ed.nombre).includes(f) || String(ed.cod).startsWith(f))) return;
+                    n++;
+                    const li = document.createElement('li');
+                    if (!ed.svgId) li.classList.add('sin-geo');
+                    li.title = ed.svgId ? 'Clic para acercar en el mapa' : 'Aún sin geometría en el mapa';
+                    li.innerHTML = '<span class="cod">' + ed.cod + '</span>' +
+                                   '<span class="sw" style="background:' + ed.color + '"></span>' +
+                                   '<span class="nom">' + ed.nombre + '</span>' +
+                                   '<span class="pin">📍</span>';
+                    li.addEventListener('click', () => {
+                        zoomAEdificio(ed);
+                        if (ed.svgId) panel.classList.remove('abierto');
+                    });
+                    ul.appendChild(li);
+                });
+                vacia.style.display = n === 0 ? 'block' : 'none';
+            }
+
+            pintar('');
+            btn.addEventListener('click', () => {
+                panel.classList.toggle('abierto');
+                if (panel.classList.contains('abierto')) { buscador.value = ''; pintar(''); buscador.focus(); }
+            });
+            buscador.addEventListener('input', () => pintar(buscador.value));
+        }
+
+        window.addEventListener('load', () => {
+            inicializarFranjasHorarias();
+            inicializarListaEdificios();
+            inicializarBienvenida();
+            cargarExcelRealRepo();
+            inicializarZoomPanMapa();
+
+            const svgObj = document.getElementById('svg-object');
+            const sidebarDerecha = document.getElementById('sidebar-derecha');
+
+            if (svgObj) {
+                const conectarHunza = () => {
+                    ajustarSvgMapa();
                     const svgDoc = svgObj.contentDocument;
-                    if (!svgDoc) return;
-                    
-                    const elHunza = svgDoc.getElementById('HUNZA') || svgDoc.querySelector('[id*="30"]') || svgDoc.querySelector('[id*="HUNZA"]');
-                    if (elHunza) {
-                        elHunza.style.cursor = 'pointer';
-                        elHunza.addEventListener('click', () => {
-                            irAVista('vista-3d');
-                        });
+                    if (svgDoc) {
+                        const elHunza = svgDoc.getElementById('HUNZA') || 
+                                        svgDoc.getElementById('hunza') || 
+                                        svgDoc.querySelector('#HUNZA') ||
+                                        svgDoc.querySelector('[id="HUNZA"]') ||
+                                        svgDoc.querySelector('[id*="HUNZA" i]');
+
+                        if (elHunza) {
+                            elHunza.style.cursor = 'pointer';
+                            elHunza.style.transition = 'opacity 0.2s, filter 0.2s';
+                            
+                            elHunza.addEventListener('mouseenter', () => {
+                                if (panning) return;
+                                elHunza.style.opacity = '0.7';
+                                elHunza.style.filter = 'drop-shadow(0px 0px 8px #00b4d8)';
+                                if (vistaActualGlobal === 'vista-mapa' && sidebarDerecha) {
+                                    sidebarDerecha.classList.add('visible');
+                                    restablecerPanelEdificio();
+                                }
+                            });
+
+                            elHunza.addEventListener('mouseleave', () => {
+                                elHunza.style.opacity = '1';
+                                elHunza.style.filter = 'none';
+                                if (vistaActualGlobal === 'vista-mapa' && sidebarDerecha) {
+                                    sidebarDerecha.classList.remove('visible');
+                                }
+                            });
+
+                            elHunza.addEventListener('click', (e) => {
+                                if (hasMoved) return;
+                                e.stopPropagation();
+                                irAVista('vista-3d');
+                            });
+                        }
                     }
+                };
+
+                if (svgObj.contentDocument && svgObj.contentDocument.readyState === 'complete') {
+                    conectarHunza();
+                } else {
+                    svgObj.addEventListener('load', conectarHunza);
+                }
+            }
+
+            const svg2dObj = document.getElementById('svg-2d-object');
+            if (svg2dObj) {
+                svg2dObj.addEventListener('load', () => {
+                    mostrarResumenPlanta2D();
+                    actualizarEstadoAulas2D();
                 });
             }
-        }
-
-        function abrirBienvenida() {
-            document.getElementById('welcome-overlay')?.classList.add('show');
-        }
-
-        function cerrarBienvenida() {
-            const noMostrar = document.getElementById('welcome-no-mostrar')?.checked;
-            if (noMostrar) {
-                localStorage.setItem('gic_no_mostrar_bienvenida', 'true');
-            }
-            document.getElementById('welcome-overlay')?.classList.remove('show');
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            inicializarFranjasHorarias();
-            inicializarControlesMapa();
-            inicializarControles3D();
-            cargarExcelRealRepo();
-
-            if (!localStorage.getItem('gic_no_mostrar_bienvenida')) {
-                abrirBienvenida();
-            }
         });
+    </script>
+
+    <!-- MOTOR THREE.JS Y ZOOM INTERACTIVO -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+
+        let scene, camera, renderer, controls;
+        let gltfLoader = null;
+        let is3DInitialized = false;
+        let yaCargado = false;
+        let animFrameId = null;
+        let modeloGlobal = null;
+        let planoInferior = null, planoSuperior = null;
+        let alturaMinModel = 0, alturaMaxModel = 100;
+
+        // --- NIVELES DE PISO ---
+        // Alturas (desde la base del modelo, en unidades del modelo) donde TERMINA cada piso.
+        // Se pueden recalibrar desde el panel «⚙ Calibrar alturas de pisos» (se guardan en el navegador).
+        const LIMITES_PISOS_DEFECTO = [4.80, 8.50, 12.00, 15.50];
+        const NOMBRES_PISOS_3D = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
+        const CLAVE_LIMITES = 'uptc_gic_limites_pisos_v2';
+        let limitesPisos = LIMITES_PISOS_DEFECTO.slice();
+        try {
+            const g = JSON.parse(localStorage.getItem(CLAVE_LIMITES) || 'null');
+            if (Array.isArray(g) && g.length === 4 && g.every(Number.isFinite) && g.every((v, i) => v > 0 && (i === 0 || v > g[i - 1]))) limitesPisos = g;
+        } catch (e) {}
+
+        let MAPPING_PISOS = [];
+        function reconstruirMapping() {
+            const lim = [-1e6, ...limitesPisos, 1e6];
+            MAPPING_PISOS = NOMBRES_PISOS_3D.map((nombre, i) => ({ idx: i, nombre, minY: lim[i], maxY: lim[i + 1] }));
+        }
+        reconstruirMapping();
+
+        function indicePisoPorAltura(yActual) {
+            const yRelativa = yActual - alturaMinModel;
+            for (let i = 0; i < MAPPING_PISOS.length; i++) {
+                if (yRelativa >= MAPPING_PISOS[i].minY && yRelativa < MAPPING_PISOS[i].maxY) return MAPPING_PISOS[i].idx;
+            }
+            return MAPPING_PISOS.length - 1;
+        }
+
+        function rangoPiso(idx) {
+            const config = MAPPING_PISOS[idx] || MAPPING_PISOS[0];
+            return {
+                base: Math.max(alturaMinModel + config.minY, alturaMinModel - 50),
+                techo: Math.min(alturaMinModel + config.maxY, alturaMaxModel + 100)
+            };
+        }
+
+        let pisoAislado = -1;
+        let bandaPiso = null;
+        let bboxModelo = null;
+        let toastTimer = null;
+
+        function toast3D(texto) {
+            const t = document.getElementById('toast-piso');
+            if (!t) return;
+            t.textContent = texto;
+            t.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+        }
+
+        // Banda translúcida que marca el rango de alturas del piso bajo el cursor
+        function mostrarBandaPiso(idx) {
+            if (!scene) return;
+            if (!bandaPiso) {
+                bandaPiso = new THREE.Mesh(
+                    new THREE.BoxGeometry(1, 1, 1),
+                    new THREE.MeshBasicMaterial({ color: 0x00b4d8, transparent: true, opacity: 0.22, depthWrite: false })
+                );
+                bandaPiso.raycast = () => {};
+                bandaPiso.renderOrder = 10;
+                bandaPiso.visible = false;
+                scene.add(bandaPiso);
+            }
+            if (idx < 0 || !bboxModelo) { bandaPiso.visible = false; return; }
+            const { base, techo } = rangoPiso(idx);
+            const y0 = Math.max(base, alturaMinModel), y1 = Math.min(techo, alturaMaxModel);
+            const size = bboxModelo.getSize(new THREE.Vector3());
+            const centro = bboxModelo.getCenter(new THREE.Vector3());
+            bandaPiso.scale.set(size.x * 1.03, Math.max(y1 - y0, 0.02), size.z * 1.03);
+            bandaPiso.position.set(centro.x, (y0 + y1) / 2, centro.z);
+            bandaPiso.visible = true;
+        }
+
+        let pisosMeshes = [[], [], [], [], []];
+        let pisoHoveredActual = -1;
+
+        const clock = new THREE.Clock();
+        const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
+
+        function init3DViewer() {
+            if (is3DInitialized) return true;
+
+            const container = document.getElementById('ifc-canvas-container');
+            if (!container || container.clientWidth === 0) return false;
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            container.innerHTML = '';
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xffffff);
+
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 3000);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+            renderer.localClippingEnabled = true;
+
+            container.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.enableZoom = false;
+            controls.rotateSpeed = 0.4;
+            controls.panSpeed = 0.4;
+            controls.minDistance = 2.0;
+            controls.maxDistance = 1000.0;
+
+            renderer.domElement.addEventListener('wheel', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const direction = new THREE.Vector3();
+                camera.getWorldDirection(direction);
+
+                const dir = Math.sign(event.deltaY);
+                const dist = camera.position.distanceTo(controls.target);
+                const step = Math.max(0.5, dist * 0.05);
+
+                if (dir > 0) {
+                    if (dist < controls.maxDistance) {
+                        camera.position.addScaledVector(direction, -step);
+                    }
+                } else {
+                    if (dist > controls.minDistance) {
+                        camera.position.addScaledVector(direction, step);
+                    }
+                }
+            }, { passive: false });
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            dirLight.position.set(100, 200, 100);
+            scene.add(dirLight);
+
+            const gridHelper = new THREE.GridHelper(300, 60, 0x00b4d8, 0xcbd5e1);
+            gridHelper.position.y = -0.01;
+            scene.add(gridHelper);
+
+            planoInferior = new THREE.Plane(new THREE.Vector3(0, 1, 0), -1000);
+            planoSuperior = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1000);
+
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+            let pointerDownPos = { x: 0, y: 0 };
+
+            container.addEventListener('pointerdown', (e) => {
+                pointerDownPos = { x: e.clientX, y: e.clientY };
+            });
+
+            // El piso se decide SIEMPRE por la altura del punto tocado (no por la malla),
+            // porque una misma malla del modelo puede abarcar varios pisos.
+            function pisoBajoCursor(clientX, clientY) {
+                if (!modeloGlobal) return null;
+                const rect = container.getBoundingClientRect();
+                mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                const hits = raycaster.intersectObject(modeloGlobal, true);
+                for (const hit of hits) {
+                    if (!hit.object || hit.object.visible === false) continue;
+                    const pt = hit.point;
+                    if (planoInferior && planoInferior.distanceToPoint(pt) < -0.01) continue;
+                    if (planoSuperior && planoSuperior.distanceToPoint(pt) < -0.01) continue;
+                    return { idx: indicePisoPorAltura(pt.y), y: pt.y - alturaMinModel };
+                }
+                return null;
+            }
+
+            container.addEventListener('pointermove', (e) => {
+                const res = pisoBajoCursor(e.clientX, e.clientY);
+                const nuevo = res ? res.idx : -1;
+                container.style.cursor = res ? 'pointer' : 'default';
+                if (nuevo !== pisoHoveredActual) {
+                    pisoHoveredActual = nuevo;
+                    mostrarBandaPiso(nuevo);
+                }
+            });
+
+            container.addEventListener('pointerleave', () => {
+                if (pisoHoveredActual !== -1) { pisoHoveredActual = -1; mostrarBandaPiso(-1); }
+            });
+
+            container.addEventListener('pointerup', (e) => {
+                const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+                if (dist > 5) return;
+                const res = pisoBajoCursor(e.clientX, e.clientY);
+                if (!res) return;
+                console.log('[GIC] Clic 3D · altura', res.y.toFixed(2), '→', NOMBRES_PISOS_3D[res.idx], '| límites:', limitesPisos);
+                toast3D('Altura ' + res.y.toFixed(2) + ' → ' + NOMBRES_PISOS_3D[res.idx]);
+                if (window.irAVista2DPiso) window.irAVista2DPiso(NOMBRES_PISOS_3D[res.idx]);
+            });
+
+            window.addEventListener('resize', () => {
+                if (container && container.clientWidth > 0) {
+                    camera.aspect = container.clientWidth / container.clientHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(container.clientWidth, container.clientHeight);
+                }
+            });
+
+            function animate() {
+                animFrameId = requestAnimationFrame(animate);
+                clock.getDelta();
+                controls.update();
+                renderer.render(scene, camera);
+            }
+
+            if (animFrameId) cancelAnimationFrame(animFrameId);
+            animate();
+
+            gltfLoader = new GLTFLoader();
+            const dracoLoader = new DRACOLoader();
+            dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+            gltfLoader.setDRACOLoader(dracoLoader);
+
+            is3DInitialized = true;
+            return true;
+        }
+
+        // Detecta las losas (superficies horizontales grandes) y propone los 4 límites entre pisos
+        function detectarLimitesPisos() {
+            const total = alturaMaxModel - alturaMinModel;
+            if (!modeloGlobal || !(total > 0)) return { limites: null, candidatos: [] };
+            const paso = Math.max(total / 800, 0.005);
+            const nBins = Math.ceil(total / paso) + 2;
+            const area = new Float64Array(nBins);
+            const v = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+            const tol = paso * 0.75;
+            modeloGlobal.updateMatrixWorld(true);
+
+            modeloGlobal.traverse(m => {
+                if (!m.isMesh || !m.geometry || !m.geometry.attributes.position) return;
+                const pos = m.geometry.attributes.position, ind = m.geometry.index;
+                const n = ind ? ind.count : pos.count;
+                for (let i = 0; i + 2 < n; i += 3) {
+                    for (let k = 0; k < 3; k++) {
+                        v[k].fromBufferAttribute(pos, ind ? ind.getX(i + k) : i + k).applyMatrix4(m.matrixWorld);
+                    }
+                    if (Math.abs(v[0].y - v[1].y) > tol || Math.abs(v[0].y - v[2].y) > tol) continue;
+                    const a = 0.5 * Math.abs((v[1].x - v[0].x) * (v[2].z - v[0].z) - (v[2].x - v[0].x) * (v[1].z - v[0].z));
+                    if (!(a > 0)) continue;
+                    const b = Math.round((((v[0].y + v[1].y + v[2].y) / 3) - alturaMinModel) / paso);
+                    if (b >= 0 && b < nBins) area[b] += a;
+                }
+            });
+
+            // Agrupar bins cercanos (cara superior e inferior de una misma losa)
+            const hueco = Math.max(Math.round(Math.max(0.35, total * 0.012) / paso), 1);
+            const grupos = [];
+            let actual = null, vacios = 0;
+            for (let b = 0; b < nBins; b++) {
+                if (area[b] > 0) {
+                    if (!actual) { actual = { peso: 0, suma: 0 }; grupos.push(actual); }
+                    actual.peso += area[b];
+                    actual.suma += area[b] * b * paso;
+                    vacios = 0;
+                } else if (actual && ++vacios > hueco) { actual = null; }
+            }
+            const maxPeso = Math.max(...grupos.map(g => g.peso), 0);
+            const niveles = grupos
+                .filter(g => g.peso >= maxPeso * 0.15)
+                .map(g => +(g.suma / g.peso).toFixed(2))
+                .sort((a, b) => a - b);
+
+            const interiores = niveles.filter(y => y > total * 0.05);
+            const limites = interiores.length >= 4 ? interiores.slice(0, 4) : null;
+            return { limites, candidatos: niveles };
+        }
+
+        function construirPanelCalibracion(contenedor) {
+            const det = document.createElement('details');
+            det.style.marginTop = '10px';
+            det.innerHTML = `
+                <summary style="cursor:pointer; font-size:11px; color:var(--text-muted);">⚙ Calibrar alturas de pisos</summary>
+                <p style="font-size:10px; color:var(--text-muted); line-height:1.45; margin:6px 0;">
+                    Altura total del modelo: <b style="color:#fff;">${(alturaMaxModel - alturaMinModel).toFixed(2)}</b>.
+                    Escribe a qué altura termina cada piso: de eso depende qué plano 2D se abre al hacer clic.
+                    Al cambiar un valor se resalta el piso en el modelo.</p>
+                <div class="calib-filas"></div>
+                <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
+                    <button class="btn-calib" data-acc="auto">🔍 Autodetectar</button>
+                    <button class="btn-calib" data-acc="reset">↺ Restablecer</button>
+                </div>
+                <p class="calib-msg" style="font-size:10px; color:#94a3b8; line-height:1.4; margin-top:6px;"></p>`;
+            contenedor.appendChild(det);
+
+            const filas = det.querySelector('.calib-filas');
+            const msg = det.querySelector('.calib-msg');
+            const inputs = [];
+
+            function pintarValores() { inputs.forEach((inp, i) => { inp.value = limitesPisos[i]; }); }
+
+            function aplicar(nuevos, idxResaltar) {
+                limitesPisos = nuevos;
+                reconstruirMapping();
+                try { localStorage.setItem(CLAVE_LIMITES, JSON.stringify(limitesPisos)); } catch (e) {}
+                if (pisoAislado >= 0) { const r = rangoPiso(pisoAislado); aislarRangoAltura(r.base, r.techo); }
+                pintarValores();
+                if (idxResaltar !== undefined) {
+                    mostrarBandaPiso(idxResaltar);
+                    setTimeout(() => { if (pisoHoveredActual === -1) mostrarBandaPiso(-1); }, 2500);
+                }
+            }
+
+            for (let i = 0; i < 4; i++) {
+                const fila = document.createElement('div');
+                fila.className = 'calib-fila';
+                fila.innerHTML = `<span>${NOMBRES_PISOS_3D[i]} termina en</span>`;
+                const inp = document.createElement('input');
+                inp.type = 'number'; inp.step = '0.05'; inp.min = '0';
+                inp.addEventListener('change', () => {
+                    const vals = inputs.map(x => parseFloat(x.value));
+                    const total = alturaMaxModel - alturaMinModel;
+                    const ok = vals.every((v, k) => Number.isFinite(v) && v > 0 && v < total && (k === 0 || v > vals[k - 1]));
+                    if (!ok) { msg.textContent = '⚠ Los valores deben ir en orden creciente y dentro de la altura del modelo.'; pintarValores(); return; }
+                    msg.textContent = '✔ Límites aplicados.';
+                    aplicar(vals, i);
+                });
+                inputs.push(inp);
+                fila.appendChild(inp);
+                filas.appendChild(fila);
+            }
+            pintarValores();
+
+            det.querySelector('[data-acc="reset"]').addEventListener('click', () => {
+                aplicar(LIMITES_PISOS_DEFECTO.slice());
+                msg.textContent = 'Valores por defecto restablecidos.';
+            });
+            det.querySelector('[data-acc="auto"]').addEventListener('click', () => {
+                const r = detectarLimitesPisos();
+                if (r.limites) {
+                    aplicar(r.limites);
+                    msg.textContent = '✔ Detectado a partir de las losas del modelo. Niveles encontrados: ' + r.candidatos.join(', ');
+                } else {
+                    msg.textContent = '⚠ No se detectaron 4 losas claras. Niveles encontrados: ' + (r.candidatos.join(', ') || 'ninguno') + '. Ajusta los valores a mano.';
+                }
+                console.log('[GIC] Autodetección de pisos:', r);
+            });
+        }
+
+        function aislarRangoAltura(alturaInferior, alturaSuperior) {
+            if (!planoInferior || !planoSuperior) return;
+            planoInferior.constant = -alturaInferior;
+            planoSuperior.constant = alturaSuperior;
+        }
+
+        function cargarModeloGLBReal() {
+            if (yaCargado) return;
+            if (!init3DViewer()) return;
+
+            const statusEl = document.getElementById('ifc-status');
+            const layersEl = document.getElementById('ifc-layers-list');
+
+            statusEl.innerHTML = '<span class="loading-spinner"></span> Cargando modelo 3D...';
+
+            gltfLoader.load(
+                URL_GLB,
+                (gltf) => {
+                    modeloGlobal = gltf.scene;
+                    modeloGlobal.updateMatrixWorld(true);
+
+                    const boxTemp = new THREE.Box3().setFromObject(modeloGlobal);
+                    const minY = boxTemp.min.y;
+                    const center = boxTemp.getCenter(new THREE.Vector3());
+
+                    modeloGlobal.position.x -= center.x;
+                    modeloGlobal.position.z -= center.z;
+                    modeloGlobal.position.y -= minY;
+
+                    modeloGlobal.updateMatrixWorld(true);
+
+                    const boxGlobal = new THREE.Box3().setFromObject(modeloGlobal);
+                    alturaMinModel = boxGlobal.min.y;
+                    alturaMaxModel = boxGlobal.max.y;
+                    bboxModelo = boxGlobal.clone();
+
+                    planoInferior.constant = -(alturaMinModel - 50);
+                    planoSuperior.constant = alturaMaxModel + 100;
+                    const arrayPlanosCorte = [planoInferior, planoSuperior];
+
+                    pisosMeshes = [[], [], [], [], []];
+
+                    modeloGlobal.traverse((child) => {
+                        if (child.isMesh) {
+                            if (Array.isArray(child.material)) {
+                                child.material = child.material.map(mat => {
+                                    const m = mat.clone();
+                                    m.clippingPlanes = arrayPlanosCorte;
+                                    m.clipShadows = true;
+                                    m.side = THREE.DoubleSide;
+                                    m.needsUpdate = true;
+                                    return m;
+                                });
+                            } else if (child.material) {
+                                child.material = child.material.clone();
+                                child.material.clippingPlanes = arrayPlanosCorte;
+                                child.material.clipShadows = true;
+                                child.material.side = THREE.DoubleSide;
+                                child.material.needsUpdate = true;
+                            }
+
+                        }
+                    });
+
+                    scene.add(modeloGlobal);
+
+                    layersEl.innerHTML = '';
+                    
+                    const divControles = document.createElement('div');
+                    divControles.innerHTML = `
+                        <button class="btn-nivel active" data-tipo="max">Ver Edificio Completo</button>
+                        <hr style="border-color:#1e293b; margin:8px 0;">
+                        <p style="margin:4px 0; color:var(--text-muted); font-size:11px;">Aislar Piso:</p>
+                        <div id="botones-pisos-container"></div>
+                    `;
+                    layersEl.appendChild(divControles);
+
+                    const containerPisos = divControles.querySelector('#botones-pisos-container');
+                    const nombresPisos = ["Piso 1", "Piso 2", "Piso 3", "Piso 4", "Piso 5 / Cubierta"];
+
+                    nombresPisos.forEach((nombre, idx) => {
+                        const btn = document.createElement('button');
+                        btn.className = 'btn-nivel';
+                        btn.innerText = `🏢 ${nombre}`;
+                        btn.addEventListener('click', () => {
+                            document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
+                            btn.classList.add('active');
+                            pisoAislado = idx;
+                            const { base: basePiso, techo: techoPiso } = rangoPiso(idx);
+                            aislarRangoAltura(basePiso, techoPiso);
+                            
+                            if (window.actualizarPanelDetallePiso3D) {
+                                window.actualizarPanelDetallePiso3D(nombre);
+                            }
+                        });
+                        containerPisos.appendChild(btn);
+                    });
+
+                    divControles.querySelector('[data-tipo="max"]').addEventListener('click', function() {
+                        document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
+                        this.classList.add('active');
+                        pisoAislado = -1;
+                        aislarRangoAltura(alturaMinModel - 50, alturaMaxModel + 100);
+                        
+                        if (window.actualizarPanelDetallePiso3D) {
+                            window.actualizarPanelDetallePiso3D("Edificio Completo");
+                        }
+                    });
+
+                    construirPanelCalibracion(divControles);
+
+                    if (!boxGlobal.isEmpty()) {
+                        const newCenter = boxGlobal.getCenter(new THREE.Vector3());
+                        const sizeWorld = boxGlobal.getSize(new THREE.Vector3());
+                        controls.target.copy(newCenter);
+                        const maxDim = Math.max(sizeWorld.x, sizeWorld.y, sizeWorld.z);
+                        camera.position.set(newCenter.x + maxDim * 1.2, newCenter.y + maxDim * 0.8, newCenter.z + maxDim * 1.2);
+                        camera.updateProjectionMatrix();
+                        controls.update();
+                    }
+
+                    statusEl.innerText = '🟢 Modelo 3D Cargado';
+                    yaCargado = true;
+                },
+                (xhr) => {
+                    if (xhr.lengthComputable && xhr.total > 0) {
+                        const pct = Math.round((xhr.loaded / xhr.total) * 100);
+                        statusEl.innerHTML = `<span class="loading-spinner"></span> Cargando: ${pct}%`;
+                    }
+                },
+                (error) => {
+                    console.error('❌ Error al cargar GLB:', error);
+                    statusEl.innerText = '❌ Error al cargar archivo GLB';
+                }
+            );
+        }
+
+        window.cargarModeloIFC = cargarModeloGLBReal;
     </script>
 </body>
 </html>
