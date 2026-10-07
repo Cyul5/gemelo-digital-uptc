@@ -8,6 +8,8 @@
     <!-- LECTURA REAL DE EXCEL (SheetJS Actualizado) -->
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- jsPDF para informes descargables -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <!-- Import Maps para Three.js -->
     <script type="importmap">
@@ -352,6 +354,100 @@
         .visor-btn:hover { background: rgba(0,180,216,0.6); }
         #visor-prev { left: 18px; top: 50%; } #visor-next { right: 18px; top: 50%; } #visor-cerrar { right: 18px; top: 18px; }
         #map-viewport.animando { transition: transform .65s cubic-bezier(.4,0,.2,1); }
+
+        /* ===== NUEVAS FUNCIONES: INFORMES, MAPA DE CALOR Y FICHA PATOLÓGICA ===== */
+        .acciones-2d { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .btn-informe, .btn-calor {
+            background:#0284c7; color:#fff; border:1px solid #0369a1; border-radius:7px;
+            padding:8px 12px; font-size:11px; font-weight:700; cursor:pointer;
+            transition:.2s; white-space:nowrap;
+        }
+        .btn-informe:hover, .btn-calor:hover { background:#0369a1; }
+        .btn-calor.activo { background:#dc2626; border-color:#b91c1c; }
+        #informe-overlay, #ficha-patologica-overlay {
+            position:fixed; inset:0; background:rgba(7,13,25,.82); z-index:1100;
+            display:none; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(3px);
+        }
+        #informe-overlay.show, #ficha-patologica-overlay.show { display:flex; }
+        .informe-card, .ficha-card {
+            width:min(720px,100%); max-height:90vh; overflow:auto; background:#fff;
+            border-radius:14px; padding:20px; color:#0f172a; box-shadow:0 20px 60px rgba(0,0,0,.4);
+        }
+        .informe-card h2, .ficha-card h2 { color:#0284c7; margin-bottom:8px; font-size:19px; }
+        .informe-card p, .ficha-card p { color:#475569; font-size:12px; line-height:1.5; margin-bottom:12px; }
+        .informe-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+        .informe-opcion {
+            text-align:left; padding:12px; border:1px solid #cbd5e1; background:#f8fafc;
+            border-radius:8px; cursor:pointer; color:#0f172a; font-size:12px;
+        }
+        .informe-opcion:hover { border-color:#0284c7; background:#eff6ff; }
+        .informe-opcion b { display:block; color:#0284c7; margin-bottom:3px; }
+        .modal-footer { display:flex; justify-content:flex-end; gap:8px; margin-top:15px; }
+        .btn-modal-sec { background:#e2e8f0; color:#0f172a; border:0; border-radius:7px; padding:8px 13px; cursor:pointer; font-weight:600; }
+        .heat-legend {
+            position:absolute; left:14px; top:14px; z-index:31; display:none;
+            background:rgba(7,13,25,.94); color:#fff; border:1px solid #334155; border-radius:9px;
+            padding:10px 12px; font-size:11px; box-shadow:0 5px 18px rgba(0,0,0,.3);
+        }
+        .heat-legend.show { display:block; }
+        .heat-gradient { width:140px; height:9px; border-radius:5px; margin:7px 0 4px;
+            background:linear-gradient(90deg,#10b981,#facc15,#f97316,#ef4444); }
+        .heat-labels { display:flex; justify-content:space-between; color:#cbd5e1; font-size:9px; }
+        #galeria-visor { touch-action:none; }
+        #galeria-visor img { cursor:zoom-in; user-select:none; -webkit-user-drag:none; transition:transform .15s ease; }
+        #galeria-visor.zoom-activo img { cursor:grab; }
+        .visor-zoom-controls { position:absolute; bottom:18px; right:18px; display:flex; gap:6px; z-index:3; }
+        .visor-zoom-controls button { width:40px; height:40px; border-radius:8px; border:1px solid rgba(255,255,255,.25);
+            background:rgba(255,255,255,.12); color:#fff; font-size:20px; cursor:pointer; }
+        .patologia-btn {
+            margin-top:8px; background:#b91c1c; color:#fff; border:0; border-radius:6px;
+            padding:7px 10px; font-size:11px; font-weight:700; cursor:pointer;
+        }
+        .patologia-btn:hover { background:#991b1b; }
+        @media (max-width: 900px) {
+            header { height:auto; min-height:52px; padding:8px 10px; }
+            .header-left { gap:7px; flex-wrap:wrap; }
+            .brand { font-size:13px; }
+            .tag { font-size:9px; }
+            .sub-title { display:none; }
+            .header-right { gap:6px; }
+            .excel-status { display:none; }
+            .app-body { height:calc(100vh - 52px); }
+            .sidebar-left { width:44px; gap:9px; padding-top:8px; }
+            .nav-btn { width:34px; height:34px; }
+            .sidebar-right { position:absolute; right:0; top:0; bottom:0; width:min(88vw,360px); max-width:360px; z-index:80; }
+            #vista-2d { padding:8px; }
+            #vista-2d > div:first-child { align-items:flex-start !important; }
+            #vista-2d .filter-select { max-width:140px; }
+            .container-svg-2d { min-height:0; }
+            #panel-edificios { top:8px; left:8px; width:min(260px,calc(100vw - 70px)); }
+            #btn-galeria { top:8px; right:8px; padding:8px 10px; font-size:11px; }
+            #map-controls { left:8px; bottom:8px; }
+            #map-controls button { width:38px; height:38px; }
+            #galeria-overlay { padding:10px; }
+            .galeria-top { gap:7px; }
+            .galeria-top h2 { width:100%; font-size:16px; }
+            .galeria-top select, .galeria-top input { flex:1; min-width:130px; width:auto; }
+            #galeria-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+            .galeria-card img { height:auto; aspect-ratio:1/1; object-fit:cover; }
+            .galeria-card .info { padding:7px; font-size:10px; }
+            #galeria-visor img { max-width:96vw; max-height:76vh; }
+            .visor-btn { width:38px; height:38px; }
+            #visor-prev { left:7px; } #visor-next { right:7px; }
+            #visor-cerrar { right:7px; top:7px; }
+            .visor-zoom-controls { bottom:10px; right:10px; }
+            .informe-grid { grid-template-columns:1fr; }
+        }
+        @media (max-width: 560px) {
+            .welcome-card { padding:18px; }
+            .btn-informe, .btn-calor { padding:7px 9px; }
+            #vista-2d > div:first-child > div:last-child { width:100%; }
+            #vista-2d > div:first-child > div:last-child { flex-wrap:wrap; }
+            #vista-2d .acciones-2d { width:100%; }
+            #select-piso-2d { width:130px !important; }
+            #info-archivo-2d { max-width:100%; }
+            .galeria-cerrar { margin-left:auto; }
+        }
     </style>
 </head>
 <body>
@@ -411,6 +507,13 @@
             <div id="vista-3d" class="vista">
                 <div id="ifc-canvas-container"></div>
                 <button id="btn-galeria" type="button" onclick="abrirGaleria()" title="Ver todas las fotos del levantamiento">🖼️ Galería</button>
+                <button id="btn-mapa-calor" class="btn-calor" type="button" onclick="alternarMapaCalor3D()" style="position:absolute;top:58px;right:14px;z-index:30;">🔥 Mapa de calor</button>
+                <div id="heat-legend" class="heat-legend">
+                    <b>Flujo estimado por horario</b>
+                    <div class="heat-gradient"></div>
+                    <div class="heat-labels"><span>Bajo</span><span>Medio</span><span>Alto</span></div>
+                    <div style="margin-top:6px;color:#94a3b8;">Inferencia: ocupación + cambios de clase.</div>
+                </div>
             </div>
 
             <!-- VISTA 3: PLANTA 2D DINÁMICA -->
@@ -436,7 +539,10 @@
                             </select>
                         </div>
                         <span id="info-archivo-2d"></span>
-                        <button class="btn-regresar" style="display:inline-block; margin-bottom: 0; width: auto;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
+                        <div class="acciones-2d">
+                            <button class="btn-regresar" style="display:inline-block; margin-bottom: 0; width: auto;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
+                            <button class="btn-informe" type="button" onclick="abrirSelectorInformes()">📄 Generar informe PDF</button>
+                        </div>
                     </div>
                 </div>
                 <div class="container-svg-2d" id="svg-2d-wrapper">
@@ -528,6 +634,38 @@
         <button class="visor-btn" id="visor-next" onclick="navegarVisorFoto(1)">›</button>
         <img id="visor-img" alt="">
         <div class="pie" id="visor-pie"></div>
+        <div class="visor-zoom-controls">
+            <button type="button" onclick="ajustarZoomFoto(-1)" title="Alejar">−</button>
+            <button type="button" onclick="restablecerZoomFoto()" title="Restablecer">1:1</button>
+            <button type="button" onclick="ajustarZoomFoto(1)" title="Acercar">+</button>
+        </div>
+    </div>
+
+
+    <!-- SELECTOR DE INFORMES PDF -->
+    <div id="informe-overlay" role="dialog" aria-modal="true" aria-label="Generar informe PDF">
+        <div class="informe-card">
+            <h2>📄 Informes del levantamiento</h2>
+            <p>Selecciona la fuente. El PDF incluirá los campos disponibles del Excel y, cuando aplique, los filtros actuales de piso, día y franja.</p>
+            <div class="informe-grid">
+                <button class="informe-opcion" onclick="generarInformePDF('generales')"><b>🏢 Datos generales</b>Identificación y datos constructivos.</button>
+                <button class="informe-opcion" onclick="generarInformePDF('inventario')"><b>📐 Inventario de espacios</b>Información del espacio y patologías.</button>
+                <button class="informe-opcion" onclick="generarInformePDF('mobiliario')"><b>🪑 Mobiliario y equipo</b>Sillas, tableros, equipos e iluminación.</button>
+                <button class="informe-opcion" onclick="generarInformePDF('horarios')"><b>🗓️ Horarios de uso</b>Horario completo o según día/franja actual.</button>
+                <button class="informe-opcion" onclick="generarInformePDF('accesibilidad')"><b>♿ Accesibilidad y seguridad</b>Condiciones por piso.</button>
+                <button class="informe-opcion" onclick="generarInformePDF('instalaciones')"><b>🔧 Instalaciones y acabados</b>Servicios y estado constructivo.</button>
+            </div>
+            <div class="modal-footer"><button class="btn-modal-sec" onclick="cerrarSelectorInformes()">Cerrar</button></div>
+        </div>
+    </div>
+
+    <!-- FICHA PATOLÓGICA: PLACEHOLDER PREPARADO -->
+    <div id="ficha-patologica-overlay" role="dialog" aria-modal="true" aria-label="Ficha patológica">
+        <div class="ficha-card">
+            <h2>⚠️ Ficha patológica</h2>
+            <p id="ficha-patologica-contenido">La ficha patológica aún no está implementada. El botón ya queda vinculado al registro correspondiente para integrarla posteriormente.</p>
+            <div class="modal-footer"><button class="btn-modal-sec" onclick="cerrarFichaPatologica()">Cerrar</button></div>
+        </div>
     </div>
 
     <!-- CARTEL DE BIENVENIDA -->
@@ -1153,6 +1291,141 @@
             }
         }
 
+
+        // ===== INFORMES PDF =====
+        function abrirSelectorInformes() {
+            document.getElementById('informe-overlay')?.classList.add('show');
+        }
+        function cerrarSelectorInformes() {
+            document.getElementById('informe-overlay')?.classList.remove('show');
+        }
+
+        function escaparPDF(v) {
+            return String(v === undefined || v === null ? '' : v).replace(/\s+/g,' ').trim();
+        }
+
+        function filasDeHojaParaPDF(sheetName) {
+            if (!excelWorkbookGlobal || !excelWorkbookGlobal.Sheets[sheetName]) return [];
+            return XLSX.utils.sheet_to_json(excelWorkbookGlobal.Sheets[sheetName], {defval:''});
+        }
+
+        function agregarTablaPDF(doc, titulo, filas, columnas, yInicio) {
+            let y = yInicio;
+            const pageH = doc.internal.pageSize.getHeight();
+            const margin = 12;
+            doc.setFontSize(12); doc.setFont(undefined,'bold'); doc.text(titulo, margin, y); y += 7;
+            doc.setFont(undefined,'normal'); doc.setFontSize(8);
+            for (const fila of filas) {
+                for (const col of columnas) {
+                    let valor = escaparPDF(fila[col]);
+                    if (!valor) continue;
+                    const texto = `${col}: ${valor}`;
+                    const partes = doc.splitTextToSize(texto, 180);
+                    if (y + partes.length * 4.2 > pageH - 12) { doc.addPage(); y = 15; }
+                    doc.text(partes, margin, y); y += partes.length * 4.2 + 1.2;
+                }
+                y += 2;
+                if (y > pageH - 18) { doc.addPage(); y = 15; }
+            }
+            return y;
+        }
+
+        function obtenerColumnasObjetos(filas) {
+            const set = new Set();
+            filas.forEach(f => Object.keys(f || {}).forEach(k => set.add(k)));
+            return [...set];
+        }
+
+        function registroActualParaPDF() {
+            if (!aulaSeleccionadaActual) return null;
+            return buscarRegistroPorCodigo(registrosInventarioExcel, aulaSeleccionadaActual);
+        }
+
+        function generarInformePDF(tipo) {
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                alert('No se pudo cargar el generador PDF. Comprueba tu conexión y vuelve a intentarlo.');
+                return;
+            }
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({unit:'mm',format:'a4'});
+            const fecha = new Date().toLocaleString('es-CO');
+            const nombreEd = registrosDatosGeneralesExcel.NOMBRE || 'Edificio de Aula Hunza';
+            let titulo = '', filas = [], columnas = [], y = 36, nombreArchivo = '';
+
+            doc.setFontSize(18); doc.setFont(undefined,'bold'); doc.text('UPTC GIC',12,16);
+            doc.setFontSize(12); doc.text('Gestor de Información del Campus',12,22);
+            doc.setFontSize(10); doc.setFont(undefined,'normal'); doc.text(`Edificio: ${escaparPDF(nombreEd)}`,12,28);
+            doc.text(`Generado: ${fecha}`,125,28);
+
+            if (tipo === 'generales') {
+                titulo='Datos generales del edificio'; nombreArchivo='informe_datos_generales.pdf';
+                filas=[Object.fromEntries(Object.values(registrosDatosGeneralesExcel).filter(v=>v && typeof v==='object' && 'campo' in v).map(v=>[v.campo, v.valor + (v.notas ? ` (${v.notas})`: '')]))];
+                columnas=obtenerColumnasObjetos(filas);
+            } else if (tipo === 'inventario') {
+                titulo='Inventario de espacios'; nombreArchivo='informe_inventario_espacios.pdf';
+                filas=filasDeHojaParaPDF(nombreHojaInventarioReal);
+                const actual=registroActualParaPDF();
+                if(actual) filas=[actual];
+                columnas=obtenerColumnasObjetos(filas);
+            } else if (tipo === 'mobiliario') {
+                titulo='Mobiliario y equipo'; nombreArchivo='informe_mobiliario_equipo.pdf';
+                filas=filasDeHojaParaPDF(nombreHojaMobiliarioReal);
+                if(aulaSeleccionadaActual){
+                    const mob=buscarRegistroPorCodigo(registrosMobiliarioExcel,aulaSeleccionadaActual);
+                    if(mob) filas=[Object.assign({Codigo:aulaSeleccionadaActual},mob)];
+                }
+                columnas=obtenerColumnasObjetos(filas);
+            } else if (tipo === 'horarios') {
+                titulo='Horarios de uso'; nombreArchivo='informe_horarios_uso.pdf';
+                const dia=document.getElementById('select-dia')?.value || '';
+                const franja=document.getElementById('select-franja')?.value || '';
+                filas=registrosHorariosExcel.filter(r=>!dia || r.dia===dia);
+                if(aulaSeleccionadaActual) filas=filas.filter(r=>normalizarCodigoEspacio(r.aula)===normalizarCodigoEspacio(aulaSeleccionadaActual));
+                if(franja) filas=filas.filter(r=>r.hora.replace(/\s+/g,'')===franja.replace(/\s+/g,''));
+                columnas=['aula','dia','hora','detalle'];
+            } else if (tipo === 'accesibilidad') {
+                titulo='Accesibilidad y seguridad'; nombreArchivo='informe_accesibilidad_seguridad.pdf';
+                filas=registrosAccesibilidadExcel;
+                columnas=obtenerColumnasObjetos(filas);
+            } else if (tipo === 'instalaciones') {
+                titulo='Instalaciones por piso y acabados'; nombreArchivo='informe_instalaciones_acabados.pdf';
+                filas=registrosInstalacionesExcel;
+                columnas=obtenerColumnasObjetos(filas);
+            }
+
+            if(!filas.length) {
+                doc.setFontSize(11); doc.text('No hay registros disponibles para generar este informe.',12,45);
+            } else {
+                // Si el informe es grande, cada fila se presenta con todos sus campos.
+                y=agregarTablaPDF(doc,titulo,filas,columnas,y);
+            }
+            doc.save(nombreArchivo);
+            cerrarSelectorInformes();
+        }
+
+        // ===== FICHA PATOLÓGICA =====
+        function abrirFichaPatologica(foto) {
+            const ov=document.getElementById('ficha-patologica-overlay');
+            const cont=document.getElementById('ficha-patologica-contenido');
+            const reg=foto?.codigo ? buscarRegistroPorCodigo(registrosInventarioExcel,foto.codigo) : null;
+            if(cont){
+                cont.innerHTML='';
+                const p=document.createElement('p');
+                p.textContent='La ficha patológica aún no está implementada. Este acceso ya queda asociado al registro de la patología.';
+                cont.appendChild(p);
+                if(foto?.codigo){ const b=document.createElement('b'); b.textContent='Espacio: '+foto.codigo; cont.appendChild(b); }
+                if(reg){
+                    const ul=document.createElement('ul');
+                    ['tipoPatologia','ubicacionPatologia','estadoGeneral','observacionesPatologia','fechaRegistro'].forEach(k=>{
+                        if(reg[k] && reg[k]!=='N/A'){ const li=document.createElement('li'); li.textContent=`${k}: ${reg[k]}`; ul.appendChild(li); }
+                    });
+                    cont.appendChild(ul);
+                }
+            }
+            ov?.classList.add('show');
+        }
+        function cerrarFichaPatologica(){ document.getElementById('ficha-patologica-overlay')?.classList.remove('show'); }
+
         // ===== GALERÍA: lectura de fotos incrustadas en el Excel =====
         const NS_REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
         let excelBufferGlobal = null;
@@ -1411,6 +1684,23 @@
 
         let galeriaVisible = [];
         let galeriaIndiceVisor = -1;
+        let zoomFotoActual = 1;
+        let zoomFotoX = 0, zoomFotoY = 0;
+        let arrastrandoFoto = false, fotoDragX = 0, fotoDragY = 0;
+
+        function aplicarZoomFoto() {
+            const visor=document.getElementById('galeria-visor');
+            const img=document.getElementById('visor-img');
+            if(!img) return;
+            img.style.transform=`translate(${zoomFotoX}px,${zoomFotoY}px) scale(${zoomFotoActual})`;
+            if(visor) visor.classList.toggle('zoom-activo', zoomFotoActual>1);
+        }
+        function ajustarZoomFoto(delta){
+            zoomFotoActual=Math.max(1,Math.min(4,zoomFotoActual + delta*.5));
+            if(zoomFotoActual===1){zoomFotoX=0;zoomFotoY=0;}
+            aplicarZoomFoto();
+        }
+        function restablecerZoomFoto(){zoomFotoActual=1;zoomFotoX=0;zoomFotoY=0;aplicarZoomFoto();}
 
         function abrirGaleria() {
             const ov = document.getElementById('galeria-overlay');
@@ -1493,6 +1783,16 @@
                 tag.textContent = (f.piso ? 'Piso ' + f.piso + ' · ' : '') + f.origen;
                 info.appendChild(tag);
                 card.appendChild(img); card.appendChild(info);
+                if (f.origen === 'Inventario Espacios' && f.codigo) {
+                    const invPat = buscarRegistroPorCodigo(registrosInventarioExcel, f.codigo);
+                    if (invPat && invPat.tipoPatologia && invPat.tipoPatologia !== 'N/A' && normalizarTextoSimple(invPat.tipoPatologia) !== 'NINGUNA') {
+                        const pb = document.createElement('button');
+                        pb.className='patologia-btn'; pb.type='button'; pb.textContent='⚠️ Ver ficha patológica';
+                        pb.addEventListener('click',(e)=>{e.stopPropagation(); abrirFichaPatologica(f);});
+                        info.appendChild(pb);
+                    }
+                }
+                card.appendChild(img); card.appendChild(info);
                 card.addEventListener('click', () => abrirVisorFoto(i));
                 grid.appendChild(card);
             });
@@ -1502,6 +1802,7 @@
             if (!galeriaVisible.length) return;
             galeriaIndiceVisor = (i + galeriaVisible.length) % galeriaVisible.length;
             const f = galeriaVisible[galeriaIndiceVisor];
+            restablecerZoomFoto();
             document.getElementById('visor-img').src = f.src;
             const pie = document.getElementById('visor-pie');
             pie.innerHTML = '';
@@ -1512,8 +1813,29 @@
             pie.appendChild(s);
             document.getElementById('galeria-visor').classList.add('show');
         }
-        function cerrarVisorFoto() { galeriaIndiceVisor = -1; document.getElementById('galeria-visor').classList.remove('show'); }
+        function cerrarVisorFoto() { galeriaIndiceVisor = -1; restablecerZoomFoto(); document.getElementById('galeria-visor').classList.remove('show'); }
         function navegarVisorFoto(d) { if (galeriaIndiceVisor >= 0) abrirVisorFoto(galeriaIndiceVisor + d); }
+
+
+        document.addEventListener('DOMContentLoaded',()=>{
+            const visor=document.getElementById('galeria-visor');
+            const img=document.getElementById('visor-img');
+            if(!visor||!img) return;
+            visor.addEventListener('wheel',e=>{
+                if(!visor.classList.contains('show')) return;
+                e.preventDefault(); ajustarZoomFoto(e.deltaY<0?1:-1);
+            },{passive:false});
+            img.addEventListener('dblclick',()=>{ if(zoomFotoActual>1) restablecerZoomFoto(); else ajustarZoomFoto(2); });
+            img.addEventListener('pointerdown',e=>{
+                if(zoomFotoActual<=1) return;
+                arrastrandoFoto=true; fotoDragX=e.clientX-zoomFotoX; fotoDragY=e.clientY-zoomFotoY; img.setPointerCapture(e.pointerId);
+            });
+            img.addEventListener('pointermove',e=>{
+                if(!arrastrandoFoto) return;
+                zoomFotoX=e.clientX-fotoDragX; zoomFotoY=e.clientY-fotoDragY; aplicarZoomFoto();
+            });
+            img.addEventListener('pointerup',()=>arrastrandoFoto=false);
+        });
 
         document.addEventListener('keydown', (e) => {
             const visor = document.getElementById('galeria-visor');
@@ -1523,6 +1845,7 @@
                 else if (e.key === 'ArrowLeft') navegarVisorFoto(-1);
                 else if (e.key === 'ArrowRight') navegarVisorFoto(1);
             } else if (ov && ov.classList.contains('show') && e.key === 'Escape') cerrarGaleria();
+            else if (e.key === 'Escape') { cerrarSelectorInformes(); cerrarFichaPatologica(); }
         }, true);
 
         // ===== PLANTAS 2D: archivo correcto para cada piso =====
@@ -1741,6 +2064,7 @@
                 };
             });
 
+            if (heatmap3DVisible && typeof crearHeatmap3D === 'function') crearHeatmap3D();
             if (aulaSeleccionadaActual) {
                 mostrarDetalleAulaPanel(aulaSeleccionadaActual);
             } else {
@@ -2333,7 +2657,28 @@
             let yaVista = false;
             try { yaVista = localStorage.getItem('uptc_gic_bienvenida_vista') === '1'; } catch (e) {}
             if (!yaVista) abrirBienvenida();
-            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarBienvenida(); });
+    
+        document.addEventListener('DOMContentLoaded',()=>{
+            const visor=document.getElementById('galeria-visor');
+            const img=document.getElementById('visor-img');
+            if(!visor||!img) return;
+            visor.addEventListener('wheel',e=>{
+                if(!visor.classList.contains('show')) return;
+                e.preventDefault(); ajustarZoomFoto(e.deltaY<0?1:-1);
+            },{passive:false});
+            img.addEventListener('dblclick',()=>{ if(zoomFotoActual>1) restablecerZoomFoto(); else ajustarZoomFoto(2); });
+            img.addEventListener('pointerdown',e=>{
+                if(zoomFotoActual<=1) return;
+                arrastrandoFoto=true; fotoDragX=e.clientX-zoomFotoX; fotoDragY=e.clientY-zoomFotoY; img.setPointerCapture(e.pointerId);
+            });
+            img.addEventListener('pointermove',e=>{
+                if(!arrastrandoFoto) return;
+                zoomFotoX=e.clientX-fotoDragX; zoomFotoY=e.clientY-fotoDragY; aplicarZoomFoto();
+            });
+            img.addEventListener('pointerup',()=>arrastrandoFoto=false);
+        });
+
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarBienvenida(); });
             const o = document.getElementById('welcome-overlay');
             if (o) o.addEventListener('mousedown', (e) => { if (e.target === o) cerrarBienvenida(); });
         }
@@ -2597,6 +2942,76 @@
         const clock = new THREE.Clock();
         const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
 
+
+        // ===== MAPA DE CALOR 3D BASADO EN HORARIOS =====
+        let heatmap3DVisible = false;
+        let heatmapMeshes3D = [];
+        const heatmapMaterials3D = [];
+
+        function limpiarMapaCalor3D(){
+            heatmapMeshes3D.forEach(m=>{ if(m.parent) m.parent.remove(m); if(m.geometry) m.geometry.dispose(); if(m.material) m.material.dispose(); });
+            heatmapMeshes3D=[]; heatmapMaterials3D.length=0;
+        }
+
+        function nivelFlujoHorario3D(){
+            const dia=document.getElementById('select-dia')?.value || 'Lunes';
+            const franja=document.getElementById('select-franja')?.value || '7 -8';
+            const ocupadas=registrosHorariosExcel.filter(r=>r.dia===dia && r.hora.replace(/\s+/g,'')===franja.replace(/\s+/g,''));
+            const aulas=new Set(ocupadas.map(r=>normalizarCodigoEspacio(r.aula)).filter(Boolean));
+            let total=0;
+            Object.keys(registrosInventarioExcel).forEach(k=>{
+                if(!/^[A-Z0-9]+$/.test(k)) return;
+                const reg=registrosInventarioExcel[k];
+                if(reg && reg.codigo && /^[AL]\-?\d+/i.test(reg.codigo)) total++;
+            });
+            const ocupacion=total?Math.min(1,aulas.size/Math.max(1,total)):0;
+            // Los cambios de clase se modelan como un flujo extra en corredores, baños y ascensor.
+            const cambio=franja.startsWith('7')||franja.startsWith('9')||franja.startsWith('11')||franja.startsWith('13')||franja.startsWith('15')||franja.startsWith('17')||franja.startsWith('19')||franja.startsWith('21');
+            return {dia,franja,aulasOcupadas:aulas.size,totalAulas:total,ocupacion,flujoComunal:Math.min(1,ocupacion*.65+(cambio?.55:.12))};
+        }
+
+        function crearHeatmap3D(){
+            if(!scene||!bboxModelo) return;
+            limpiarMapaCalor3D();
+            const datos=nivelFlujoHorario3D();
+            const size=bboxModelo.getSize(new THREE.Vector3());
+            const center=bboxModelo.getCenter(new THREE.Vector3());
+            const alto=Math.max(0.04,size.y/220);
+            for(let i=0;i<5;i++){
+                const piso=MAPPING_PISOS[i];
+                const base=Math.max(alturaMinModel+piso.minY,alturaMinModel);
+                const techo=Math.min(alturaMinModel+piso.maxY,alturaMaxModel);
+                if(techo<=base) continue;
+                const ocupacion=Math.min(1,datos.ocupacion*(.75+i*.06));
+                const y=(base+Math.min(techo,base+Math.max(0.35,(techo-base)*.18)))/2;
+                const zonas=[
+                    {x:0,z:0,w:.72,d:.72,f:Math.min(1,datos.flujoComunal)},
+                    {x:-.22,z:.05,w:.18,d:.78,f:Math.min(1,datos.flujoComunal*.95)},
+                    {x:.22,z:.05,w:.18,d:.78,f:Math.min(1,datos.flujoComunal*.95)},
+                    {x:0,z:-.30,w:.78,d:.16,f:Math.min(1,datos.flujoComunal*.9)}
+                ];
+                zonas.forEach(z=>{
+                    const geom=new THREE.BoxGeometry(size.x*z.w,alto,size.z*z.d);
+                    const f=Math.max(0,Math.min(1,z.f*.8+ocupacion*.2));
+                    const mat=new THREE.MeshBasicMaterial({color:f<.33?0x10b981:f<.66?0xf97316:0xef4444,transparent:true,opacity:.18+.20*f,depthWrite:false});
+                    const mesh=new THREE.Mesh(geom,mat);
+                    mesh.position.set(center.x+size.x*z.x, y, center.z+size.z*z.z);
+                    mesh.renderOrder=20; scene.add(mesh); heatmapMeshes3D.push(mesh); heatmapMaterials3D.push(mat);
+                });
+            }
+            toast3D(`Mapa de calor · ${datos.dia} · ${datos.franja} · ${datos.aulasOcupadas} aulas ocupadas`);
+        }
+
+        function alternarMapaCalor3D(){
+            heatmap3DVisible=!heatmap3DVisible;
+            const btn=document.getElementById('btn-mapa-calor');
+            const leg=document.getElementById('heat-legend');
+            if(btn) btn.classList.toggle('activo',heatmap3DVisible);
+            if(leg) leg.classList.toggle('show',heatmap3DVisible);
+            if(heatmap3DVisible) crearHeatmap3D(); else limpiarMapaCalor3D();
+        }
+        window.alternarMapaCalor3D=alternarMapaCalor3D;
+
         function init3DViewer() {
             if (is3DInitialized) return true;
 
@@ -2615,7 +3030,7 @@
 
             renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
             renderer.setSize(width, height);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, window.innerWidth < 700 ? 1.5 : 2));
             renderer.outputColorSpace = THREE.SRGBColorSpace;
             renderer.localClippingEnabled = true;
 
@@ -2988,6 +3403,7 @@
 
                     statusEl.innerText = '🟢 Modelo 3D Cargado';
                     yaCargado = true;
+                    if (heatmap3DVisible) crearHeatmap3D();
                 },
                 (xhr) => {
                     if (xhr.lengthComputable && xhr.total > 0) {
