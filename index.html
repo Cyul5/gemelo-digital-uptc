@@ -3938,7 +3938,7 @@
             // ---- Distinción de espacios: el plano 2D (SVG) de cada piso se pinta con el calor y se proyecta sobre el modelo ----
             const TILE = 640, SEL_AULA = '[id^="A-"],[id^="a-"],[id^="L-"],[id^="l-"],[id*="HUNZA"]', SEL_FORMA = 'path,polygon,rect,polyline,circle,ellipse,line';
             const CLAVE_ALINEA = 'uptc_gic_calor_alinea_v1';
-            let al = { q: 0, fino: 0, fx: 1, fy: 1, ox: 0, oz: 0, sc: 1 };
+            let al = { q: 0, fino: 0, fx: 1, fy: 1, ox: 0, oz: 0, sc: 1, manual: false }, qAuto = 0;
             try { const g = JSON.parse(localStorage.getItem(CLAVE_ALINEA) || 'null'); if (g && typeof g === 'object') al = Object.assign(al, g); } catch (e) {}
             const planos = [null, null, null, null, null];
             let atlas = null, ctxA = null, texAtlas = null, planosCargados = false, cargandoPlanos = false, tempo = null, pendiente = null, pintando = false;
@@ -3952,7 +3952,7 @@
             function actualizarAlineacion() {
                 if (!bboxModelo) return;
                 const sz = bboxModelo.getSize(new THREE.Vector3()), c = bboxModelo.getCenter(new THREE.Vector3());
-                const impar = al.q % 2 !== 0, th = al.q * Math.PI / 2 + al.fino * Math.PI / 180;
+                const qEf = al.manual ? al.q : qAuto, impar = qEf % 2 !== 0, th = qEf * Math.PI / 2 + al.fino * Math.PI / 180;
                 compartido.uSz.value.set((impar ? sz.z : sz.x) * al.sc, (impar ? sz.x : sz.z) * al.sc);
                 compartido.uC.value.set(c.x + al.ox * sz.x, c.z + al.oz * sz.z);
                 compartido.uRot.value.set(Math.cos(th), Math.sin(th));
@@ -3962,11 +3962,11 @@
             function enlazarAlineacion(p) {
                 const sync = () => p.querySelectorAll('[data-r]').forEach(i => { i.value = al[i.dataset.r]; });
                 sync();
-                p.querySelectorAll('[data-r]').forEach(i => i.oninput = () => { al[i.dataset.r] = parseFloat(i.value); guardarAlineacion(); });
+                p.querySelectorAll('[data-r]').forEach(i => i.oninput = () => { al[i.dataset.r] = parseFloat(i.value); if (!al.manual) { al.q = qAuto; al.manual = true; } guardarAlineacion(); });
                 p.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
                     const a = b.dataset.a;
-                    if (a === 'rot') al.q = (al.q + 1) % 4; else if (a === 'fx') al.fx *= -1; else if (a === 'fy') al.fy *= -1;
-                    else al = { q: 0, fino: 0, fx: 1, fy: 1, ox: 0, oz: 0, sc: 1 };
+                    if (a === 'rot') { al.q = ((al.manual ? al.q : qAuto) + 1) % 4; al.manual = true; } else if (a === 'fx') { al.fx *= -1; if (!al.manual) { al.q = qAuto; al.manual = true; } } else if (a === 'fy') { al.fy *= -1; if (!al.manual) { al.q = qAuto; al.manual = true; } }
+                    else al = { q: 0, fino: 0, fx: 1, fy: 1, ox: 0, oz: 0, sc: 1, manual: false };
                     guardarAlineacion(); sync();
                 });
             }
@@ -3975,6 +3975,31 @@
             function formasDe(el) { return esForma(el) ? [el] : Array.from(el.querySelectorAll(SEL_FORMA)); }
             function enDefs(el) { return !!(el.closest && el.closest('defs,clipPath,mask,pattern,marker,symbol')); }
 
+            // Caja (en unidades del SVG) que envuelve todas las aulas del plano: equivale a la huella del edificio
+            function cajaAulas(root) {
+                const host = document.createElement('div');
+                host.style.cssText = 'position:fixed;left:-99999px;top:0;width:900px;height:900px;visibility:hidden;pointer-events:none';
+                const svg = document.importNode(root, true); svg.setAttribute('width', 900); svg.setAttribute('height', 900);
+                host.appendChild(svg); document.body.appendChild(host);
+                let x0 = 1e18, y0 = 1e18, x1 = -1e18, y1 = -1e18, n = 0;
+                try {
+                    const inv = svg.getScreenCTM().inverse();
+                    Array.from(svg.querySelectorAll(SEL_AULA)).filter(e => e !== svg && !e.querySelector(SEL_AULA)).forEach(e => {
+                        let bb; try { bb = e.getBBox(); } catch (er) { return; }
+                        if (!bb || !(bb.width > 0 || bb.height > 0)) return;
+                        const m = inv.multiply(e.getScreenCTM());
+                        [[bb.x, bb.y], [bb.x + bb.width, bb.y], [bb.x, bb.y + bb.height], [bb.x + bb.width, bb.y + bb.height]].forEach(([a, b]) => {
+                            const px = m.a * a + m.c * b + m.e, py = m.b * a + m.d * b + m.f;
+                            x0 = Math.min(x0, px); y0 = Math.min(y0, py); x1 = Math.max(x1, px); y1 = Math.max(y1, py);
+                        });
+                        n++;
+                    });
+                } catch (er) { n = 0; }
+                host.remove();
+                if (n < 2 || !(x1 > x0) || !(y1 > y0)) return null;
+                const mx = (x1 - x0) * 0.01, my = (y1 - y0) * 0.01;
+                return { x: x0 - mx, y: y0 - my, w: (x1 - x0) + 2 * mx, h: (y1 - y0) + 2 * my };
+            }
             async function cargarPlano(i) {
                 const nombre = LISTA_PISOS_2D[i];
                 const archivo = (typeof archivosPorPiso !== 'undefined' && archivosPorPiso && archivosPorPiso[nombre]) || MAPA_ARCHIVOS_PISOS[nombre];
@@ -3996,10 +4021,13 @@
                 });
                 const otras = Array.from(root.querySelectorAll(SEL_FORMA)).filter(x => !enAula.has(x) && !enCirc.has(x) && !enDefs(x));
                 otras.forEach(x => { x.style.setProperty('fill', 'none', 'important'); x.style.setProperty('stroke', '#334155', 'important'); x.style.setProperty('stroke-opacity', '0.55', 'important'); });
+                const caja = cajaAulas(root) || { x: vb[0], y: vb[1], w: vb[2], h: vb[3] };
+                root.setAttribute('viewBox', [caja.x, caja.y, caja.w, caja.h].join(' '));
+                root.setAttribute('preserveAspectRatio', 'none'); root.setAttribute('width', TILE); root.setAttribute('height', TILE);
                 const bg = doc.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                bg.setAttribute('x', vb[0]); bg.setAttribute('y', vb[1]); bg.setAttribute('width', vb[2]); bg.setAttribute('height', vb[3]);
+                bg.setAttribute('x', caja.x); bg.setAttribute('y', caja.y); bg.setAttribute('width', caja.w); bg.setAttribute('height', caja.h);
                 root.insertBefore(bg, root.firstChild);
-                planos[i] = { root, bg, aulas, circ, firma: '', resuelto: false };
+                planos[i] = { root, bg, aulas, circ, caja, firma: '', resuelto: false };
             }
             function resolverCodigos(pl) {
                 pl.aulas.forEach(a => {
@@ -4015,6 +4043,13 @@
                 cargandoPlanos = true;
                 Promise.all([0,1,2,3,4].map(i => cargarPlano(i).catch(e => console.warn('[GIC] Calor: no se pudo leer el plano', i + 1, e)))).then(() => {
                     cargandoPlanos = false; planosCargados = planos.some(Boolean);
+                    const pr = planos.find(Boolean);
+                    if (pr && bboxModelo) {
+                        const sz = bboxModelo.getSize(new THREE.Vector3());
+                        qAuto = ((pr.caja.w / pr.caja.h > 1) !== (sz.x / sz.z > 1)) ? 1 : 0;
+                        console.log('[GIC] Calor: plano', pr.caja, '| huella del modelo', sz.x.toFixed(1), 'x', sz.z.toFixed(1), '| giro automático', qAuto * 90 + '°');
+                        actualizarAlineacion();
+                    }
                     if (!planosCargados) { toast3D('No se pudieron leer los planos SVG: el calor se muestra por piso'); return; }
                     atlas = document.createElement('canvas'); atlas.width = TILE * 5; atlas.height = TILE; ctxA = atlas.getContext('2d');
                     texAtlas = new THREE.CanvasTexture(atlas); texAtlas.colorSpace = THREE.SRGBColorSpace; texAtlas.generateMipmaps = false; texAtlas.minFilter = THREE.LinearFilter;
