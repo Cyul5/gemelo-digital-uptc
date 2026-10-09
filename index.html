@@ -3938,35 +3938,36 @@
             // ---- Distinción de espacios: el plano 2D (SVG) de cada piso se pinta con el calor y se proyecta sobre el modelo ----
             const TILE = 640, SEL_AULA = '[id^="A-"],[id^="a-"],[id^="L-"],[id^="l-"],[id*="HUNZA"]', SEL_FORMA = 'path,polygon,rect,polyline,circle,ellipse,line';
             const CLAVE_ALINEA = 'uptc_gic_calor_alinea_v1';
-            let al = { q: 0, fino: 0, fx: 1, fy: 1, ox: 0, oz: 0, sc: 1, manual: false }, qAuto = 0;
+            let al = { q: 0, fino: 0, fx: 1, fy: 1, ox: 0, oz: 0, sc: 1, manual: false }, auto = { q: 0, fx: 1, fy: 1, sc: 1, ox: 0, oz: 0 };
             try { const g = JSON.parse(localStorage.getItem(CLAVE_ALINEA) || 'null'); if (g && typeof g === 'object') al = Object.assign(al, g); } catch (e) {}
             const planos = [null, null, null, null, null];
             let atlas = null, ctxA = null, texAtlas = null, planosCargados = false, cargandoPlanos = false, tempo = null, pendiente = null, pintando = false;
 
-            const ALIGN_HTML = '<details id="calor-align"><summary>⚙ Alinear plano 2D con el modelo 3D</summary>' +
-                '<div class="fila"><button type="button" data-a="rot">⟳ Rotar 90°</button><button type="button" data-a="fx">↔ Espejo X</button><button type="button" data-a="fy">↕ Espejo Z</button><button type="button" data-a="reset">Restablecer</button></div>' +
+            const ALIGN_HTML = '<details id="calor-align"><summary>⚙ Alineación del plano (automática) y ajuste fino opcional</summary>' +
+                '<div class="fila"><button type="button" data-a="rot">⟳ Rotar 90°</button><button type="button" data-a="fx">↔ Espejo X</button><button type="button" data-a="fy">↕ Espejo Z</button><button type="button" data-a="auto">Volver a automático</button></div>' +
                 '<div class="fila"><label>Giro fino <input type="range" data-r="fino" min="-15" max="15" step="0.1"></label><label>Escala <input type="range" data-r="sc" min="0.6" max="1.5" step="0.005"></label></div>' +
                 '<div class="fila"><label>Mover X <input type="range" data-r="ox" min="-0.4" max="0.4" step="0.002"></label><label>Mover Z <input type="range" data-r="oz" min="-0.4" max="0.4" step="0.002"></label></div>' +
-                '<div id="calor-align-msg" style="margin-top:4px;color:#94a3b8"></div></details>';
+                '<div id="calor-align-msg" style="margin-top:4px;color:#94a3b8"></div><canvas id="calor-prev" style="width:100%;margin-top:6px;border:1px solid #334155;background:#fff;border-radius:4px"></canvas></details>';
 
             function actualizarAlineacion() {
                 if (!bboxModelo) return;
                 const sz = bboxModelo.getSize(new THREE.Vector3()), c = bboxModelo.getCenter(new THREE.Vector3());
-                const qEf = al.manual ? al.q : qAuto, impar = qEf % 2 !== 0, th = qEf * Math.PI / 2 + al.fino * Math.PI / 180;
-                compartido.uSz.value.set((impar ? sz.z : sz.x) * al.sc, (impar ? sz.x : sz.z) * al.sc);
-                compartido.uC.value.set(c.x + al.ox * sz.x, c.z + al.oz * sz.z);
+                const E = al.manual ? al : auto, impar = E.q % 2 !== 0, th = E.q * Math.PI / 2 + al.fino * Math.PI / 180;
+                compartido.uSz.value.set((impar ? sz.z : sz.x) * E.sc, (impar ? sz.x : sz.z) * E.sc);
+                compartido.uC.value.set(c.x + E.ox * sz.x, c.z + E.oz * sz.z);
                 compartido.uRot.value.set(Math.cos(th), Math.sin(th));
-                compartido.uFlip.value.set(al.fx, al.fy);
+                compartido.uFlip.value.set(E.fx, E.fy);
             }
             function guardarAlineacion() { try { localStorage.setItem(CLAVE_ALINEA, JSON.stringify(al)); } catch (e) {} actualizarAlineacion(); }
+            function tomarManual() { if (!al.manual) { Object.assign(al, auto, { manual: true }); } }
             function enlazarAlineacion(p) {
-                const sync = () => p.querySelectorAll('[data-r]').forEach(i => { i.value = al[i.dataset.r]; });
+                const sync = () => { const E = al.manual ? al : auto; p.querySelectorAll('[data-r]').forEach(i => { i.value = i.dataset.r === 'fino' ? al.fino : E[i.dataset.r]; }); };
                 sync();
-                p.querySelectorAll('[data-r]').forEach(i => i.oninput = () => { al[i.dataset.r] = parseFloat(i.value); if (!al.manual) { al.q = qAuto; al.manual = true; } guardarAlineacion(); });
+                p.querySelectorAll('[data-r]').forEach(i => i.oninput = () => { tomarManual(); al[i.dataset.r] = parseFloat(i.value); guardarAlineacion(); });
                 p.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
                     const a = b.dataset.a;
-                    if (a === 'rot') { al.q = ((al.manual ? al.q : qAuto) + 1) % 4; al.manual = true; } else if (a === 'fx') { al.fx *= -1; if (!al.manual) { al.q = qAuto; al.manual = true; } } else if (a === 'fy') { al.fy *= -1; if (!al.manual) { al.q = qAuto; al.manual = true; } }
-                    else al = { q: 0, fino: 0, fx: 1, fy: 1, ox: 0, oz: 0, sc: 1, manual: false };
+                    if (a === 'auto') { al = { q: 0, fino: 0, fx: 1, fy: 1, ox: 0, oz: 0, sc: 1, manual: false }; }
+                    else { tomarManual(); if (a === 'rot') al.q = (al.q + 1) % 4; else if (a === 'fx') al.fx *= -1; else if (a === 'fy') al.fy *= -1; }
                     guardarAlineacion(); sync();
                 });
             }
@@ -4013,7 +4014,7 @@
                 root.querySelectorAll('text,tspan,image,script,foreignObject').forEach(e => e.remove());
                 const aulasEl = Array.from(root.querySelectorAll(SEL_AULA)).filter(e => e !== root && !e.querySelector(SEL_AULA));
                 const enAula = new Set(), enCirc = new Set(), aulas = [];
-                aulasEl.forEach(e => { const f = formasDe(e).filter(x => !enDefs(x)); f.forEach(x => enAula.add(x)); aulas.push({ cod: e.id.toUpperCase(), formas: f, v: -1 }); });
+                aulasEl.forEach(e => { const f = formasDe(e).filter(x => !enDefs(x)); f.forEach(x => { enAula.add(x); x.setAttribute('data-aula', '1'); }); aulas.push({ cod: e.id.toUpperCase(), formas: f, v: -1 }); });
                 const circ = [];
                 root.querySelectorAll('*').forEach(e => {
                     const txt = [e.id, e.getAttribute('inkscape:label'), e.getAttribute('class'), e.getAttribute('data-name')].join(' ');
@@ -4043,19 +4044,19 @@
                 cargandoPlanos = true;
                 Promise.all([0,1,2,3,4].map(i => cargarPlano(i).catch(e => console.warn('[GIC] Calor: no se pudo leer el plano', i + 1, e)))).then(() => {
                     cargandoPlanos = false; planosCargados = planos.some(Boolean);
-                    const pr = planos.find(Boolean);
-                    if (pr && bboxModelo) {
-                        const sz = bboxModelo.getSize(new THREE.Vector3());
-                        qAuto = ((pr.caja.w / pr.caja.h > 1) !== (sz.x / sz.z > 1)) ? 1 : 0;
-                        console.log('[GIC] Calor: plano', pr.caja, '| huella del modelo', sz.x.toFixed(1), 'x', sz.z.toFixed(1), '| giro automático', qAuto * 90 + '°');
-                        actualizarAlineacion();
-                    }
                     if (!planosCargados) { toast3D('No se pudieron leer los planos SVG: el calor se muestra por piso'); return; }
                     atlas = document.createElement('canvas'); atlas.width = TILE * 5; atlas.height = TILE; ctxA = atlas.getContext('2d');
                     texAtlas = new THREE.CanvasTexture(atlas); texAtlas.colorSpace = THREE.SRGBColorSpace; texAtlas.generateMipmaps = false; texAtlas.minFilter = THREE.LinearFilter;
-                    compartido.uHeatTex.value = texAtlas; compartido.uTexOn.value = 1;
-                    planos.forEach(p => { if (p) p.firma = ''; });
-                    if (activo) aplicar();
+                    compartido.uHeatTex.value = texAtlas;
+                    toast3D('Alineando los planos con el modelo…');
+                    setTimeout(async () => {
+                        let ok = false;
+                        try { ok = await alinearAuto(); } catch (e) { console.warn('[GIC] Calor: alineación automática', e); }
+                        if (!ok) { const m = document.getElementById('calor-align-msg'); if (m) m.textContent = 'No se pudo alinear automáticamente; usa el ajuste fino.'; }
+                        compartido.uTexOn.value = 1; actualizarAlineacion();
+                        planos.forEach(p => { if (p) p.firma = ''; });
+                        if (activo) aplicar();
+                    }, 60);
                 });
             }
             function programarTex(r) {
@@ -4083,10 +4084,125 @@
                 const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(pl.root)], { type: 'image/svg+xml;charset=utf-8' }));
                 return new Promise(res => {
                     const im = new Image();
-                    im.onload = () => { ctxA.clearRect(i * TILE, 0, TILE, TILE); ctxA.drawImage(im, i * TILE, 0, TILE, TILE); texAtlas.needsUpdate = true; URL.revokeObjectURL(url); res(); };
+                    im.onload = () => { ctxA.clearRect(i * TILE, 0, TILE, TILE); ctxA.drawImage(im, i * TILE, 0, TILE, TILE); texAtlas.needsUpdate = true; URL.revokeObjectURL(url); const pv = document.getElementById('calor-prev'); if (pv) { pv.width = 800; pv.height = 160; pv.getContext('2d').drawImage(atlas, 0, 0, 800, 160); } res(); };
                     im.onerror = () => { URL.revokeObjectURL(url); pl.firma = ''; res(); };
                     im.src = url;
                 });
+            }
+
+            // ---- Alineación automática: se compara la geometría del modelo (corte horizontal) con los contornos de las aulas del SVG ----
+            const NR = 128;
+            function rasterModeloPiso(f) {
+                const sz = bboxModelo.getSize(new THREE.Vector3()), c = bboxModelo.getCenter(new THREE.Vector3());
+                const y0 = Math.max(rangoPiso(f).base, alturaMinModel) + 1.2, y1 = y0 + 0.5;
+                const cam = new THREE.OrthographicCamera(-sz.x / 2, sz.x / 2, sz.z / 2, -sz.z / 2, 0.1, alturaMaxModel + 200);
+                cam.up.set(0, 0, -1); cam.position.set(c.x, alturaMaxModel + 50, c.z); cam.lookAt(c.x, 0, c.z); cam.updateMatrixWorld(true);
+                const rt = new THREE.WebGLRenderTarget(NR, NR);
+                const mat = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide, clippingPlanes: [planoInferior, planoSuperior] });
+                const pi = planoInferior.constant, ps = planoSuperior.constant, bg = scene.background, vis = scene.children.map(o => o.visible);
+                const buf = new Uint8Array(NR * NR * 4);
+                try {
+                    scene.children.forEach(o => { if (o !== modeloGlobal) o.visible = false; });
+                    planoInferior.constant = -y0; planoSuperior.constant = y1;
+                    scene.background = new THREE.Color(0xffffff); scene.overrideMaterial = mat;
+                    renderer.setRenderTarget(rt); renderer.clear(); renderer.render(scene, cam);
+                    renderer.readRenderTargetPixels(rt, 0, 0, NR, NR, buf);
+                } finally {
+                    renderer.setRenderTarget(null); scene.overrideMaterial = null; scene.background = bg;
+                    scene.children.forEach((o, i) => { o.visible = vis[i]; });
+                    planoInferior.constant = pi; planoSuperior.constant = ps; rt.dispose(); mat.dispose();
+                }
+                const m = new Uint8Array(NR * NR); let n = 0;
+                for (let r = 0; r < NR; r++) for (let cc = 0; cc < NR; cc++) if (buf[((NR - 1 - r) * NR + cc) * 4] < 128) { m[r * NR + cc] = 1; n++; }
+                return { mascara: m, n };
+            }
+            function distancias(m) {
+                const d = new Float32Array(NR * NR), N = NR;
+                for (let i = 0; i < d.length; i++) d[i] = m[i] ? 0 : 1e4;
+                for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+                    const i = r * N + c; let v = d[i];
+                    if (c > 0) v = Math.min(v, d[i - 1] + 1);
+                    if (r > 0) { v = Math.min(v, d[i - N] + 1); if (c > 0) v = Math.min(v, d[i - N - 1] + 1.41); if (c < N - 1) v = Math.min(v, d[i - N + 1] + 1.41); }
+                    d[i] = v;
+                }
+                for (let r = N - 1; r >= 0; r--) for (let c = N - 1; c >= 0; c--) {
+                    const i = r * N + c; let v = d[i];
+                    if (c < N - 1) v = Math.min(v, d[i + 1] + 1);
+                    if (r < N - 1) { v = Math.min(v, d[i + N] + 1); if (c < N - 1) v = Math.min(v, d[i + N + 1] + 1.41); if (c > 0) v = Math.min(v, d[i + N - 1] + 1.41); }
+                    d[i] = v;
+                }
+                return d;
+            }
+            function puntosPlano(pl) {
+                return new Promise(res => {
+                    const root = pl.root.cloneNode(true);
+                    root.setAttribute('width', NR); root.setAttribute('height', NR);
+                    root.querySelectorAll(SEL_FORMA).forEach(x => {
+                        if (x.getAttribute('data-aula')) { x.style.setProperty('fill', 'none', 'important'); x.style.setProperty('stroke', '#000', 'important'); x.style.setProperty('stroke-opacity', '1', 'important'); x.style.setProperty('stroke-width', String(pl.caja.w / NR * 1.2), 'important'); }
+                        else x.style.setProperty('display', 'none', 'important');
+                    });
+                    const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(root)], { type: 'image/svg+xml;charset=utf-8' }));
+                    const im = new Image();
+                    im.onload = () => {
+                        const cv = document.createElement('canvas'); cv.width = cv.height = NR; const cx = cv.getContext('2d'); cx.drawImage(im, 0, 0, NR, NR);
+                        const dat = cx.getImageData(0, 0, NR, NR).data, pts = [];
+                        for (let r = 0; r < NR; r++) for (let c = 0; c < NR; c++) if (dat[(r * NR + c) * 4 + 3] > 110) pts.push([(c + 0.5) / NR, (r + 0.5) / NR]);
+                        URL.revokeObjectURL(url);
+                        const paso = Math.max(1, Math.floor(pts.length / 500)); res(pts.filter((_, i) => i % paso === 0));
+                    };
+                    im.onerror = () => { URL.revokeObjectURL(url); res([]); };
+                    im.src = url;
+                });
+            }
+            function mejorAlineacion(items) {
+                const sz = bboxModelo.getSize(new THREE.Vector3()), bx = sz.x, bz = sz.z;
+                const total = items.reduce((a, it) => a + it.pts.length, 0);
+                const preparar = (q, fx, sc) => {
+                    const impar = q % 2 === 1, szx = (impar ? bz : bx) * sc, szy = (impar ? bx : bz) * sc, c = [1, 0, -1, 0][q], sn = [0, 1, 0, -1][q];
+                    return items.map(it => { const X = new Float32Array(it.pts.length), Z = new Float32Array(it.pts.length);
+                        it.pts.forEach(([u, v], k) => { const ux = (u - 0.5) * szx * fx, uy = (v - 0.5) * szy; X[k] = NR * (0.5 + (c * ux - sn * uy) / bx); Z[k] = NR * (0.5 + (sn * ux + c * uy) / bz); });
+                        return { X, Z, dt: it.dt }; });
+                };
+                const costo = (prep, ox, oz) => {
+                    let s = 0;
+                    for (const it of prep) for (let k = 0; k < it.X.length; k++) {
+                        const ix = Math.floor(it.X[k] + NR * ox), iz = Math.floor(it.Z[k] + NR * oz);
+                        s += (ix < 0 || iz < 0 || ix >= NR || iz >= NR) ? 12 : Math.min(12, it.dt[iz * NR + ix]);
+                    }
+                    return s / total;
+                };
+                let best = { cost: 1e18 };
+                const buscar = (qs, fxs, scs, oxs, ozs) => {
+                    for (const q of qs) for (const fx of fxs) for (const sc of scs) {
+                        const prep = preparar(q, fx, sc);
+                        for (const ox of oxs) for (const oz of ozs) { const co = costo(prep, ox, oz); if (co < best.cost) best = { cost: co, q, fx, fy: 1, sc, ox, oz }; }
+                    }
+                };
+                const rango = (c, r, st) => { const a = []; for (let v = c - r; v <= c + r + 1e-9; v += st) a.push(+v.toFixed(4)); return a; };
+                buscar([0, 1, 2, 3], [1, -1], rango(1, 0.12, 0.02), rango(0, 0.1, 0.01), rango(0, 0.1, 0.01));
+                const b0 = best;
+                buscar([b0.q], [b0.fx], rango(b0.sc, 0.02, 0.005), rango(b0.ox, 0.01, 0.0025), rango(b0.oz, 0.01, 0.0025));
+                best.errM = best.cost * (bx / NR);
+                return best;
+            }
+            async function alinearAuto() {
+                if (!bboxModelo || !renderer || !modeloGlobal) return false;
+                const items = [];
+                for (let f = 0; f < 5; f++) {
+                    const pl = planos[f]; if (!pl) continue;
+                    const wm = rasterModeloPiso(f); if (wm.n < NR * NR * 0.004) continue;
+                    const pts = await puntosPlano(pl); if (pts.length < 40) continue;
+                    items.push({ dt: distancias(wm.mascara), pts });
+                }
+                if (!items.length) return false;
+                const b = mejorAlineacion(items);
+                Object.assign(auto, { q: b.q, fx: b.fx, fy: 1, sc: b.sc, ox: b.ox, oz: b.oz });
+                actualizarAlineacion();
+                const txt = 'Alineación automática: giro ' + b.q * 90 + '°' + (b.fx < 0 ? ' + espejo' : '') + ', escala ' + b.sc.toFixed(2) + ', error medio ≈ ' + b.errM.toFixed(1) + ' m' + (b.errM > 2.5 ? ' (baja confianza)' : '');
+                const m = document.getElementById('calor-align-msg'); if (m) m.textContent = txt;
+                console.log('[GIC] Calor:', txt, b, '| pisos usados:', items.length);
+                toast3D(txt);
+                return true;
             }
 
             function aplicar() {
