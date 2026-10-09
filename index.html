@@ -408,6 +408,34 @@
             #calor-pisos { grid-template-columns: repeat(3, 1fr); }
             #calor-estado { margin-left: 0; width: 100%; }
         }
+
+        /* ===== GALERÍA · miniaturas cuadradas, zoom del visor y ficha patológica ===== */
+        #galeria-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+        .galeria-card img { height: auto; aspect-ratio: 1 / 1; }
+        #galeria-visor { overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+        #galeria-visor img { max-height: calc(100vh - 210px); max-height: calc(100dvh - 210px); position: relative; z-index: 1; transform-origin: center center; cursor: zoom-in; -webkit-user-drag: none; image-rendering: auto; }
+        #galeria-visor.ampliado img { cursor: grab; }
+        #galeria-visor.arrastrando img { cursor: grabbing; }
+        #galeria-visor .pie { position: relative; z-index: 3; background: rgba(0,0,0,0.72); padding: 6px 16px; border-radius: 8px; }
+        .visor-btn { z-index: 5; }
+        #visor-prev, #visor-next { transform: translateY(-50%); }
+        .visor-barra { position: relative; z-index: 4; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .visor-barra button { background: #1e293b; color: #fff; border: 1px solid #334155; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; min-width: 40px; }
+        .visor-barra button:hover:not(:disabled) { border-color: var(--accent); }
+        .visor-barra #visor-zoom-txt { color: #cbd5e1; font-size: 12px; min-width: 44px; text-align: center; font-variant-numeric: tabular-nums; }
+        .visor-barra .visor-ficha { background: #0f766e; border-color: #0f766e; }
+        .visor-barra .visor-ficha:hover:not(:disabled) { background: #115e59; border-color: #14b8a6; }
+        .visor-barra .visor-ficha:disabled { background: #1e293b; border-color: #1e293b; color: #64748b; cursor: not-allowed; }
+        #visor-aviso { position: absolute; left: 50%; bottom: 90px; transform: translateX(-50%); max-width: 88%; background: #070d19; color: #f8fafc; border: 1px solid #00b4d8; border-radius: 8px; padding: 9px 14px; font-size: 12px; text-align: center; line-height: 1.4; opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 6; }
+        #visor-aviso.show { opacity: 1; }
+        @media (max-width: 640px) {
+            #galeria-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+            #galeria-overlay { padding: 12px; }
+            .visor-barra { gap: 6px; }
+            .visor-barra button { padding: 8px 10px; font-size: 12px; }
+            #galeria-visor { padding: 12px; }
+            #galeria-visor .pie { max-width: 84vw; }
+        }
 </style>
 </head>
 <body>
@@ -591,7 +619,7 @@
             <h2>🖼️ Galería del levantamiento</h2>
             <select id="galeria-filtro-origen" onchange="renderizarGaleria()">
                 <option value="">Todas las hojas</option>
-                <option value="Inventario Espacios">Inventario Espacios</option>
+                <option value="Inventario Espacios">Patologías Registradas</option>
                 <option value="Mobiliario y Equipo">Mobiliario y Equipo</option>
             </select>
             <select id="galeria-filtro-piso" onchange="renderizarGaleria()">
@@ -611,6 +639,14 @@
         <button class="visor-btn" id="visor-next" onclick="navegarVisorFoto(1)">›</button>
         <img id="visor-img" alt="">
         <div class="pie" id="visor-pie"></div>
+        <div class="visor-barra">
+            <button type="button" id="visor-zoom-menos" aria-label="Alejar">&minus;</button>
+            <span id="visor-zoom-txt">100%</span>
+            <button type="button" id="visor-zoom-mas" aria-label="Acercar">+</button>
+            <button type="button" id="visor-zoom-ajustar">Ajustar</button>
+            <button type="button" class="visor-ficha" id="visor-ficha" disabled title="Se activa al abrir una foto de «Patologías Registradas»">🩺 Ver ficha patológica</button>
+        </div>
+        <div id="visor-aviso"></div>
     </div>
 
     <!-- CARTEL DE BIENVENIDA -->
@@ -3318,6 +3354,198 @@
         })();
     </script>
 
+
+    <!-- GALERÍA · MEJORAS: zoom de calidad en el visor, botón de ficha patológica y nombre «Patologías Registradas».
+         Se apoya en las funciones existentes (abrirVisorFoto, renderizarGaleria) sin reemplazarlas. -->
+    <script>
+    (function () {
+        'use strict';
+
+        // La hoja del Excel que ahora se presenta como «Patologías Registradas»
+        const ORIGEN_PATOLOGIAS = 'Inventario Espacios';
+        const ETIQUETA_PATOLOGIAS = 'Patologías Registradas';
+        const ZOOM_MAX = 8;
+
+        const $ = (id) => document.getElementById(id);
+        const z = { s: 1, x: 0, y: 0 };
+        const gesto = { punteros: new Map(), dPrev: 0, inicio: null, movido: 0, ultimoTap: 0 };
+        let avisoTimer = null;
+
+        function etiquetaOrigen(t) { return String(t || '').split(ORIGEN_PATOLOGIAS).join(ETIQUETA_PATOLOGIAS); }
+
+        // ---------- Zoom ----------
+        function centroBase() {
+            const im = $('visor-img');
+            return { x: im.offsetLeft + im.offsetWidth / 2, y: im.offsetTop + im.offsetHeight / 2 };
+        }
+
+        // Evita que la foto se salga de la pantalla al moverla
+        function limitar() {
+            const v = $('galeria-visor'), im = $('visor-img');
+            if (!v || !im || !im.offsetWidth) { z.x = 0; z.y = 0; return; }
+            const W = v.clientWidth, H = v.clientHeight;
+            const w = im.offsetWidth * z.s, h = im.offsetHeight * z.s;
+            const c = centroBase();
+            z.x = Math.max(Math.min(0, W - c.x - w / 2), Math.min(Math.max(0, w / 2 - c.x), z.x));
+            z.y = Math.max(Math.min(0, H - c.y - h / 2), Math.min(Math.max(0, h / 2 - c.y), z.y));
+            if (z.s <= 1.001) { z.x = 0; z.y = 0; }
+        }
+
+        function aplicar() {
+            const v = $('galeria-visor'), im = $('visor-img');
+            if (!v || !im) return;
+            limitar();
+            im.style.transform = 'translate(' + z.x + 'px, ' + z.y + 'px) scale(' + z.s + ')';
+            v.classList.toggle('ampliado', z.s > 1.001);
+            const t = $('visor-zoom-txt');
+            if (t) t.textContent = Math.round(z.s * 100) + '%';
+        }
+
+        // (px, py): punto de la pantalla que debe quedarse quieto al hacer zoom
+        function zoomEn(factor, px, py) {
+            const ns = Math.max(1, Math.min(ZOOM_MAX, z.s * factor));
+            if (ns === z.s) return;
+            const c = centroBase();
+            const rx = px - c.x, ry = py - c.y;
+            z.x = rx - (rx - z.x) * ns / z.s;
+            z.y = ry - (ry - z.y) * ns / z.s;
+            z.s = ns;
+            aplicar();
+        }
+        function zoomCentro(factor) { const c = centroBase(); zoomEn(factor, c.x, c.y); }
+        function reiniciar() { z.s = 1; z.x = 0; z.y = 0; aplicar(); }
+
+        // ---------- Ficha patológica ----------
+        function avisoVisor(texto) {
+            const a = $('visor-aviso');
+            if (!a) return;
+            a.textContent = texto;
+            a.classList.add('show');
+            clearTimeout(avisoTimer);
+            avisoTimer = setTimeout(() => a.classList.remove('show'), 3800);
+        }
+
+        // PUNTO DE ENGANCHE para cuando exista la ficha patológica:
+        //   window.onAbrirFichaPatologica = function (foto) { ... };
+        // «foto» trae: codigo, piso, referencia, detalle, origen, fila, src.
+        function abrirFichaPatologica(foto) {
+            if (typeof window.onAbrirFichaPatologica === 'function') { window.onAbrirFichaPatologica(foto); return; }
+            avisoVisor('🩺 La ficha patológica de ' + foto.codigo + ' todavía no está disponible. Este botón quedará conectado cuando se implemente.');
+        }
+        window.abrirFichaPatologica = abrirFichaPatologica;
+
+        function fotoActual() {
+            return (typeof galeriaVisible !== 'undefined' && galeriaIndiceVisor >= 0) ? galeriaVisible[galeriaIndiceVisor] : null;
+        }
+
+        // ---------- Gestos: rueda, doble clic/toque, arrastre, pellizco y deslizar ----------
+        function iniciarGestos() {
+            const v = $('galeria-visor');
+            if (!v || v.__zoomListo) return;
+            v.__zoomListo = true;
+            const im = $('visor-img');
+            if (im) { im.draggable = false; im.addEventListener('load', aplicar); }
+            const esLienzo = (t) => t === v || t === im;
+
+            v.addEventListener('wheel', (e) => {
+                if (!v.classList.contains('show')) return;
+                if (e.target.closest && e.target.closest('.visor-barra')) return;
+                e.preventDefault();
+                zoomEn(e.deltaY < 0 ? 1.2 : 1 / 1.2, e.clientX, e.clientY);
+            }, { passive: false });
+
+            v.addEventListener('pointerdown', (e) => {
+                if (!esLienzo(e.target)) return;
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
+                try { v.setPointerCapture(e.pointerId); } catch (err) {}
+                gesto.punteros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                if (gesto.punteros.size === 1) { gesto.inicio = { x: e.clientX, y: e.clientY }; gesto.movido = 0; }
+                else gesto.movido = 9999;
+                gesto.dPrev = 0;
+            });
+
+            v.addEventListener('pointermove', (e) => {
+                const prev = gesto.punteros.get(e.pointerId);
+                if (!prev) return;
+                const act = { x: e.clientX, y: e.clientY };
+                gesto.punteros.set(e.pointerId, act);
+                if (gesto.punteros.size === 1) {
+                    const dx = act.x - prev.x, dy = act.y - prev.y;
+                    gesto.movido += Math.abs(dx) + Math.abs(dy);
+                    if (z.s > 1.001) { z.x += dx; z.y += dy; v.classList.add('arrastrando'); aplicar(); }
+                } else if (gesto.punteros.size === 2) {
+                    const p = Array.from(gesto.punteros.values());
+                    const d = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+                    if (gesto.dPrev > 0 && d > 0) zoomEn(d / gesto.dPrev, (p[0].x + p[1].x) / 2, (p[0].y + p[1].y) / 2);
+                    gesto.dPrev = d;
+                }
+            });
+
+            const fin = (e) => {
+                if (!gesto.punteros.has(e.pointerId)) return;
+                const era1 = gesto.punteros.size === 1;
+                gesto.punteros.delete(e.pointerId);
+                gesto.dPrev = 0;
+                v.classList.remove('arrastrando');
+                if (!(era1 && gesto.inicio && e.type === 'pointerup')) return;
+                const dx = e.clientX - gesto.inicio.x, dy = e.clientY - gesto.inicio.y;
+                if (Math.hypot(dx, dy) < 8 && gesto.movido < 12) {
+                    const ahora = Date.now();
+                    if (ahora - gesto.ultimoTap < 320) {                 // doble clic / doble toque
+                        if (z.s > 1.001) reiniciar(); else zoomEn(2.5, e.clientX, e.clientY);
+                        gesto.ultimoTap = 0;
+                    } else gesto.ultimoTap = ahora;
+                } else if (z.s <= 1.001 && Math.abs(dx) > 60 && Math.abs(dy) < 70 && gesto.movido < 400) {
+                    window.navegarVisorFoto(dx < 0 ? 1 : -1);             // deslizar para cambiar de foto
+                }
+            };
+            v.addEventListener('pointerup', fin);
+            v.addEventListener('pointercancel', fin);
+            window.addEventListener('resize', () => { if (v.classList.contains('show')) aplicar(); });
+
+            $('visor-zoom-mas').addEventListener('click', () => zoomCentro(1.4));
+            $('visor-zoom-menos').addEventListener('click', () => zoomCentro(1 / 1.4));
+            $('visor-zoom-ajustar').addEventListener('click', reiniciar);
+            $('visor-ficha').addEventListener('click', () => {
+                const f = fotoActual();
+                if (f && f.origen === ORIGEN_PATOLOGIAS) abrirFichaPatologica(f);
+            });
+        }
+
+        // ---------- Enganche con las funciones existentes ----------
+        const abrirVisorOriginal = window.abrirVisorFoto;
+        window.abrirVisorFoto = function (i) {
+            iniciarGestos();
+            abrirVisorOriginal(i);
+            reiniciar();
+            const f = fotoActual();
+            if (!f) return;
+            const peq = document.querySelector('#visor-pie small');
+            if (peq) peq.textContent = etiquetaOrigen(peq.textContent);
+            const bf = $('visor-ficha');
+            if (bf) {
+                const activo = f.origen === ORIGEN_PATOLOGIAS;
+                bf.disabled = !activo;
+                bf.title = activo ? 'Abrir la ficha patológica de este espacio' : 'Se activa al abrir una foto de «' + ETIQUETA_PATOLOGIAS + '»';
+            }
+            requestAnimationFrame(aplicar);
+        };
+
+        const renderizarOriginal = window.renderizarGaleria;
+        window.renderizarGaleria = function () {
+            renderizarOriginal.apply(this, arguments);
+            document.querySelectorAll('#galeria-grid .galeria-card .tag').forEach((t) => { t.textContent = etiquetaOrigen(t.textContent); });
+        };
+
+        document.addEventListener('keydown', (e) => {
+            const v = $('galeria-visor');
+            if (!v || !v.classList.contains('show')) return;
+            if (e.key === '+' || e.key === '=') zoomCentro(1.25);
+            else if (e.key === '-' || e.key === '_') zoomCentro(1 / 1.25);
+            else if (e.key === '0') reiniciar();
+        }, true);
+    })();
+    </script>
 
 <!-- MOTOR THREE.JS Y ZOOM INTERACTIVO -->
     <script type="module">
