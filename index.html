@@ -11,6 +11,8 @@
     <!-- GENERACIÓN DE INFORMES PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <!-- GENERACIÓN DE INFORMES EXCEL (con formato) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 
     <!-- Import Maps para Three.js -->
     <script type="importmap">
@@ -372,6 +374,10 @@
         .informe-acciones .sec { background: #e2e8f0; color: #0f172a; border: none; border-radius: 8px; padding: 10px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
         .informe-acciones .sec:hover { background: #cbd5e1; }
         .informe-acciones .btn-primario:disabled { opacity: .45; cursor: not-allowed; }
+        .informe-acciones { flex-wrap: wrap; }
+        .informe-acciones .btn-excel { background: #15803d; color: #fff; border: none; border-radius: 8px; padding: 10px 18px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .2s; }
+        .informe-acciones .btn-excel:hover { background: #166534; }
+        .informe-acciones .btn-excel:disabled { opacity: .45; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -524,8 +530,8 @@
         <!-- MODAL: GENERAR INFORME PDF -->
     <div id="informe-overlay" role="dialog" aria-modal="true" aria-labelledby="informe-titulo-modal">
         <div class="informe-card">
-            <h2 id="informe-titulo-modal">📄 Generar informe en PDF</h2>
-            <p class="sub">Elige qué información del levantamiento quieres descargar. El PDF incluirá únicamente ese tema, ordenado y listo para leer.</p>
+            <h2 id="informe-titulo-modal">📄 Generar informe (PDF o Excel)</h2>
+            <p class="sub">Elige qué información del levantamiento quieres descargar. El informe incluirá únicamente ese tema, ordenado y listo para leer, y lo puedes descargar en PDF o en Excel (el contenido es el mismo).</p>
             <div class="informe-campo">
                 <label for="informe-tema">Tema del informe</label>
                 <select id="informe-tema" onchange="informeActualizarVista()"></select>
@@ -542,6 +548,7 @@
             <div class="informe-acciones">
                 <button type="button" class="sec" onclick="cerrarModalInformes()">Cancelar</button>
                 <button type="button" class="btn-primario" id="informe-btn-generar" onclick="generarInformePDF()">⬇ Descargar PDF</button>
+                <button type="button" class="btn-excel" id="informe-btn-excel" onclick="generarInformeExcel()" title="Descargar el mismo informe en formato Excel (.xlsx)">⬇ Descargar Excel</button>
             </div>
         </div>
     </div>
@@ -3031,6 +3038,256 @@
         window.informeActualizarVista = informeActualizarVista;
         window.generarInformePDF = generarInformePDF;
     </script>
+
+    <script>
+        // ===== INFORMES EXCEL =====
+        // Reutiliza EXACTAMENTE el mismo informe que el PDF (informeConstruir): mismas columnas, filas,
+        // resumen y agrupaciones por piso. No modifica ninguna función del generador de PDF.
+        const INFX_COLOR = {
+            banda: '070D19', acento: '00B4D8', cabecera: '0284C7', g1: '0E7490', g2: 'E2E8F0',
+            alterna: 'F8FAFC', borde: 'E2E8F0', resumen: 'F1F5F9', texto: '0F172A',
+            ocupado: 'B91C1C', libre: '047857', gris: '64748B'
+        };
+
+        function infxEsFilaGrupo(fila) {
+            return Array.isArray(fila) && fila.length === 1 && fila[0] && typeof fila[0] === 'object' && 'content' in fila[0];
+        }
+        function infxNombreHoja(t) {
+            const s = String(t || 'Informe').replace(/[\\\/\?\*\[\]:]/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 31);
+            return s || 'Informe';
+        }
+        function infxSlug(s) {
+            return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '');
+        }
+        function infxNumero(txt, col) {
+            if (!col || !col.num) return txt;
+            const t = String(txt).trim();
+            return /^-?\d+([.,]\d+)?$/.test(t) ? parseFloat(t.replace(',', '.')) : txt;
+        }
+        function infxLineas(texto, ancho) {
+            return String(texto === undefined || texto === null ? '' : texto).split('\n')
+                .reduce((n, p) => n + Math.max(1, Math.ceil(p.length / Math.max(ancho, 1))), 0);
+        }
+        function infxMeta() {
+            const ahora = new Date();
+            return {
+                ahora,
+                fecha: ahora.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' }),
+                hora: String(ahora.getHours()).padStart(2, '0') + ':' + String(ahora.getMinutes()).padStart(2, '0'),
+                edificio: infLimpiar(registrosDatosGeneralesExcel['NOMBRE']) || 'Edificio Hunza (30)'
+            };
+        }
+        function infxNombreArchivo(inf, ahora) {
+            return 'Informe_' + infxSlug(inf.titulo) + '_' + infxSlug(inf.alcanceTxt.split(' (')[0]) + '_' + ahora.toISOString().slice(0, 10) + '.xlsx';
+        }
+
+        // ---- Libro con formato (ExcelJS) ----
+        function infxLibroConFormato(inf, ExcelJS) {
+            const meta = infxMeta();
+            const wb = new ExcelJS.Workbook();
+            wb.creator = 'UPTC GIC';
+            wb.created = meta.ahora;
+            const ws = wb.addWorksheet(infxNombreHoja(inf.titulo), {
+                properties: { defaultRowHeight: 16 },
+                pageSetup: { paperSize: 9, orientation: inf.orient || 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+                             margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.6, header: 0.3, footer: 0.3 } },
+                headerFooter: { oddFooter: '&L&8Fuente: Plantilla_Levantamiento_Edificio.xlsx  |  Hoja: ' + String(inf.hoja || '').replace(/&/g, '&&') + '&R&8Página &P de &N' }
+            });
+
+            const nCols = Math.max(inf.cols.length, 1);
+            const borde = { style: 'thin', color: { argb: 'FF' + INFX_COLOR.borde } };
+            const bordes = { top: borde, left: borde, bottom: borde, right: borde };
+            const rellenar = (celda, hex) => { celda.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + hex } }; };
+
+            // Anchos de columna según el contenido
+            const anchos = inf.cols.map((c, i) => {
+                let max = String(c.l || '').length;
+                inf.cuerpo.forEach(f => { if (!infxEsFilaGrupo(f)) max = Math.max(max, String(f[i] === undefined ? '' : f[i]).length); });
+                let w = Math.min(60, Math.max(11, Math.ceil(max * 1.1) + 2));
+                if (c.ancho) w = Math.max(w, 42);
+                return w;
+            });
+            if (!anchos.length) anchos.push(30);
+            ws.columns = anchos.map(w => ({ width: w }));
+            const anchoTotal = anchos.reduce((a, b) => a + b, 0);
+
+            const filaCombinada = (n, texto, opciones) => {
+                const fila = ws.getRow(n);
+                if (nCols > 1) ws.mergeCells(n, 1, n, nCols);
+                const celda = ws.getCell(n, 1);
+                celda.value = texto;
+                celda.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true, indent: opciones.indent || 0 };
+                celda.font = Object.assign({ name: 'Calibri', size: 11, color: { argb: 'FF' + INFX_COLOR.texto } }, opciones.font || {});
+                if (opciones.fondo) for (let c = 1; c <= nCols; c++) rellenar(ws.getCell(n, c), opciones.fondo);
+                fila.height = Math.max(opciones.alto || 16, infxLineas(texto, anchoTotal * (opciones.factor || 1)) * (opciones.lineaAlto || 15) + 3);
+                return celda;
+            };
+
+            let r = 1;
+            filaCombinada(r++, 'Informe: ' + inf.titulo, { fondo: INFX_COLOR.banda, alto: 30, font: { size: 16, bold: true, color: { argb: 'FFFFFFFF' } }, indent: 1, factor: 0.8, lineaAlto: 22 });
+            filaCombinada(r++, meta.edificio + '  |  ' + inf.alcanceTxt, { fondo: INFX_COLOR.banda, font: { size: 11, color: { argb: 'FFCBD5E1' } }, indent: 1 });
+            filaCombinada(r++, 'Generado el ' + meta.fecha + ' a las ' + meta.hora + '  |  UPTC GIC', { fondo: INFX_COLOR.banda, font: { size: 9, color: { argb: 'FF94A3B8' } }, indent: 1 });
+            for (let c = 1; c <= nCols; c++) rellenar(ws.getCell(r, c), INFX_COLOR.acento);
+            ws.getRow(r++).height = 4;
+            ws.getRow(r++).height = 8;
+
+            (inf.stats || []).forEach(s => {
+                const celda = filaCombinada(r, s, { fondo: INFX_COLOR.resumen, font: { size: 10 }, indent: 1, alto: 18 });
+                celda.border = { left: { style: 'thick', color: { argb: 'FF' + INFX_COLOR.acento } } };
+                r++;
+            });
+            ws.getRow(r++).height = 8;
+
+            // Tabla
+            const filaCab = r;
+            inf.cols.forEach((c, i) => {
+                const celda = ws.getCell(r, i + 1);
+                celda.value = String(c.l || '');
+                celda.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+                rellenar(celda, INFX_COLOR.cabecera);
+                celda.alignment = { vertical: 'middle', horizontal: c.num ? 'center' : 'left', wrapText: true };
+                celda.border = bordes;
+            });
+            ws.getRow(r).height = 22;
+            r++;
+
+            let hayGrupos = false, alterna = 0;
+            inf.cuerpo.forEach(fila => {
+                if (infxEsFilaGrupo(fila)) {
+                    hayGrupos = true; alterna = 0;
+                    const g = fila[0];
+                    const nivel1 = g.styles === INF_G1;
+                    const span = Math.min(g.colSpan || nCols, nCols);
+                    if (span > 1) ws.mergeCells(r, 1, r, span);
+                    const celda = ws.getCell(r, 1);
+                    celda.value = String(g.content || '');
+                    for (let c = 1; c <= span; c++) { rellenar(ws.getCell(r, c), nivel1 ? INFX_COLOR.g1 : INFX_COLOR.g2); ws.getCell(r, c).border = bordes; }
+                    celda.font = { name: 'Calibri', size: 11, bold: true, color: { argb: nivel1 ? 'FFFFFFFF' : 'FF' + INFX_COLOR.texto } };
+                    celda.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true, indent: 1 };
+                    ws.getRow(r).height = 20;
+                } else {
+                    let lineas = 1;
+                    inf.cols.forEach((c, i) => {
+                        const crudo = fila[i] === undefined || fila[i] === null ? '' : fila[i];
+                        const celda = ws.getCell(r, i + 1);
+                        celda.value = infxNumero(crudo, c);
+                        celda.font = { name: 'Calibri', size: 10.5, bold: !!c.bold, color: { argb: 'FF' + INFX_COLOR.texto } };
+                        celda.alignment = { vertical: 'middle', horizontal: c.num ? 'center' : 'left', wrapText: true };
+                        celda.border = bordes;
+                        if (alterna % 2 === 1) rellenar(celda, INFX_COLOR.alterna);
+                        if (inf.colorEstado && i === 1) {
+                            if (crudo === 'Ocupado') celda.font = { name: 'Calibri', size: 10.5, bold: true, color: { argb: 'FF' + INFX_COLOR.ocupado } };
+                            else if (crudo === 'Libre') celda.font = { name: 'Calibri', size: 10.5, bold: true, color: { argb: 'FF' + INFX_COLOR.libre } };
+                        }
+                        lineas = Math.max(lineas, infxLineas(crudo, anchos[i] - 1));
+                    });
+                    if (lineas > 1) ws.getRow(r).height = lineas * 14 + 4;
+                    alterna++;
+                }
+                r++;
+            });
+            const filaFin = r - 1;
+
+            if (inf.nota) { r++; filaCombinada(r++, inf.nota, { font: { italic: true, size: 10, color: { argb: 'FF' + INFX_COLOR.gris } } }); }
+            r++;
+            filaCombinada(r, 'Fuente: Plantilla_Levantamiento_Edificio.xlsx  |  Hoja: ' + inf.hoja, { font: { size: 9, color: { argb: 'FF' + INFX_COLOR.gris } } });
+
+            // Navegación: congelar encabezado (solo si el bloque superior es corto) y filtros
+            if (filaCab <= 8) ws.views = [{ state: 'frozen', ySplit: filaCab, showGridLines: false }];
+            else ws.views = [{ showGridLines: false }];
+            if (!hayGrupos && filaFin > filaCab) ws.autoFilter = { from: { row: filaCab, column: 1 }, to: { row: filaFin, column: nCols } };
+            ws.pageSetup.printTitlesRow = filaCab + ':' + filaCab;
+            return wb;
+        }
+
+        // ---- Respaldo sin formato (SheetJS, ya cargado en la página) ----
+        function infxLibroBasico(inf) {
+            const meta = infxMeta();
+            const aoa = [], merges = [];
+            const nCols = Math.max(inf.cols.length, 1);
+            const unir = (fila, span) => { if (span > 1) merges.push({ s: { r: fila, c: 0 }, e: { r: fila, c: span - 1 } }); };
+            aoa.push(['Informe: ' + inf.titulo]); unir(0, nCols);
+            aoa.push([meta.edificio + '  |  ' + inf.alcanceTxt]); unir(1, nCols);
+            aoa.push(['Generado el ' + meta.fecha + ' a las ' + meta.hora]); unir(2, nCols);
+            aoa.push([]);
+            (inf.stats || []).forEach(s => { aoa.push([s]); unir(aoa.length - 1, nCols); });
+            aoa.push([]);
+            aoa.push(inf.cols.map(c => String(c.l || '')));
+            inf.cuerpo.forEach(f => {
+                if (infxEsFilaGrupo(f)) { aoa.push([String(f[0].content || '')]); unir(aoa.length - 1, Math.min(f[0].colSpan || nCols, nCols)); }
+                else aoa.push(inf.cols.map((c, i) => infxNumero(f[i] === undefined || f[i] === null ? '' : f[i], c)));
+            });
+            if (inf.nota) { aoa.push([]); aoa.push([inf.nota]); unir(aoa.length - 1, nCols); }
+            aoa.push([]);
+            aoa.push(['Fuente: Plantilla_Levantamiento_Edificio.xlsx  |  Hoja: ' + inf.hoja]);
+
+            const ws = XLSX.utils.aoa_to_sheet(aoa);
+            ws['!merges'] = merges;
+            ws['!cols'] = inf.cols.map((c, i) => {
+                let max = String(c.l || '').length;
+                inf.cuerpo.forEach(f => { if (!infxEsFilaGrupo(f)) max = Math.max(max, String(f[i] === undefined ? '' : f[i]).length); });
+                return { wch: Math.min(60, Math.max(11, max + 2, c.ancho ? 42 : 0)) };
+            });
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, infxNombreHoja(inf.titulo));
+            return wb;
+        }
+
+        function infxDescargar(blob, nombre) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = nombre; a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
+        }
+
+        async function generarInformeExcel() {
+            const vista = document.getElementById('informe-vista-previa');
+            const btn = document.getElementById('informe-btn-excel');
+            let inf;
+            try { inf = informeConstruir(); } catch (e) { console.error('[GIC] Informe Excel:', e); vista.textContent = '⚠ Ocurrió un error al preparar el informe.'; return; }
+            if (!inf || !inf.n) return;
+
+            const MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+            const nombre = infxNombreArchivo(inf, new Date());
+            if (btn) btn.disabled = true;
+            vista.textContent = '⏳ Generando el archivo de Excel…';
+            try {
+                if (window.ExcelJS) {
+                    const buf = await infxLibroConFormato(inf, window.ExcelJS).xlsx.writeBuffer();
+                    infxDescargar(new Blob([buf], { type: MIME }), nombre);
+                } else if (window.XLSX) {
+                    const out = XLSX.write(infxLibroBasico(inf), { bookType: 'xlsx', type: 'array' });
+                    infxDescargar(new Blob([out], { type: MIME }), nombre);
+                    console.warn('[GIC] ExcelJS no cargó: se generó el Excel sin colores ni estilos.');
+                } else {
+                    vista.textContent = '⚠ No se pudo cargar la librería de Excel. Revisa tu conexión a internet y recarga la página.';
+                    return;
+                }
+                vista.textContent = '✔ Informe descargado: ' + nombre;
+            } catch (e) {
+                console.error('[GIC] Informe Excel:', e);
+                vista.textContent = '⚠ No se pudo generar el archivo de Excel: ' + (e && e.message ? e.message : e);
+            } finally {
+                // el estado habilitado/deshabilitado lo vuelve a fijar el observador de abajo
+                const pdf = document.getElementById('informe-btn-generar');
+                if (btn && pdf) btn.disabled = pdf.disabled;
+            }
+        }
+        window.generarInformeExcel = generarInformeExcel;
+
+        // El botón de Excel se habilita/deshabilita igual que el de PDF (sin tocar la función que lo gobierna)
+        (function sincronizarBotonExcel() {
+            const pdf = document.getElementById('informe-btn-generar');
+            const xls = document.getElementById('informe-btn-excel');
+            if (!pdf || !xls) return;
+            const copiar = () => { xls.disabled = pdf.disabled; };
+            copiar();
+            new MutationObserver(copiar).observe(pdf, { attributes: true, attributeFilter: ['disabled'] });
+        })();
+    </script>
+
 
 <!-- MOTOR THREE.JS Y ZOOM INTERACTIVO -->
     <script type="module">
