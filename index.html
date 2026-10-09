@@ -410,8 +410,9 @@
         }
 
         /* ===== GALERÍA · miniaturas cuadradas, zoom del visor y ficha patológica ===== */
-        #galeria-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
-        .galeria-card img { height: auto; aspect-ratio: 1 / 1; }
+        #galeria-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); grid-auto-rows: max-content; }
+        .galeria-card { align-self: start; }
+        .galeria-card img { width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: cover; }
         #galeria-visor { overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
         #galeria-visor img { max-height: calc(100vh - 210px); max-height: calc(100dvh - 210px); position: relative; z-index: 1; transform-origin: center center; cursor: zoom-in; -webkit-user-drag: none; image-rendering: auto; }
         #galeria-visor.ampliado img { cursor: grab; }
