@@ -3950,7 +3950,7 @@
                 '<div class="fila"><button type="button" data-a="rot">⟳ Rotar 90°</button><button type="button" data-a="fx">↔ Espejo X</button><button type="button" data-a="fy">↕ Espejo Z</button><button type="button" data-a="auto">Volver a automático</button></div>' +
                 '<div class="fila"><label>Giro fino <input type="range" data-r="fino" min="-15" max="15" step="0.1"></label><label>Escala <input type="range" data-r="sc" min="0.6" max="1.5" step="0.005"></label></div>' +
                 '<div class="fila"><label>Mover X <input type="range" data-r="ox" min="-0.4" max="0.4" step="0.002"></label><label>Mover Z <input type="range" data-r="oz" min="-0.4" max="0.4" step="0.002"></label></div>' +
-                '<div id="calor-align-msg" style="margin-top:4px;color:#94a3b8"></div><canvas id="calor-prev" style="width:100%;margin-top:6px;border:1px solid #334155;background:#fff;border-radius:4px"></canvas></details>';
+                '<div id="calor-align-msg" style="margin-top:4px;color:#94a3b8"></div><div style="margin-top:6px">Gris: muros del modelo (corte del primer piso) · Rojo: contornos de aulas del SVG ya alineados</div><canvas id="calor-dbg" style="width:55%;border:1px solid #334155;background:#fff;border-radius:4px"></canvas><canvas id="calor-prev" style="width:100%;margin-top:6px;border:1px solid #334155;background:#fff;border-radius:4px"></canvas></details>';
 
             function actualizarAlineacion() {
                 if (!bboxModelo) return;
@@ -4187,7 +4187,7 @@
                 buscar([0, 1, 2, 3], [1, -1], rango(1, 0.12, 0.02), rango(0, 0.1, 0.01), rango(0, 0.1, 0.01));
                 const b0 = best;
                 buscar([b0.q], [b0.fx], rango(b0.sc, 0.02, 0.005), rango(b0.ox, 0.01, 0.0025), rango(b0.oz, 0.01, 0.0025));
-                best.errM = best.cost * (bx / NR);
+                best.errM = best.cost * (bx / NR); best.prep = preparar(best.q, best.fx, best.sc);
                 return best;
             }
             async function alinearAuto() {
@@ -4197,7 +4197,7 @@
                     const pl = planos[f]; if (!pl) continue;
                     const wm = rasterModeloPiso(f); if (wm.n < NR * NR * 0.004) continue;
                     const pts = await puntosPlano(pl); if (pts.length < 40) continue;
-                    items.push({ dt: distancias(wm.mascara), pts });
+                    items.push({ dt: distancias(wm.mascara), pts, mask: wm.mascara });
                 }
                 if (!items.length) return false;
                 const b = mejorAlineacion(items);
@@ -4206,6 +4206,14 @@
                 const txt = 'Alineación automática: giro ' + b.q * 90 + '°' + (b.fx < 0 ? ' + espejo' : '') + ', escala ' + b.sc.toFixed(2) + ', error medio ≈ ' + b.errM.toFixed(1) + ' m' + (b.errM > 2.5 ? ' (baja confianza)' : '');
                 const m = document.getElementById('calor-align-msg'); if (m) m.textContent = txt;
                 console.log('[GIC] Calor:', txt, b, '| pisos usados:', items.length);
+                try {
+                    const cv = document.getElementById('calor-dbg'), S = 3;
+                    if (cv) {
+                        cv.width = cv.height = NR * S; const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, NR * S, NR * S);
+                        x.fillStyle = '#64748b'; items[0].mask.forEach((v, i) => { if (v) x.fillRect((i % NR) * S, Math.floor(i / NR) * S, S, S); });
+                        x.fillStyle = '#ef4444'; const pr = b.prep[0]; for (let k = 0; k < pr.X.length; k++) x.fillRect((pr.X[k] + NR * b.ox) * S, (pr.Z[k] + NR * b.oz) * S, S, S);
+                    }
+                } catch (e) {}
                 toast3D(txt);
                 return true;
             }
@@ -4236,7 +4244,7 @@
                     });
                 });
                 const chips = document.querySelectorAll('#calor-pisos button[data-p]');
-                chips.forEach(b => { const i = +b.dataset.p; b.querySelector('.dotc').style.background = '#' + color(r.pisos[i]).getHexString(); b.querySelector('.pc').textContent = Math.round(r.pisos[i] * 100) + '%'; });
+                chips.forEach(b => { const i = +b.dataset.p, dot = b.querySelector('.dotc'), pc = b.querySelector('.pc'); if (i < 0 || !dot || !pc) return; dot.style.background = '#' + color(r.pisos[i]).getHexString(); pc.textContent = Math.round(r.pisos[i] * 100) + '%'; });
                 programarTex(r);
                 const m = Math.max.apply(null, r.pisos);
                 document.getElementById('calor-estado').textContent = r.onda > 0.5 ? '🔁 Cambio de clase: flujo alto en pasillos, baños y ascensor' : (m > 0.45 ? 'Clases en curso' : 'Baja actividad');
