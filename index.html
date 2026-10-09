@@ -3904,7 +3904,10 @@
                         .replace('#include <begin_vertex>', '#include <begin_vertex>\nvHW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
                     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vHW; uniform float uMix, uUse, uMinY, uTexOn; uniform vec3 uCol; uniform vec4 uLim; uniform vec3 uFloorCol[5]; uniform sampler2D uHeatTex; uniform vec2 uC, uSz, uRot, uFlip;')
                         .replace('#include <color_fragment>', `#include <color_fragment>
-                        float rel = vHW.y - uMinY; int fi = 0; if (rel >= uLim.x) fi = 1; if (rel >= uLim.y) fi = 2; if (rel >= uLim.z) fi = 3; if (rel >= uLim.w) fi = 4;
+                        float rel = vHW.y - uMinY; float relS = rel + 0.4; int fi = 0; if (relS >= uLim.x) fi = 1; if (relS >= uLim.y) fi = 2; if (relS >= uLim.z) fi = 3; if (relS >= uLim.w) fi = 4;
+                        float baseF = fi == 0 ? 0.0 : (fi == 1 ? uLim.x : (fi == 2 ? uLim.y : (fi == 3 ? uLim.z : uLim.w)));
+                        vec3 nW = normalize(cross(dFdx(vHW), dFdy(vHW)));
+                        bool suelo = uTexOn < 0.5 || (nW.y > 0.85 && rel > baseF - 0.45 && rel < baseF + 0.75);
                         vec3 hc = uFloorCol[fi];
                         if (uUse > 0.5) { hc = uCol; }
                         else if (uTexOn > 0.5) {
@@ -3916,7 +3919,7 @@
                                 hc = mix(hc, tc.rgb, tc.a);
                             }
                         }
-                        diffuseColor.rgb = mix(diffuseColor.rgb, hc, uMix);`);
+                        diffuseColor.rgb = mix(diffuseColor.rgb, hc, (uUse > 0.5 || suelo) ? uMix : 0.0);`);
                 };
                 mat.needsUpdate = true;
             }
@@ -4036,7 +4039,7 @@
                     if (n.length < 3) return;
                     for (const k in cache.piso) if (k === n || k.endsWith(n) || n.endsWith(k)) { a.clave = k; break; }
                 });
-                pl.resuelto = true;
+                pl.resuelto = true; diagnostico();
             }
             function iniciarPlanos() {
                 actualizarAlineacion();
@@ -4044,7 +4047,9 @@
                 cargandoPlanos = true;
                 Promise.all([0,1,2,3,4].map(i => cargarPlano(i).catch(e => console.warn('[GIC] Calor: no se pudo leer el plano', i + 1, e)))).then(() => {
                     cargandoPlanos = false; planosCargados = planos.some(Boolean);
+                    diagnostico();
                     if (!planosCargados) { toast3D('No se pudieron leer los planos SVG: el calor se muestra por piso'); return; }
+                    if (!planos.some(x => x && x.aulas.length)) toast3D('Los SVG se leyeron, pero no se detectaron aulas (ids A-, L- o HUNZA)');
                     atlas = document.createElement('canvas'); atlas.width = TILE * 5; atlas.height = TILE; ctxA = atlas.getContext('2d');
                     texAtlas = new THREE.CanvasTexture(atlas); texAtlas.colorSpace = THREE.SRGBColorSpace; texAtlas.generateMipmaps = false; texAtlas.minFilter = THREE.LinearFilter;
                     compartido.uHeatTex.value = texAtlas;
@@ -4205,6 +4210,12 @@
                 return true;
             }
 
+            function diagnostico() {
+                const d = document.getElementById('calor-diag'); if (!d) return;
+                const leidos = planos.filter(Boolean).length;
+                d.textContent = 'Planos SVG leídos: ' + leidos + '/5 · aulas detectadas por piso: ' + planos.map(x => x ? x.aulas.length : 0).join(', ') +
+                    ' · con horario: ' + planos.map(x => x && x.resuelto ? x.aulas.filter(a => a.clave).length : '–').join(', ');
+            }
             function aplicar() {
                 const P = document.getElementById('panel-calor'); if (!P) return;
                 const dia = document.getElementById('calor-dia').value, t = parseInt(document.getElementById('calor-slider').value, 10);
@@ -4218,7 +4229,7 @@
                     (Array.isArray(o.m.material) ? o.m.material : [o.m.material]).forEach(mat => {
                         const u = mat.userData.calor; if (!u) return;
                         const visible = sel < 0 || o.piso === sel;
-                        u.uMix.value = visible ? (cod || o.circ ? 0.9 : (compartido.uTexOn.value ? 0.88 : 0.7)) : 0;
+                        u.uMix.value = visible ? (cod || o.circ ? 0.9 : (compartido.uTexOn.value ? 0.95 : 0.7)) : 0;
                         if (cod) { u.uUse.value = 1; u.uCol.value.copy(color(r.sala(cod))); }
                         else if (o.circ) { u.uUse.value = 1; u.uCol.value.copy(color(r.pisos[o.piso])); }
                         else u.uUse.value = 0;
@@ -4254,7 +4265,7 @@
                     '<span id="calor-hora">07:00</span><input id="calor-slider" type="range" min="' + H0 * 60 + '" max="' + (H1 * 60 - 1) + '" step="5" value="' + H0 * 60 + '">' +
                     '<button class="mini" id="calor-play" type="button">▶</button></div>' +
                     '<div class="fila" style="margin-bottom:4px"><span id="calor-estado"></span></div>' +
-                    '<div id="calor-leyenda"></div><div class="calor-ley-txt"><span>Flujo bajo</span><span>Medio</span><span>Flujo alto</span></div>' +
+                    '<div id="calor-diag" style="font-size:10px;color:#94a3b8;margin-bottom:4px"></div><div id="calor-leyenda"></div><div class="calor-ley-txt"><span>Flujo bajo</span><span>Medio</span><span>Flujo alto</span></div>' +
                     '<div id="calor-pisos"><button type="button" data-p="-1"><b>Todo</b><br>edificio</button>' +
                     [0,1,2,3,4].map(i => '<button type="button" data-p="' + i + '"><span class="dotc"></span>P' + (i + 1) + '<br><span class="pc">–</span></button>').join('') + '</div>';
                 p.insertAdjacentHTML('beforeend', ALIGN_HTML); v3.appendChild(p); enlazarAlineacion(p);
