@@ -378,6 +378,30 @@
         .informe-acciones .btn-excel { background: #15803d; color: #fff; border: none; border-radius: 8px; padding: 10px 18px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .2s; }
         .informe-acciones .btn-excel:hover { background: #166534; }
         .informe-acciones .btn-excel:disabled { opacity: .45; cursor: not-allowed; }
+
+        /* ===== MAPA DE CALOR 3D ===== */
+        #btn-calor { position: absolute; top: 14px; right: 130px; z-index: 30; background: var(--bg-header); color: #f8fafc; border: 1px solid #1e293b; border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+        #btn-calor:hover, #btn-calor.activo { border-color: #f97316; background: #7c2d12; }
+        #panel-calor { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(560px, 94%); z-index: 30; background: rgba(7,13,25,0.94); color: #e2e8f0; border: 1px solid #1e293b; border-radius: 10px; padding: 10px 12px; font-size: 12px; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+        #panel-calor.show { display: block; }
+        #panel-calor .fila { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+        #panel-calor select { background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 6px; padding: 6px 8px; font-size: 12px; }
+        #panel-calor button.mini { background: #0284c7; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-weight: 700; }
+        #calor-hora { font-weight: 800; font-size: 15px; color: #fff; min-width: 52px; }
+        #calor-slider { flex: 1; min-width: 140px; height: 28px; accent-color: #f97316; }
+        #calor-estado { color: #fdba74; font-size: 11px; margin-left: auto; }
+        #calor-leyenda { height: 8px; border-radius: 4px; background: linear-gradient(90deg,#2563eb,#16a34a,#eab308,#f97316,#dc2626); margin: 2px 0 2px; }
+        .calor-ley-txt { display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; margin-bottom: 8px; }
+        #calor-pisos { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
+        #calor-pisos button { background: #111c33; border: 1px solid #1e293b; color: #e2e8f0; border-radius: 6px; padding: 5px 2px; font-size: 10.5px; cursor: pointer; line-height: 1.3; }
+        #calor-pisos button.sel { border-color: #00b4d8; background: rgba(0,180,216,0.18); }
+        #calor-pisos .dotc { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 3px; vertical-align: middle; }
+        @media (max-width: 640px) {
+            #btn-calor { top: 58px; right: 14px; }
+            #panel-calor { bottom: 8px; padding: 8px; }
+            #calor-pisos { grid-template-columns: repeat(3, 1fr); }
+            #calor-estado { margin-left: 0; width: 100%; }
+        }
 </style>
 </head>
 <body>
@@ -3789,6 +3813,179 @@
         }
 
         window.cargarModeloIFC = cargarModeloGLBReal;
+
+        // ================= MAPA DE CALOR 3D (inferido de la hoja de Horarios) =================
+        (function () {
+            const DIAS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+            const H0 = 7, H1 = 23;                       // franjas 07:00 a 23:00
+            const RX_CIRC = /pasillo|corredor|escalera|ascensor|elevador|ba[nñ]o|sanitar|hall|vest[ií]bulo|circulaci/i;
+            const compartido = { uMinY: { value: 0 }, uLim: { value: new THREE.Vector4(1, 2, 3, 4) }, uFloorCol: { value: [0,1,2,3,4].map(() => new THREE.Color(0x888888)) } };
+            let meshesCalor = [], listo = false, activo = false, cache = null, cacheN = -1, timer = null, sel = -1;
+
+            function color(v) {                          // azul → verde → amarillo → naranja → rojo
+                const st = [[0,'#2563eb'],[.25,'#16a34a'],[.5,'#eab308'],[.75,'#f97316'],[1,'#dc2626']];
+                v = Math.max(0, Math.min(1, v));
+                for (let i = 1; i < st.length; i++) if (v <= st[i][0]) {
+                    const a = st[i-1], b = st[i], k = (v - a[0]) / (b[0] - a[0]);
+                    return new THREE.Color(a[1]).lerp(new THREE.Color(b[1]), k);
+                }
+                return new THREE.Color(st[4][1]);
+            }
+
+            function horaInicioFin(txt) {
+                const m = String(txt).replace(/\s+/g, '').match(/(\d{1,2})(?::\d{2})?[-–](\d{1,2})/);
+                return m ? [parseInt(m[1], 10), parseInt(m[2], 10)] : null;
+            }
+
+            function construirCache() {
+                const reg = window.registrosHorariosExcel || registrosHorariosExcel;
+                const inv = window.registrosInventarioExcel || registrosInventarioExcel;
+                const ocup = {}, cap = {}, piso = {};
+                reg.forEach(r => {
+                    const h = horaInicioFin(r.hora); if (!h) return;
+                    const cod = normalizarCodigoEspacio(r.aula); if (!cod) return;
+                    piso[cod] = pisoDesdeCodigoEspacio(r.aula);
+                    for (let x = h[0]; x < Math.max(h[1], h[0] + 1); x++) {
+                        const k = r.dia + '|' + x;
+                        (ocup[k] = ocup[k] || {})[cod] = r.detalle;
+                    }
+                });
+                Object.keys(piso).forEach(cod => {
+                    const rec = buscarRegistroPorCodigo(inv, cod);
+                    const n = rec ? parseInt(String(rec.capEstudiantes).replace(/\D/g, ''), 10) : NaN;
+                    cap[cod] = n > 0 ? n : 30;
+                });
+                const c = { ocup, cap, piso, maxMov: 1, maxOcc: 1, porDigitos: {} };
+                Object.keys(piso).forEach(cod => { const m = cod.match(/(\d{3,4})$/); if (m) c.porDigitos[m[1]] = cod; });
+                DIAS.forEach(d => { for (let h = H0; h <= H1; h++) for (let f = 1; f <= 5; f++) {
+                    const mv = movers(c, d, h, f); if (mv > c.maxMov) c.maxMov = mv;
+                    const oc = gente(c, ocup[d + '|' + h] || {}, f); if (oc > c.maxOcc) c.maxOcc = oc;
+                } });
+                return c;
+            }
+            function gente(c, set, f) { let s = 0; for (const k in set) if (c.piso[k] === f) s += c.cap[k]; return s; }
+            function cambio(c, d, h, f) {                // {cod: peso} salones con cambio en la frontera de la hora h
+                const prev = c.ocup[d + '|' + (h - 1)] || {}, cur = c.ocup[d + '|' + h] || {}, out = {};
+                for (const k in prev) if (c.piso[k] === f) { if (!(k in cur)) out[k] = 1; else if (prev[k] !== cur[k]) out[k] = 2; }
+                for (const k in cur) if (c.piso[k] === f && !(k in prev)) out[k] = 1;
+                return out;
+            }
+            function movers(c, d, h, f) { const o = cambio(c, d, h, f); let s = 0; for (const k in o) s += c.cap[k] * o[k]; return s; }
+
+            function calcular(dia, t) {
+                if (!cache || cacheN !== (registrosHorariosExcel || []).length) { cache = construirCache(); cacheN = registrosHorariosExcel.length; }
+                const c = cache, h = Math.floor(t / 60), hb = Math.round(t / 60), d = Math.abs(t - hb * 60);
+                const onda = Math.exp(-Math.pow(d / 12, 2));
+                const set = c.ocup[dia + '|' + h] || {};
+                const pisos = [], cambios = {};
+                for (let f = 1; f <= 5; f++) {
+                    const mv = movers(c, dia, hb, f) / c.maxMov, oc = gente(c, set, f) / c.maxOcc;
+                    pisos.push(Math.min(1, 0.06 + 0.3 * oc + 0.85 * onda * mv));
+                    Object.assign(cambios, cambio(c, dia, hb, f));
+                }
+                const sala = (cod) => Math.min(1, (cod in set ? 0.5 : 0.07) + (cambios[cod] ? 0.5 * onda : 0));
+                return { pisos, sala, onda, hayCambio: onda > 0.5 && pisos.some(v => v > 0.45) };
+            }
+
+            function inyectar(mat) {
+                if (mat.userData.calor) return;
+                const u = { uMix: { value: 0 }, uUse: { value: 0 }, uCol: { value: new THREE.Color() }, uMinY: compartido.uMinY, uLim: compartido.uLim, uFloorCol: compartido.uFloorCol };
+                mat.userData.calor = u;
+                mat.onBeforeCompile = (sh) => {
+                    Object.assign(sh.uniforms, u);
+                    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vHY;')
+                        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvHY = (modelMatrix * vec4(transformed, 1.0)).y;');
+                    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vHY; uniform float uMix, uUse, uMinY; uniform vec3 uCol; uniform vec4 uLim; uniform vec3 uFloorCol[5];')
+                        .replace('#include <color_fragment>', '#include <color_fragment>\nfloat rel = vHY - uMinY; int fi = 0; if (rel >= uLim.x) fi = 1; if (rel >= uLim.y) fi = 2; if (rel >= uLim.z) fi = 3; if (rel >= uLim.w) fi = 4;\nvec3 hc = uUse > 0.5 ? uCol : uFloorCol[fi]; diffuseColor.rgb = mix(diffuseColor.rgb, hc, uMix);');
+                };
+                mat.needsUpdate = true;
+            }
+
+            function prepararMeshes() {
+                meshesCalor = [];
+                modeloGlobal.updateMatrixWorld(true);
+                modeloGlobal.traverse(m => {
+                    if (!m.isMesh || !m.material) return;
+                    (Array.isArray(m.material) ? m.material : [m.material]).forEach(inyectar);
+                    const nombre = (m.name || '') + ' ' + (m.parent && m.parent.name || '');
+                    const mm = nombre.match(/(?:^|[^0-9])(\d{3,4})(?![0-9])/);
+                    const y = new THREE.Box3().setFromObject(m).getCenter(new THREE.Vector3()).y;
+                    meshesCalor.push({ m, dig: mm ? mm[1] : null, circ: RX_CIRC.test(nombre), piso: indicePisoPorAltura(y) });
+                });
+                listo = true;
+            }
+
+            function aplicar() {
+                const P = document.getElementById('panel-calor'); if (!P) return;
+                const dia = document.getElementById('calor-dia').value, t = parseInt(document.getElementById('calor-slider').value, 10);
+                document.getElementById('calor-hora').textContent = String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0');
+                const r = calcular(dia, t);
+                compartido.uMinY.value = alturaMinModel;
+                compartido.uLim.value.set(limitesPisos[0], limitesPisos[1], limitesPisos[2], limitesPisos[3]);
+                r.pisos.forEach((v, i) => compartido.uFloorCol.value[i].copy(color(v)));
+                meshesCalor.forEach(o => {
+                    const cod = o.dig && cache.porDigitos[o.dig];
+                    (Array.isArray(o.m.material) ? o.m.material : [o.m.material]).forEach(mat => {
+                        const u = mat.userData.calor; if (!u) return;
+                        const visible = sel < 0 || o.piso === sel;
+                        u.uMix.value = visible ? (cod || o.circ ? 0.9 : 0.7) : 0;
+                        if (cod) { u.uUse.value = 1; u.uCol.value.copy(color(r.sala(cod))); }
+                        else if (o.circ) { u.uUse.value = 1; u.uCol.value.copy(color(r.pisos[o.piso])); }
+                        else u.uUse.value = 0;
+                    });
+                });
+                const chips = document.querySelectorAll('#calor-pisos button[data-p]');
+                chips.forEach(b => { const i = +b.dataset.p; b.querySelector('.dotc').style.background = '#' + color(r.pisos[i]).getHexString(); b.querySelector('.pc').textContent = Math.round(r.pisos[i] * 100) + '%'; });
+                const m = Math.max.apply(null, r.pisos);
+                document.getElementById('calor-estado').textContent = r.onda > 0.5 ? '🔁 Cambio de clase: flujo alto en pasillos, baños y ascensor' : (m > 0.45 ? 'Clases en curso' : 'Baja actividad');
+            }
+
+            function desactivar() {
+                activo = false; clearInterval(timer);
+                meshesCalor.forEach(o => (Array.isArray(o.m.material) ? o.m.material : [o.m.material]).forEach(mat => { if (mat.userData.calor) mat.userData.calor.uMix.value = 0; }));
+                document.getElementById('panel-calor').classList.remove('show'); document.getElementById('btn-calor').classList.remove('activo');
+            }
+            function activar() {
+                if (!yaCargado || !modeloGlobal) { toast3D('Espera a que cargue el modelo 3D'); return; }
+                if (!registrosHorariosExcel || !registrosHorariosExcel.length) { toast3D('No hay horarios cargados desde el Excel'); return; }
+                if (!listo) prepararMeshes();
+                activo = true;
+                document.getElementById('panel-calor').classList.add('show'); document.getElementById('btn-calor').classList.add('activo');
+                aplicar(); clearInterval(timer); timer = setInterval(aplicar, 1500);   // se actualiza si se recalibran pisos
+            }
+
+            function construirUI() {
+                const v3 = document.getElementById('vista-3d'); if (!v3 || document.getElementById('btn-calor')) return;
+                const b = document.createElement('button'); b.id = 'btn-calor'; b.type = 'button'; b.title = 'Mapa de calor según los horarios'; b.textContent = '🔥 Mapa de calor';
+                b.onclick = () => activo ? desactivar() : activar(); v3.appendChild(b);
+                const p = document.createElement('div'); p.id = 'panel-calor';
+                p.innerHTML = '<div class="fila"><select id="calor-dia">' + DIAS.map(d => '<option>' + d + '</option>').join('') + '</select>' +
+                    '<span id="calor-hora">07:00</span><input id="calor-slider" type="range" min="' + H0 * 60 + '" max="' + (H1 * 60 - 1) + '" step="5" value="' + H0 * 60 + '">' +
+                    '<button class="mini" id="calor-play" type="button">▶</button></div>' +
+                    '<div class="fila" style="margin-bottom:4px"><span id="calor-estado"></span></div>' +
+                    '<div id="calor-leyenda"></div><div class="calor-ley-txt"><span>Flujo bajo</span><span>Medio</span><span>Flujo alto</span></div>' +
+                    '<div id="calor-pisos"><button type="button" data-p="-1"><b>Todo</b><br>edificio</button>' +
+                    [0,1,2,3,4].map(i => '<button type="button" data-p="' + i + '"><span class="dotc"></span>P' + (i + 1) + '<br><span class="pc">–</span></button>').join('') + '</div>';
+                v3.appendChild(p);
+                const dh = new Date().getDay(); document.getElementById('calor-dia').value = DIAS[(dh + 6) % 7] || 'Lunes';
+                p.querySelector('#calor-dia').onchange = aplicar; p.querySelector('#calor-slider').oninput = aplicar;
+                let anim = null;
+                p.querySelector('#calor-play').onclick = function () {
+                    if (anim) { clearInterval(anim); anim = null; this.textContent = '▶'; return; }
+                    this.textContent = '⏸';
+                    anim = setInterval(() => { const s = document.getElementById('calor-slider'); let v = +s.value + 5; if (v > +s.max) v = +s.min; s.value = v; aplicar(); }, 90);
+                };
+                p.querySelectorAll('#calor-pisos button').forEach(btn => btn.onclick = () => {
+                    const i = +btn.dataset.p; sel = i;                       // reutiliza el aislamiento de pisos existente
+                    p.querySelectorAll('#calor-pisos button').forEach(x => x.classList.toggle('sel', x === btn));
+                    const lista = document.querySelectorAll('#botones-pisos-container .btn-nivel');
+                    if (i < 0) { const t = document.querySelector('#ifc-layers-list [data-tipo="max"]'); if (t) t.click(); }
+                    else if (lista[i]) lista[i].click();
+                    aplicar();
+                });
+            }
+            construirUI();
+        })();
     </script>
 </body>
 </html>
