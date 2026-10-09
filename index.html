@@ -380,6 +380,12 @@
         .informe-acciones .btn-excel:disabled { opacity: .45; cursor: not-allowed; }
 
         /* ===== MAPA DE CALOR 3D ===== */
+        #calor-align { margin-top: 8px; font-size: 11px; color: #cbd5e1; }
+        #calor-align summary { cursor: pointer; color: #fdba74; font-weight: 600; padding: 4px 0; }
+        #calor-align .fila { margin: 5px 0 0; gap: 6px; }
+        #calor-align label { display: flex; align-items: center; gap: 4px; flex: 1; min-width: 130px; }
+        #calor-align input[type=range] { flex: 1; min-width: 70px; accent-color: #f97316; }
+        #calor-align button { background: #111c33; color: #e2e8f0; border: 1px solid #334155; border-radius: 6px; padding: 5px 9px; font-size: 11px; cursor: pointer; }
         #btn-calor { position: absolute; top: 14px; right: 130px; z-index: 30; background: var(--bg-header); color: #f8fafc; border: 1px solid #1e293b; border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
         #btn-calor:hover, #btn-calor.activo { border-color: #f97316; background: #7c2d12; }
         #panel-calor { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(560px, 94%); z-index: 30; background: rgba(7,13,25,0.94); color: #e2e8f0; border: 1px solid #1e293b; border-radius: 10px; padding: 10px 12px; font-size: 12px; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
@@ -3819,7 +3825,8 @@
             const DIAS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
             const H0 = 7, H1 = 23;                       // franjas 07:00 a 23:00
             const RX_CIRC = /pasillo|corredor|escalera|ascensor|elevador|ba[nñ]o|sanitar|hall|vest[ií]bulo|circulaci/i;
-            const compartido = { uMinY: { value: 0 }, uLim: { value: new THREE.Vector4(1, 2, 3, 4) }, uFloorCol: { value: [0,1,2,3,4].map(() => new THREE.Color(0x888888)) } };
+            const compartido = { uMinY: { value: 0 }, uLim: { value: new THREE.Vector4(1, 2, 3, 4) }, uFloorCol: { value: [0,1,2,3,4].map(() => new THREE.Color(0x888888)) },
+                uHeatTex: { value: null }, uTexOn: { value: 0 }, uC: { value: new THREE.Vector2() }, uSz: { value: new THREE.Vector2(1, 1) }, uRot: { value: new THREE.Vector2(1, 0) }, uFlip: { value: new THREE.Vector2(1, 1) } };
             let meshesCalor = [], listo = false, activo = false, cache = null, cacheN = -1, timer = null, sel = -1;
 
             function color(v) {                          // azul → verde → amarillo → naranja → rojo
@@ -3889,14 +3896,27 @@
 
             function inyectar(mat) {
                 if (mat.userData.calor) return;
-                const u = { uMix: { value: 0 }, uUse: { value: 0 }, uCol: { value: new THREE.Color() }, uMinY: compartido.uMinY, uLim: compartido.uLim, uFloorCol: compartido.uFloorCol };
+                const u = Object.assign({ uMix: { value: 0 }, uUse: { value: 0 }, uCol: { value: new THREE.Color() } }, compartido);
                 mat.userData.calor = u;
                 mat.onBeforeCompile = (sh) => {
                     Object.assign(sh.uniforms, u);
-                    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vHY;')
-                        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvHY = (modelMatrix * vec4(transformed, 1.0)).y;');
-                    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vHY; uniform float uMix, uUse, uMinY; uniform vec3 uCol; uniform vec4 uLim; uniform vec3 uFloorCol[5];')
-                        .replace('#include <color_fragment>', '#include <color_fragment>\nfloat rel = vHY - uMinY; int fi = 0; if (rel >= uLim.x) fi = 1; if (rel >= uLim.y) fi = 2; if (rel >= uLim.z) fi = 3; if (rel >= uLim.w) fi = 4;\nvec3 hc = uUse > 0.5 ? uCol : uFloorCol[fi]; diffuseColor.rgb = mix(diffuseColor.rgb, hc, uMix);');
+                    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vHW;')
+                        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvHW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+                    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vHW; uniform float uMix, uUse, uMinY, uTexOn; uniform vec3 uCol; uniform vec4 uLim; uniform vec3 uFloorCol[5]; uniform sampler2D uHeatTex; uniform vec2 uC, uSz, uRot, uFlip;')
+                        .replace('#include <color_fragment>', `#include <color_fragment>
+                        float rel = vHW.y - uMinY; int fi = 0; if (rel >= uLim.x) fi = 1; if (rel >= uLim.y) fi = 2; if (rel >= uLim.z) fi = 3; if (rel >= uLim.w) fi = 4;
+                        vec3 hc = uFloorCol[fi];
+                        if (uUse > 0.5) { hc = uCol; }
+                        else if (uTexOn > 0.5) {
+                            vec2 d = vHW.xz - uC;
+                            vec2 q = vec2(uRot.x * d.x + uRot.y * d.y, -uRot.y * d.x + uRot.x * d.y) * uFlip;
+                            vec2 uv = vec2(q.x / uSz.x + 0.5, 0.5 - q.y / uSz.y);
+                            if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) {
+                                vec4 tc = texture2D(uHeatTex, vec2((float(fi) + clamp(uv.x, 0.004, 0.996)) / 5.0, clamp(uv.y, 0.004, 0.996)));
+                                hc = mix(hc, tc.rgb, tc.a);
+                            }
+                        }
+                        diffuseColor.rgb = mix(diffuseColor.rgb, hc, uMix);`);
                 };
                 mat.needsUpdate = true;
             }
@@ -3915,6 +3935,125 @@
                 listo = true;
             }
 
+            // ---- Distinción de espacios: el plano 2D (SVG) de cada piso se pinta con el calor y se proyecta sobre el modelo ----
+            const TILE = 640, SEL_AULA = '[id^="A-"],[id^="a-"],[id^="L-"],[id^="l-"],[id*="HUNZA"]', SEL_FORMA = 'path,polygon,rect,polyline,circle,ellipse,line';
+            const CLAVE_ALINEA = 'uptc_gic_calor_alinea_v1';
+            let al = { q: 0, fino: 0, fx: 1, fy: 1, ox: 0, oz: 0, sc: 1 };
+            try { const g = JSON.parse(localStorage.getItem(CLAVE_ALINEA) || 'null'); if (g && typeof g === 'object') al = Object.assign(al, g); } catch (e) {}
+            const planos = [null, null, null, null, null];
+            let atlas = null, ctxA = null, texAtlas = null, planosCargados = false, cargandoPlanos = false, tempo = null, pendiente = null, pintando = false;
+
+            const ALIGN_HTML = '<details id="calor-align"><summary>⚙ Alinear plano 2D con el modelo 3D</summary>' +
+                '<div class="fila"><button type="button" data-a="rot">⟳ Rotar 90°</button><button type="button" data-a="fx">↔ Espejo X</button><button type="button" data-a="fy">↕ Espejo Z</button><button type="button" data-a="reset">Restablecer</button></div>' +
+                '<div class="fila"><label>Giro fino <input type="range" data-r="fino" min="-15" max="15" step="0.1"></label><label>Escala <input type="range" data-r="sc" min="0.6" max="1.5" step="0.005"></label></div>' +
+                '<div class="fila"><label>Mover X <input type="range" data-r="ox" min="-0.4" max="0.4" step="0.002"></label><label>Mover Z <input type="range" data-r="oz" min="-0.4" max="0.4" step="0.002"></label></div>' +
+                '<div id="calor-align-msg" style="margin-top:4px;color:#94a3b8"></div></details>';
+
+            function actualizarAlineacion() {
+                if (!bboxModelo) return;
+                const sz = bboxModelo.getSize(new THREE.Vector3()), c = bboxModelo.getCenter(new THREE.Vector3());
+                const impar = al.q % 2 !== 0, th = al.q * Math.PI / 2 + al.fino * Math.PI / 180;
+                compartido.uSz.value.set((impar ? sz.z : sz.x) * al.sc, (impar ? sz.x : sz.z) * al.sc);
+                compartido.uC.value.set(c.x + al.ox * sz.x, c.z + al.oz * sz.z);
+                compartido.uRot.value.set(Math.cos(th), Math.sin(th));
+                compartido.uFlip.value.set(al.fx, al.fy);
+            }
+            function guardarAlineacion() { try { localStorage.setItem(CLAVE_ALINEA, JSON.stringify(al)); } catch (e) {} actualizarAlineacion(); }
+            function enlazarAlineacion(p) {
+                const sync = () => p.querySelectorAll('[data-r]').forEach(i => { i.value = al[i.dataset.r]; });
+                sync();
+                p.querySelectorAll('[data-r]').forEach(i => i.oninput = () => { al[i.dataset.r] = parseFloat(i.value); guardarAlineacion(); });
+                p.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
+                    const a = b.dataset.a;
+                    if (a === 'rot') al.q = (al.q + 1) % 4; else if (a === 'fx') al.fx *= -1; else if (a === 'fy') al.fy *= -1;
+                    else al = { q: 0, fino: 0, fx: 1, fy: 1, ox: 0, oz: 0, sc: 1 };
+                    guardarAlineacion(); sync();
+                });
+            }
+
+            function esForma(el) { return el.matches && el.matches(SEL_FORMA); }
+            function formasDe(el) { return esForma(el) ? [el] : Array.from(el.querySelectorAll(SEL_FORMA)); }
+            function enDefs(el) { return !!(el.closest && el.closest('defs,clipPath,mask,pattern,marker,symbol')); }
+
+            async function cargarPlano(i) {
+                const nombre = LISTA_PISOS_2D[i];
+                const archivo = (typeof archivosPorPiso !== 'undefined' && archivosPorPiso && archivosPorPiso[nombre]) || MAPA_ARCHIVOS_PISOS[nombre];
+                if (!archivo) return;
+                const r = await fetch(archivo); if (!r.ok) return;
+                const doc = new DOMParser().parseFromString(await r.text(), 'image/svg+xml');
+                const root = doc.documentElement; if (!root || root.querySelector('parsererror')) return;
+                let vb = (root.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(parseFloat);
+                if (vb.length !== 4 || vb.some(isNaN)) { vb = [0, 0, parseFloat(root.getAttribute('width')) || 1000, parseFloat(root.getAttribute('height')) || 1000]; root.setAttribute('viewBox', vb.join(' ')); }
+                root.setAttribute('width', vb[2]); root.setAttribute('height', vb[3]);
+                root.querySelectorAll('text,tspan,image,script,foreignObject').forEach(e => e.remove());
+                const aulasEl = Array.from(root.querySelectorAll(SEL_AULA)).filter(e => e !== root && !e.querySelector(SEL_AULA));
+                const enAula = new Set(), enCirc = new Set(), aulas = [];
+                aulasEl.forEach(e => { const f = formasDe(e).filter(x => !enDefs(x)); f.forEach(x => enAula.add(x)); aulas.push({ cod: e.id.toUpperCase(), formas: f, v: -1 }); });
+                const circ = [];
+                root.querySelectorAll('*').forEach(e => {
+                    const txt = [e.id, e.getAttribute('inkscape:label'), e.getAttribute('class'), e.getAttribute('data-name')].join(' ');
+                    if (RX_CIRC.test(txt) && !aulasEl.includes(e)) formasDe(e).forEach(x => { if (!enAula.has(x) && !enDefs(x)) { enCirc.add(x); circ.push(x); } });
+                });
+                const otras = Array.from(root.querySelectorAll(SEL_FORMA)).filter(x => !enAula.has(x) && !enCirc.has(x) && !enDefs(x));
+                otras.forEach(x => { x.style.setProperty('fill', 'none', 'important'); x.style.setProperty('stroke', '#334155', 'important'); x.style.setProperty('stroke-opacity', '0.55', 'important'); });
+                const bg = doc.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                bg.setAttribute('x', vb[0]); bg.setAttribute('y', vb[1]); bg.setAttribute('width', vb[2]); bg.setAttribute('height', vb[3]);
+                root.insertBefore(bg, root.firstChild);
+                planos[i] = { root, bg, aulas, circ, firma: '', resuelto: false };
+            }
+            function resolverCodigos(pl) {
+                pl.aulas.forEach(a => {
+                    const n = normalizarCodigoEspacio(a.cod); a.clave = '';
+                    if (n.length < 3) return;
+                    for (const k in cache.piso) if (k === n || k.endsWith(n) || n.endsWith(k)) { a.clave = k; break; }
+                });
+                pl.resuelto = true;
+            }
+            function iniciarPlanos() {
+                actualizarAlineacion();
+                if (planosCargados || cargandoPlanos) return;
+                cargandoPlanos = true;
+                Promise.all([0,1,2,3,4].map(i => cargarPlano(i).catch(e => console.warn('[GIC] Calor: no se pudo leer el plano', i + 1, e)))).then(() => {
+                    cargandoPlanos = false; planosCargados = planos.some(Boolean);
+                    if (!planosCargados) { toast3D('No se pudieron leer los planos SVG: el calor se muestra por piso'); return; }
+                    atlas = document.createElement('canvas'); atlas.width = TILE * 5; atlas.height = TILE; ctxA = atlas.getContext('2d');
+                    texAtlas = new THREE.CanvasTexture(atlas); texAtlas.colorSpace = THREE.SRGBColorSpace; texAtlas.generateMipmaps = false; texAtlas.minFilter = THREE.LinearFilter;
+                    compartido.uHeatTex.value = texAtlas; compartido.uTexOn.value = 1;
+                    planos.forEach(p => { if (p) p.firma = ''; });
+                    if (activo) aplicar();
+                });
+            }
+            function programarTex(r) {
+                if (!planosCargados) return;
+                pendiente = r; if (tempo) return;
+                tempo = setTimeout(async () => {
+                    tempo = null; if (pintando) { programarTex(pendiente); return; }
+                    pintando = true;
+                    try { for (let i = 0; i < 5; i++) if (planos[i] && (sel < 0 || sel === i)) await pintarPlano(i, pendiente); } catch (e) { console.warn('[GIC] Calor:', e); }
+                    pintando = false;
+                }, 120);
+            }
+            function cuantizar(v) { return Math.round(v * 12) / 12; }
+            function pintarPlano(i, r) {
+                const pl = planos[i]; if (!pl) return Promise.resolve();
+                if (!pl.resuelto) resolverCodigos(pl);
+                let firma = String(cuantizar(r.pisos[i]));
+                pl.aulas.forEach(a => { a.nv = cuantizar(r.sala(a.clave || '')); firma += ',' + a.nv; });
+                if (firma === pl.firma) return Promise.resolve();
+                pl.firma = firma;
+                const fill = (el, v) => el.style.setProperty('fill', color(v).getStyle(), 'important');
+                fill(pl.bg, cuantizar(r.pisos[i]));
+                pl.circ.forEach(x => fill(x, cuantizar(r.pisos[i])));
+                pl.aulas.forEach(a => a.formas.forEach(x => { fill(x, a.nv); x.style.setProperty('stroke', '#0f172a', 'important'); x.style.setProperty('stroke-opacity', '0.7', 'important'); }));
+                const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(pl.root)], { type: 'image/svg+xml;charset=utf-8' }));
+                return new Promise(res => {
+                    const im = new Image();
+                    im.onload = () => { ctxA.clearRect(i * TILE, 0, TILE, TILE); ctxA.drawImage(im, i * TILE, 0, TILE, TILE); texAtlas.needsUpdate = true; URL.revokeObjectURL(url); res(); };
+                    im.onerror = () => { URL.revokeObjectURL(url); pl.firma = ''; res(); };
+                    im.src = url;
+                });
+            }
+
             function aplicar() {
                 const P = document.getElementById('panel-calor'); if (!P) return;
                 const dia = document.getElementById('calor-dia').value, t = parseInt(document.getElementById('calor-slider').value, 10);
@@ -3928,7 +4067,7 @@
                     (Array.isArray(o.m.material) ? o.m.material : [o.m.material]).forEach(mat => {
                         const u = mat.userData.calor; if (!u) return;
                         const visible = sel < 0 || o.piso === sel;
-                        u.uMix.value = visible ? (cod || o.circ ? 0.9 : 0.7) : 0;
+                        u.uMix.value = visible ? (cod || o.circ ? 0.9 : (compartido.uTexOn.value ? 0.88 : 0.7)) : 0;
                         if (cod) { u.uUse.value = 1; u.uCol.value.copy(color(r.sala(cod))); }
                         else if (o.circ) { u.uUse.value = 1; u.uCol.value.copy(color(r.pisos[o.piso])); }
                         else u.uUse.value = 0;
@@ -3936,6 +4075,7 @@
                 });
                 const chips = document.querySelectorAll('#calor-pisos button[data-p]');
                 chips.forEach(b => { const i = +b.dataset.p; b.querySelector('.dotc').style.background = '#' + color(r.pisos[i]).getHexString(); b.querySelector('.pc').textContent = Math.round(r.pisos[i] * 100) + '%'; });
+                programarTex(r);
                 const m = Math.max.apply(null, r.pisos);
                 document.getElementById('calor-estado').textContent = r.onda > 0.5 ? '🔁 Cambio de clase: flujo alto en pasillos, baños y ascensor' : (m > 0.45 ? 'Clases en curso' : 'Baja actividad');
             }
@@ -3951,7 +4091,7 @@
                 if (!listo) prepararMeshes();
                 activo = true;
                 document.getElementById('panel-calor').classList.add('show'); document.getElementById('btn-calor').classList.add('activo');
-                aplicar(); clearInterval(timer); timer = setInterval(aplicar, 1500);   // se actualiza si se recalibran pisos
+                iniciarPlanos(); aplicar(); clearInterval(timer); timer = setInterval(aplicar, 1500);   // se actualiza si se recalibran pisos
             }
 
             function construirUI() {
@@ -3966,7 +4106,7 @@
                     '<div id="calor-leyenda"></div><div class="calor-ley-txt"><span>Flujo bajo</span><span>Medio</span><span>Flujo alto</span></div>' +
                     '<div id="calor-pisos"><button type="button" data-p="-1"><b>Todo</b><br>edificio</button>' +
                     [0,1,2,3,4].map(i => '<button type="button" data-p="' + i + '"><span class="dotc"></span>P' + (i + 1) + '<br><span class="pc">–</span></button>').join('') + '</div>';
-                v3.appendChild(p);
+                p.insertAdjacentHTML('beforeend', ALIGN_HTML); v3.appendChild(p); enlazarAlineacion(p);
                 const dh = new Date().getDay(); document.getElementById('calor-dia').value = DIAS[(dh + 6) % 7] || 'Lunes';
                 p.querySelector('#calor-dia').onchange = aplicar; p.querySelector('#calor-slider').oninput = aplicar;
                 let anim = null;
