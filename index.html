@@ -437,6 +437,12 @@
             #galeria-visor { padding: 12px; }
             #galeria-visor .pie { max-width: 84vw; }
         }
+
+        /* ===== NITIDEZ DEL MAPA GENERAL AL HACER ZOOM =====
+           Con «will-change: transform» el navegador dibuja la capa una sola vez a escala 1 y después la estira
+           al hacer zoom (de ahí el pixelado). Con «auto» el mapa vectorial se vuelve a dibujar a la escala real. */
+        #map-viewport { will-change: auto; }
+        #svg-object { image-rendering: auto; }
 </style>
 </head>
 <body>
@@ -3546,6 +3552,42 @@
             else if (e.key === '0') reiniciar();
         }, true);
     })();
+    </script>
+
+    <script>
+        // ===== NITIDEZ DEL MAPA GENERAL AL HACER ZOOM =====
+        // Solo añade ajustes de dibujo; no modifica ninguna función del zoom, el paneo ni la lista de edificios.
+        (function () {
+            const vp = document.getElementById('map-viewport');
+            const obj = document.getElementById('svg-object');
+            if (vp) vp.style.willChange = 'auto';          // refuerzo del CSS: la capa se re-dibuja a la escala real
+
+            // Algunos SVG exportados (Inkscape, QGIS, CAD) traen «crispEdges» / «optimizeSpeed», que se ven escalonados al acercar.
+            function mejorarNitidezSvg() {
+                let doc = null;
+                try { doc = obj && obj.contentDocument; } catch (e) { return; }
+                if (!doc || doc.__gicNitidez) return;
+                const raiz = doc.documentElement;
+                if (!raiz || raiz.tagName.toLowerCase() !== 'svg') return;
+                doc.__gicNitidez = true;
+
+                const st = doc.createElementNS('http://www.w3.org/2000/svg', 'style');
+                st.textContent = 'image { image-rendering: auto !important; }' +
+                                 ' * { shape-rendering: geometricPrecision !important; text-rendering: geometricPrecision !important; }';
+                raiz.insertBefore(st, raiz.firstChild);
+
+                const mapasDeBits = doc.querySelectorAll('image');
+                if (mapasDeBits.length) {
+                    console.info('[GIC] El mapa contiene ' + mapasDeBits.length + ' imagen(es) de mapa de bits incrustada(s). ' +
+                                 'Al acercar mucho, su nitidez depende de la resolución original de esas imágenes (el resto del mapa es vectorial y se mantiene nítido).');
+                }
+            }
+
+            if (obj) {
+                obj.addEventListener('load', mejorarNitidezSvg);
+                mejorarNitidezSvg();                         // por si el SVG ya cargó antes de este script
+            }
+        })();
     </script>
 
 <!-- MOTOR THREE.JS Y ZOOM INTERACTIVO -->
