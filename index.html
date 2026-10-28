@@ -592,16 +592,19 @@
         html.movil .app-body:has(#vista-mapa.activa) #panel-mapa-acciones { position: static; margin: 0 0 8px; padding: 0 0 8px; border-bottom: none; }
         html.movil .pma-entrar, html.movil .pma-cerrar { min-height: 44px; }
 
-        /* ===== SELECTOR DE MAPAS (campus / chazas) ===== */
-        #selector-mapas { position: absolute; top: 14px; right: 14px; z-index: 25; display: flex; flex-direction: column; gap: 6px; background: rgba(7,13,25,0.92); border: 1px solid #1e293b; border-radius: 10px; padding: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.3); }
-        #selector-mapas .sm-titulo { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: #94a3b8; padding: 0 2px; }
-        #selector-mapas button { background: #0f172a; color: #e2e8f0; border: 1px solid #334155; border-radius: 7px; padding: 8px 12px; font-size: 12px; font-weight: 600; cursor: pointer; text-align: left; white-space: nowrap; }
-        #selector-mapas button:hover { border-color: #0284c7; }
-        #selector-mapas button.act { background: #0284c7; border-color: #0284c7; color: #fff; }
-        #map-viewport.cambiando-mapa { opacity: .45; transition: opacity .2s; }
-        @media (max-width: 820px) { #selector-mapas { top: auto; bottom: 12px; right: 12px; } #selector-mapas button { padding: 10px 12px; } }
+
+        /* ===== CAPAS DEL MAPA (chazas) ===== */
+        #selector-mapas { position: absolute; top: 14px; right: 14px; z-index: 25; display: flex; flex-direction: column; gap: 4px; background: rgba(7,13,25,0.92); border: 1px solid #1e293b; border-radius: 10px; padding: 8px 10px; box-shadow: 0 6px 18px rgba(0,0,0,0.3); }
+        #selector-mapas .sm-titulo { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: #94a3b8; padding: 0 2px 2px; }
+        #selector-mapas .capa-fila { display: flex; align-items: center; gap: 8px; color: #e2e8f0; font-size: 12px; font-weight: 600; padding: 6px 4px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+        #selector-mapas .capa-fila:hover { background: #111c33; }
+        #selector-mapas .capa-fila.fija { opacity: .65; cursor: default; }
+        #selector-mapas input[type=checkbox] { width: 16px; height: 16px; accent-color: #0284c7; cursor: inherit; margin: 0; }
+        #selector-mapas .capa-estado { font-style: normal; font-size: 10px; color: #94a3b8; margin-left: auto; padding-left: 8px; }
+        @media (max-width: 820px) { #selector-mapas { top: auto; bottom: 12px; right: 12px; } #selector-mapas .capa-fila { padding: 10px 6px; font-size: 13px; } #selector-mapas input[type=checkbox] { width: 20px; height: 20px; } }
         html.movil #selector-mapas { top: auto; bottom: 12px; right: 12px; }
-        html.movil #selector-mapas button { padding: 10px 12px; font-size: 13px; }
+        html.movil #selector-mapas .capa-fila { padding: 10px 6px; font-size: 13px; }
+        html.movil #selector-mapas input[type=checkbox] { width: 20px; height: 20px; }
 </style>
 </head>
 <body>
@@ -650,11 +653,11 @@
                     </div>
                 </div>
                 <div id="aviso-mapa"></div>
-                <div id="selector-mapas" role="group" aria-label="Mapas del campus">
-                    <span class="sm-titulo">Mapas</span>
-                    <button type="button" data-mapa="campus" class="act">🗺️ Campus</button>
-                    <button type="button" data-mapa="informal">📍 Chazas informales</button>
-                    <button type="button" data-mapa="papeleria">📎 Chazas de papelería</button>
+<div id="selector-mapas" role="group" aria-label="Capas del mapa">
+                    <span class="sm-titulo">Capas</span>
+                    <label class="capa-fila fija"><input type="checkbox" checked disabled><span>🗺️ Campus</span></label>
+                    <label class="capa-fila"><input type="checkbox" data-capa="informal"><span>📍 Chazas informales</span><em class="capa-estado"></em></label>
+                    <label class="capa-fila"><input type="checkbox" data-capa="papeleria"><span>📎 Chazas de papelería</span><em class="capa-estado"></em></label>
                 </div>
                 <div id="map-controls">
                     <button id="zoom-in" title="Acercar">+</button>
@@ -5162,67 +5165,143 @@
         })();
     </script>
 
+
     <script>
-        // ===== SELECTOR DE MAPAS: campus y chazas =====
-        // Solo cambia el archivo del <object id="svg-object">; el zoom, el paneo, los gestos táctiles y la nitidez
-        // ya se reconectan solos cuando el SVG vuelve a cargar. No modifica ninguna función existente.
+        // ===== CAPAS DEL MAPA GENERAL: chazas informales y chazas de papelería =====
+        // Cada capa se activa sobre el mapa del campus. Del SVG de cada capa solo se superponen los elementos que NO existen ya
+        // en el mapa base (así funciona tanto si el archivo trae únicamente las chazas como si es una copia completa del campus).
+        // No modifica ninguna función existente.
         (function () {
-            const MAPAS = {
-                campus:    { archivo: 'plano_uptc.svg',                    aviso: 'Mapa general del campus' },
-                informal:  { archivo: 'plano_uptc_chazas_informal.svg',    aviso: 'Chazas informales' },
-                papeleria: { archivo: 'plano_uptc_chazas_papeleria.svg',   aviso: 'Chazas de papelería' }
+            const CAPAS = {
+                informal:  { archivo: 'plano_uptc_chazas_informal.svg',  nombre: 'Chazas informales' },
+                papeleria: { archivo: 'plano_uptc_chazas_papeleria.svg', nombre: 'Chazas de papelería' }
             };
-            const obj = document.getElementById('svg-object'), vp = document.getElementById('map-viewport'), caja = document.getElementById('selector-mapas');
-            if (!obj || !vp || !caja) return;
-            let activo = 'campus', cambiando = false;
+            const NS = 'http://www.w3.org/2000/svg', XL = 'http://www.w3.org/1999/xlink';
+            const HOJAS = 'path,polygon,polyline,rect,circle,ellipse,line,text,image,use';
+            const EXCL = new Set(['defs', 'clipPath', 'mask', 'pattern', 'marker', 'symbol', 'style', 'metadata', 'title', 'desc', 'linearGradient', 'radialGradient', 'filter', 'foreignObject', 'namedview']);
+            const ATR_ESTILO = ['class', 'style', 'fill', 'stroke', 'stroke-width', 'opacity', 'fill-opacity', 'stroke-opacity', 'display', 'visibility', 'fill-rule', 'stroke-dasharray', 'font-size', 'font-family'];
+            const PROPS = ['fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-dasharray', 'stroke-linecap', 'stroke-linejoin', 'opacity', 'font-family', 'font-size', 'font-weight', 'text-anchor', 'display', 'visibility'];
+            const obj = document.getElementById('svg-object'), caja = document.getElementById('selector-mapas');
+            if (!obj || !caja) return;
+            const estado = {};            // id -> { grupo, cargando }
+            let sigsBase = null;
 
             ['mousedown', 'touchstart', 'pointerdown', 'wheel', 'dblclick'].forEach(t => caja.addEventListener(t, (e) => e.stopPropagation(), { passive: true }));
 
-            function marcar(id) { caja.querySelectorAll('button[data-mapa]').forEach(b => b.classList.toggle('act', b.dataset.mapa === id)); }
-            function aviso(t) { if (typeof mostrarAvisoMapa === 'function') mostrarAvisoMapa(t); }
-            function vbDe() {
-                try {
-                    const a = (obj.contentDocument.documentElement.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
-                    return a.length === 4 && a.every(isFinite) ? a : null;
-                } catch (e) { return null; }
-            }
-            function parecidos(a, b) { if (!a || !b) return false; const t = 0.03 * Math.max(Math.abs(b[2]), Math.abs(b[3])); return [0, 1, 2, 3].every(i => Math.abs(a[i] - b[i]) <= t); }
-            async function existe(url) { try { const r = await fetch(url, { method: 'HEAD', cache: 'no-store' }); return r.ok; } catch (e) { return true; } }
+            const aviso = (t) => { if (typeof mostrarAvisoMapa === 'function') mostrarAvisoMapa(t); };
+            const norm = (t) => String(t).replace(/-?\d*\.\d+(?:e[-+]?\d+)?/gi, (m) => (+m).toFixed(2));
+            const ignorarAtr = (a) => /^(id|class|style|transform)$/.test(a.name) || (a.name.indexOf(':') >= 0 && a.name !== 'xlink:href') || /^data-/.test(a.name);
 
-            async function cambiarMapa(id) {
-                const m = MAPAS[id];
-                if (!m || cambiando || id === activo) return;
-                if (!(await existe(m.archivo))) { aviso('No se encontró «' + m.archivo + '» en el repositorio'); return; }
-                cambiando = true; marcar(id); vp.classList.add('cambiando-mapa');
-                const guardado = { x: pointX, y: pointY, s: scale }, vbPrevio = vbDe();
-                await new Promise((res) => {
-                    let listo = false;
-                    const terminar = (ok) => {
-                        if (listo) return; listo = true; obj.removeEventListener('load', alCargar); clearTimeout(limite);
-                        if (ok) {
-                            // misma base cartográfica: se conserva el encuadre actual para comparar mapas
-                            if (parecidos(vbDe(), vbPrevio)) { scale = guardado.s; pointX = guardado.x; pointY = guardado.y; setTransform(); }
-                            activo = id; aviso('Mostrando: ' + m.aviso);
-                        } else { marcar(activo); aviso('No se pudo cargar «' + m.archivo + '»'); }
-                        vp.classList.remove('cambiando-mapa'); cambiando = false; res();
-                    };
-                    const alCargar = () => setTimeout(() => terminar(true), 80);   // después de que los demás módulos ajusten el SVG
-                    const limite = setTimeout(() => terminar(false), 20000);
-                    obj.addEventListener('load', alCargar);
-                    obj.setAttribute('data', m.archivo);
+            function enExcluido(el, raiz) { for (let n = el; n && n !== raiz && n.nodeType === 1; n = n.parentNode) if (EXCL.has(n.localName)) return true; return false; }
+            function contexto(el, raiz) {
+                const cadena = []; for (let n = el; n && n !== raiz && n.nodeType === 1; n = n.parentNode) cadena.unshift(n);
+                const tr = [], est = [];
+                cadena.forEach(n => { if (n.hasAttribute('transform')) tr.push(n.getAttribute('transform')); ATR_ESTILO.forEach(a => { if (n.hasAttribute(a)) est.push(a + '=' + n.getAttribute(a)); }); });
+                return { tr: tr.join(' '), est: est.join(';') };
+            }
+            function firma(el, raiz) {
+                const c = contexto(el, raiz);
+                const at = Array.from(el.attributes).filter(a => !ignorarAtr(a)).map(a => a.name + '=' + a.value).sort().join('|');
+                return norm(el.localName + '#' + at + '#' + c.tr + '#' + c.est + '#' + (el.localName === 'text' ? el.textContent.trim() : ''));
+            }
+            const hojasDe = (doc) => Array.from(doc.querySelectorAll(HOJAS)).filter(e => !enExcluido(e, doc.documentElement));
+
+            function docBase() {
+                return new Promise((res, rej) => {
+                    const t0 = Date.now();
+                    (function sondear() {
+                        try { const d = obj.contentDocument; if (d && d.documentElement && d.documentElement.localName === 'svg' && d.readyState === 'complete') return res(d); } catch (e) {}
+                        if (Date.now() - t0 > 20000) return rej(new Error('El mapa del campus aún no termina de cargar'));
+                        setTimeout(sondear, 250);
+                    })();
                 });
             }
-            window.cambiarMapaCampus = cambiarMapa;
-            caja.querySelectorAll('button[data-mapa]').forEach(b => b.addEventListener('click', () => cambiarMapa(b.dataset.mapa)));
-
-            // La lista de edificios solo tiene geometría en el mapa del campus: se vuelve a él antes de acercar
-            const zoomOriginal = window.zoomAEdificio;
-            if (typeof zoomOriginal === 'function') {
-                window.zoomAEdificio = function (ed) {
-                    if (activo !== 'campus' && ed && ed.svgId) { cambiarMapa('campus').then(() => zoomOriginal.call(this, ed)); return; }
-                    return zoomOriginal.apply(this, arguments);
-                };
+            async function existe(url) { try { const r = await fetch(url, { method: 'HEAD', cache: 'no-store' }); return r.ok; } catch (e) { return true; } }
+            function cargarExterno(url) {
+                return new Promise((res, rej) => {
+                    const o = document.createElement('object');
+                    o.type = 'image/svg+xml';
+                    o.style.cssText = 'position:fixed;left:-99999px;top:0;width:1200px;height:900px;visibility:hidden;pointer-events:none';
+                    const t = setTimeout(() => { o.remove(); rej(new Error('Tiempo de espera agotado')); }, 25000);
+                    o.addEventListener('load', () => { clearTimeout(t); res(o); });
+                    o.data = url; document.body.appendChild(o);
+                });
             }
+
+            async function construirCapa(id) {
+                const def = CAPAS[id];
+                if (!(await existe(def.archivo))) throw new Error('No se encontró «' + def.archivo + '» en el repositorio');
+                const base = await docBase();
+                if (!sigsBase) sigsBase = new Set(hojasDe(base).map(e => firma(e, base.documentElement)));
+                const oExt = await cargarExterno(def.archivo);
+                try {
+                    const ext = oExt.contentDocument, raizExt = ext && ext.documentElement;
+                    if (!raizExt || raizExt.localName !== 'svg') throw new Error('El archivo no es un SVG válido');
+                    const vista = ext.defaultView;
+                    const grupo = base.createElementNS(NS, 'g');
+                    grupo.setAttribute('id', 'capa-chazas-' + id); grupo.setAttribute('data-capa', id); grupo.style.pointerEvents = 'none';
+                    const defs = base.createElementNS(NS, 'defs'); grupo.appendChild(defs);
+                    const copiadas = {};
+                    const prefijo = 'capa_' + id + '_';
+
+                    const copiarDef = (rid) => {
+                        if (copiadas[rid]) return copiadas[rid];
+                        const src = ext.getElementById(rid); if (!src) return null;
+                        const nid = prefijo + rid; copiadas[rid] = nid;
+                        const c = base.importNode(src, true); c.setAttribute('id', nid);
+                        defs.appendChild(c); reenlazar(c);
+                        return nid;
+                    };
+                    const reemplazarUrls = (v) => v.replace(/url\(\s*["']?#([^"')\s]+)["']?\s*\)/g, (m, rid) => { const n = copiarDef(rid); return n ? 'url(#' + n + ')' : m; });
+                    function reenlazar(el) {
+                        [el].concat(Array.from(el.querySelectorAll('*'))).forEach(n => {
+                            Array.from(n.attributes).forEach(a => {
+                                if ((a.name === 'href' || a.name === 'xlink:href') && a.value.charAt(0) === '#') { const nn = copiarDef(a.value.slice(1)); if (nn) n.setAttribute(a.name, '#' + nn); }
+                                else if (a.value.indexOf('url(') >= 0) n.setAttribute(a.name, reemplazarUrls(a.value));
+                            });
+                        });
+                    }
+
+                    let nuevos = 0, total = 0;
+                    hojasDe(ext).forEach(e => {
+                        total++;
+                        if (sigsBase.has(firma(e, raizExt))) return;                         // ya existe en el mapa del campus
+                        const cs = vista.getComputedStyle(e);
+                        if (cs.getPropertyValue('display') === 'none' || cs.getPropertyValue('visibility') === 'hidden') return;
+                        const c = base.importNode(e, true);
+                        [c].concat(Array.from(c.querySelectorAll('*'))).forEach(n => { n.removeAttribute('id'); if (n !== c) n.removeAttribute('class'); });
+                        c.removeAttribute('class');
+                        c.setAttribute('style', reemplazarUrls(PROPS.map(p => p + ':' + cs.getPropertyValue(p)).join(';')));
+                        const tr = contexto(e, raizExt).tr;
+                        if (tr) c.setAttribute('transform', tr); else c.removeAttribute('transform');
+                        reenlazar(c);
+                        grupo.appendChild(c); nuevos++;
+                    });
+                    if (!nuevos) throw new Error('«' + def.archivo + '» no tiene elementos distintos al mapa del campus');
+                    if (total && nuevos / total > 0.6) console.warn('[GIC] Capa «' + def.nombre + '»: casi todo el archivo difiere del mapa base (' + nuevos + ' de ' + total + ' elementos). Se superpone completo.');
+                    base.documentElement.appendChild(grupo);
+                    console.log('[GIC] Capa «' + def.nombre + '»:', nuevos, 'elementos superpuestos de', total);
+                    return { grupo, nuevos };
+                } finally { oExt.remove(); }
+            }
+
+            async function alternar(id, cb) {
+                const fila = cb.closest('.capa-fila'), txt = fila.querySelector('.capa-estado');
+                const st = estado[id] = estado[id] || {};
+                if (st.cargando) { cb.checked = !cb.checked; return; }
+                if (st.grupo) { st.grupo.style.display = cb.checked ? '' : 'none'; txt.textContent = cb.checked ? st.nuevos + ' elem.' : ''; return; }
+                if (!cb.checked) return;
+                st.cargando = true; cb.disabled = true; txt.textContent = 'cargando…';
+                try {
+                    const r = await construirCapa(id);
+                    st.grupo = r.grupo; st.nuevos = r.nuevos; txt.textContent = r.nuevos + ' elem.';
+                    aviso('Capa activada: ' + CAPAS[id].nombre);
+                } catch (e) {
+                    console.error('[GIC] Capa', id, e); cb.checked = false; txt.textContent = '';
+                    aviso(e && e.message ? e.message : 'No se pudo cargar la capa');
+                } finally { st.cargando = false; cb.disabled = false; }
+            }
+            caja.querySelectorAll('input[data-capa]').forEach(cb => cb.addEventListener('change', () => alternar(cb.dataset.capa, cb)));
         })();
     </script>
 </body>
