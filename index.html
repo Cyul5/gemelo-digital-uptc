@@ -512,7 +512,7 @@
         html.movil .sidebar-right { position: absolute; top: auto; left: 0; right: 0; bottom: calc(54px + env(safe-area-inset-bottom, 0px)); width: 100%; max-height: 62%; padding: 0 14px 18px; border-left: none; border-top: 1px solid #334155; border-radius: 16px 16px 0 0; box-shadow: 0 -8px 24px rgba(0,0,0,0.35); transform: translateY(100%); z-index: 70; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
         html.movil .sidebar-right.visible { transform: translateY(calc(100% - 46px)); }
         html.movil .sidebar-right.visible.expandido { transform: translateY(0); }
-        html.movil .app-body:has(#vista-mapa.activa) .sidebar-right { display: none !important; }
+        html.movil .app-body:has(#vista-mapa.activa) .sidebar-right { top: auto; right: 0; left: 0; bottom: calc(54px + env(safe-area-inset-bottom, 0px)); pointer-events: auto; }
         html.movil #sheet-handle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; position: sticky; top: 0; z-index: 3; flex: none; height: 46px; margin: 0 -14px 6px; background: var(--bg-panel); border-radius: 16px 16px 0 0; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
         html.movil #sheet-handle .barra { width: 40px; height: 4px; border-radius: 2px; background: #475569; }
         html.movil #sheet-handle .txt { font-size: 12px; font-weight: 700; color: #e2e8f0; }
@@ -578,6 +578,19 @@
         #aviso-escritorio { display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 2000; background: #f59e0b; color: #1c1917; font-weight: 600; line-height: 1.35; font-size: calc(13px * var(--k, 1)); padding: calc(8px * var(--k, 1)) calc(12px * var(--k, 1)); align-items: center; gap: calc(10px * var(--k, 1)); box-shadow: 0 4px 14px rgba(0,0,0,.35); }
         html.escritorio-forzado #aviso-escritorio.show { display: flex; }
         #aviso-escritorio button { flex: none; background: #1c1917; color: #fff; border: none; border-radius: calc(6px * var(--k, 1)); font-weight: 700; cursor: pointer; font-size: calc(13px * var(--k, 1)); padding: calc(6px * var(--k, 1)) calc(12px * var(--k, 1)); }
+
+        /* ===== PANEL DE INFORMACIÓN DEL EDIFICIO EN EL MAPA (fijo: se abre con clic) ===== */
+        .app-body:has(#vista-mapa.activa) .sidebar-right.visible { pointer-events: auto; }
+        #panel-mapa-acciones { display: none; }
+        .app-body:has(#vista-mapa.activa) #panel-mapa-acciones { display: block; position: sticky; top: 0; z-index: 4; margin: -18px -18px 12px; padding: 12px 18px 10px; background: var(--bg-panel); border-bottom: 1px solid #1e293b; }
+        .pma-fila { display: flex; gap: 8px; }
+        .pma-entrar { flex: 1; background: #0284c7; color: #fff; border: none; border-radius: 6px; padding: 10px 12px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .2s; }
+        .pma-entrar:hover { background: #0369a1; }
+        .pma-cerrar { width: 40px; background: #111c33; color: #cbd5e1; border: 1px solid #334155; border-radius: 6px; font-size: 15px; cursor: pointer; }
+        .pma-cerrar:hover { background: #1e293b; color: #fff; border-color: var(--accent); }
+        .pma-ayuda { font-size: 11px; color: var(--text-muted); margin-top: 8px; line-height: 1.4; }
+        html.movil .app-body:has(#vista-mapa.activa) #panel-mapa-acciones { position: static; margin: 0 0 8px; padding: 0 0 8px; border-bottom: none; }
+        html.movil .pma-entrar, html.movil .pma-cerrar { min-height: 44px; }
 </style>
 </head>
 <body>
@@ -675,6 +688,15 @@
         <!-- PANEL DERECHO DE DATOS -->
         <div class="sidebar-right" id="sidebar-derecha">
             <button id="btn-volver-mapa" class="btn-regresar" onclick="irAVista('vista-mapa')">🗺️ Volver al Mapa General</button>
+
+            <!-- ACCIONES DEL PANEL EN EL MAPA GENERAL (solo visibles en esa vista) -->
+            <div id="panel-mapa-acciones">
+                <div class="pma-fila">
+                    <button type="button" class="pma-entrar" onclick="GIC_PANEL_EDIFICIO.entrar()" title="Entrar al modelo 3D del edificio">🏢 Entrar al modelo 3D</button>
+                    <button type="button" class="pma-cerrar" onclick="GIC_PANEL_EDIFICIO.cerrar()" title="Cerrar el panel (Esc)" aria-label="Cerrar el panel">✕</button>
+                </div>
+                <p class="pma-ayuda">Clic en el edificio: ver información · Doble clic: entrar al modelo 3D</p>
+            </div>
 
             <!-- CONTENEDOR FILTROS Y MODO DE CONSULTA (VISIBLE EN PLANTA 2D) -->
             <div class="panel-filtros-container" id="panel-filtros-horario">
@@ -808,7 +830,7 @@
                 </div>
                 <div class="welcome-step">
                     <b>🏢 2. Modelo 3D</b>
-                    Pasa el cursor sobre el edificio <strong>Hunza (30)</strong> y haz clic para abrir su modelo 3D.
+                    Haz <strong>clic</strong> sobre el edificio <strong>Hunza (30)</strong> para ver su información (el panel queda fijo) y <strong>doble clic</strong> para entrar a su modelo 3D.
                     Gira con clic izquierdo, desplaza con clic derecho y acerca con la <kbd>rueda</kbd>.
                 </div>
                 <div class="welcome-step">
@@ -2718,32 +2740,8 @@
                                         svgDoc.querySelector('[id*="HUNZA" i]');
 
                         if (elHunza) {
-                            elHunza.style.cursor = 'pointer';
-                            elHunza.style.transition = 'opacity 0.2s, filter 0.2s';
-                            
-                            elHunza.addEventListener('mouseenter', () => {
-                                if (panning) return;
-                                elHunza.style.opacity = '0.7';
-                                elHunza.style.filter = 'drop-shadow(0px 0px 8px #00b4d8)';
-                                if (vistaActualGlobal === 'vista-mapa' && sidebarDerecha) {
-                                    sidebarDerecha.classList.add('visible');
-                                    restablecerPanelEdificio();
-                                }
-                            });
-
-                            elHunza.addEventListener('mouseleave', () => {
-                                elHunza.style.opacity = '1';
-                                elHunza.style.filter = 'none';
-                                if (vistaActualGlobal === 'vista-mapa' && sidebarDerecha) {
-                                    sidebarDerecha.classList.remove('visible');
-                                }
-                            });
-
-                            elHunza.addEventListener('click', (e) => {
-                                if (hasMoved) return;
-                                e.stopPropagation();
-                                irAVista('vista-3d');
-                            });
+                            // Clic = abrir el panel (fijo) · doble clic = entrar al modelo 3D (ver GIC_PANEL_EDIFICIO)
+                            GIC_PANEL_EDIFICIO.registrar(elHunza);
                         }
                     }
                 };
@@ -3918,6 +3916,88 @@
             return { expandirPanel: () => fijar(true), colapsarPanel: () => fijar(false) };
         })();
         window.GIC_MOVIL = GIC_MOVIL;
+    </script>
+
+    <script>
+        // ===== PANEL DE INFORMACIÓN DEL EDIFICIO EN EL MAPA GENERAL =====
+        // Un clic sobre el polígono abre el panel y lo deja fijo; un doble clic (o doble toque) entra al modelo 3D.
+        // El panel se cierra con ✕, con la tecla Esc o tocando una zona vacía del mapa.
+        const GIC_PANEL_EDIFICIO = (function () {
+            const VENTANA_DOBLE = 400;                  // ms entre dos clics para contarlos como doble clic
+            let el = null, entrando = false, ultimo = { t: 0, x: 0, y: 0 };
+            const sidebar = () => document.getElementById('sidebar-derecha');
+            const enMapa = () => vistaActualGlobal === 'vista-mapa';
+            const abierto = () => !!(enMapa() && sidebar() && sidebar().classList.contains('visible'));
+
+            function resaltar(on) {
+                if (!el) return;
+                el.style.opacity = on ? '0.7' : '1';
+                el.style.filter = on ? 'drop-shadow(0px 0px 8px #00b4d8)' : 'none';
+            }
+            function abrir() {
+                if (!enMapa() || !sidebar()) return;
+                sidebar().classList.add('visible');
+                restablecerPanelEdificio();
+                resaltar(true);
+                if (window.GIC_MOVIL) window.GIC_MOVIL.expandirPanel();      // en celular se despliega la hoja inferior
+            }
+            function cerrar() {
+                if (sidebar() && enMapa()) sidebar().classList.remove('visible');
+                if (window.GIC_MOVIL) window.GIC_MOVIL.colapsarPanel();
+                resaltar(false);
+            }
+            function entrar() {
+                if (entrando) return;                    // dblclick + doble toque pueden llegar juntos
+                entrando = true;
+                setTimeout(() => { entrando = false; }, 800);
+                resaltar(false);
+                irAVista('vista-3d');
+            }
+
+            function registrar(elemento) {
+                el = elemento;
+                el.style.cursor = 'pointer';
+                el.style.transition = 'opacity 0.2s, filter 0.2s';
+
+                el.addEventListener('mouseenter', () => { if (panning) return; resaltar(true); });
+                el.addEventListener('mouseleave', () => { resaltar(abierto()); });      // se queda resaltado mientras el panel está abierto
+
+                el.addEventListener('click', (e) => {
+                    if (hasMoved) return;                // fue un arrastre del mapa, no un clic
+                    e.stopPropagation();
+                    const ahora = Date.now();
+                    const cerca = Math.hypot(e.clientX - ultimo.x, e.clientY - ultimo.y) < 30;
+                    if (ahora - ultimo.t < VENTANA_DOBLE && cerca) { ultimo.t = 0; entrar(); return; }   // segundo clic / segundo toque
+                    ultimo = { t: ahora, x: e.clientX, y: e.clientY };
+                    abrir();
+                });
+                el.addEventListener('dblclick', (e) => { e.stopPropagation(); entrar(); });
+
+                // Tocar una zona vacía del mapa cierra el panel
+                const doc = el.ownerDocument;
+                if (doc && !doc.__gicCierraPanel) {
+                    doc.__gicCierraPanel = true;
+                    doc.addEventListener('click', () => { if (!hasMoved && abierto()) cerrar(); });
+                }
+            }
+
+            // Zona vacía del mapa (fuera del SVG) y teclado
+            document.addEventListener('DOMContentLoaded', () => {
+                const vista = document.getElementById('vista-mapa');
+                if (vista) vista.addEventListener('click', (e) => {
+                    if (hasMoved || !abierto()) return;
+                    if (e.target.closest && e.target.closest('#map-controls, #panel-edificios')) return;
+                    cerrar();
+                });
+                // Al volver al mapa no debe quedar el polígono resaltado de una visita anterior
+                if (vista) new MutationObserver(() => { if (vista.classList.contains('activa') && !abierto()) resaltar(false); })
+                    .observe(vista, { attributes: true, attributeFilter: ['class'] });
+            });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && abierto()) cerrar(); });
+
+            return { registrar, abrir, cerrar, entrar, estaAbierto: abierto };
+        })();
+        window.GIC_PANEL_EDIFICIO = GIC_PANEL_EDIFICIO;
     </script>
 
 <!-- MOTOR THREE.JS Y ZOOM INTERACTIVO -->
