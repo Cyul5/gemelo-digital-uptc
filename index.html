@@ -2,8 +2,50 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#070d19">
+    <script>
+        // Detección de celular, independiente del ancho de la ventana.
+        // Algunos navegadores móviles dibujan la página a ~980 px («Sitio de escritorio»): ahí un @media por ancho nunca se activa.
+        // Se usa pantalla táctil + tamaño real del dispositivo (screen), y además el ancho como respaldo.
+        (function () {
+            var r = document.documentElement, quitado = false;
+            function evaluar() {
+                var toca = (navigator.maxTouchPoints || 0) > 0 || !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+                var sw = screen.width || 9999, sh = screen.height || 9999;
+                var ancho = window.innerWidth || r.clientWidth || 0, alto = window.innerHeight || 0;
+                var horizontal = ancho > alto;
+                var telefono = toca && Math.min(sw, sh) <= 700;
+                var movil = telefono || ancho <= 820;
+                // En horizontal se compara con el lado largo de la pantalla; en vertical, con el corto (iOS no intercambia screen.width al girar).
+                var ref = horizontal ? Math.max(sw, sh) : Math.min(sw, sh);
+                var escritorio = !!(telefono && ancho > 900 && ancho > ref * 1.3);   // el navegador muestra la versión de escritorio
+                r.classList.toggle('movil', !!movil);
+                r.classList.toggle('horiz', !!(movil && !escritorio && horizontal && alto <= 480));
+                r.classList.toggle('escritorio-forzado', escritorio);
+                r.style.setProperty('--k', escritorio ? Math.max(1, ancho / ref).toFixed(3) : '1');
+                var av = document.getElementById('aviso-escritorio');
+                if (av) av.classList.toggle('show', escritorio && !quitado);
+            }
+            evaluar();
+            window.addEventListener('resize', evaluar);
+            window.addEventListener('orientationchange', evaluar);
+            document.addEventListener('DOMContentLoaded', function () {
+                try { quitado = sessionStorage.getItem('uptc_gic_aviso_escritorio') === '1'; } catch (e) {}
+                var av = document.createElement('div');
+                av.id = 'aviso-escritorio';
+                av.innerHTML = '<span>📱 Estás viendo la <b>versión de escritorio</b>. Para una vista optimizada abre el menú ⋮ del navegador y desactiva «Sitio de escritorio» (o «Versión para computadora»).</span><button type="button">Entendido</button>';
+                av.querySelector('button').addEventListener('click', function () {
+                    quitado = true;
+                    try { sessionStorage.setItem('uptc_gic_aviso_escritorio', '1'); } catch (e) {}
+                    av.classList.remove('show');
+                });
+                document.body.appendChild(av);
+                evaluar();
+            });
+            window.GIC_EVALUAR_MOVIL = evaluar;
+        })();
+    </script>
     <title>Uptc GIC</title>
     
     <!-- LECTURA REAL DE EXCEL (SheetJS Actualizado) -->
@@ -451,95 +493,91 @@
         body { -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
         #sheet-handle, #plan-zoom-ctl { display: none; }
 
-        @media (max-width: 820px) {
-            body { height: 100vh; height: 100dvh; }
-            input, select, textarea { font-size: 16px !important; }      /* evita el zoom automático de iOS al escribir */
+        /* Se activa con la clase «movil»: la pone un script según pantalla táctil y tamaño real del dispositivo,
+           no solo el ancho de la ventana (así funciona aunque el navegador dibuje la página a 980 px). */
+        html.movil body { height: 100vh; height: 100dvh; }
+        html.movil input, html.movil select, html.movil textarea { font-size: 16px !important; }
+        html.movil header { height: 46px; padding: 0 10px; }
+        html.movil .header-left { gap: 8px; min-width: 0; flex: 1 1 auto; }
+        html.movil .tag { display: none; }
+        html.movil .sub-title { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+        html.movil .header-right { gap: 8px; flex: none; }
+        html.movil .btn-ayuda { padding: 6px 10px; min-height: 32px; }
+        html.movil .excel-status { font-size: 0; gap: 0; }
+        html.movil .excel-status .dot { width: 10px; height: 10px; }
+        html.movil .app-body { flex-direction: column; height: auto; flex: 1 1 auto; min-height: 0; }
+        html.movil .content-area { order: 1; flex: 1 1 auto; min-height: 0; width: 100%; }
+        html.movil .sidebar-left { order: 2; flex: none; width: 100%; height: calc(54px + env(safe-area-inset-bottom, 0px)); padding: 0 0 env(safe-area-inset-bottom, 0px); flex-direction: row; justify-content: space-around; align-items: center; gap: 0; border-right: none; border-top: 1px solid #1e293b; z-index: 80; }
+        html.movil .nav-btn { width: 64px; height: 44px; font-size: 22px; border-radius: 10px; }
+        html.movil .sidebar-right { position: absolute; top: auto; left: 0; right: 0; bottom: calc(54px + env(safe-area-inset-bottom, 0px)); width: 100%; max-height: 62%; padding: 0 14px 18px; border-left: none; border-top: 1px solid #334155; border-radius: 16px 16px 0 0; box-shadow: 0 -8px 24px rgba(0,0,0,0.35); transform: translateY(100%); z-index: 70; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+        html.movil .sidebar-right.visible { transform: translateY(calc(100% - 46px)); }
+        html.movil .sidebar-right.visible.expandido { transform: translateY(0); }
+        html.movil .app-body:has(#vista-mapa.activa) .sidebar-right { display: none !important; }
+        html.movil #sheet-handle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; position: sticky; top: 0; z-index: 3; flex: none; height: 46px; margin: 0 -14px 6px; background: var(--bg-panel); border-radius: 16px 16px 0 0; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
+        html.movil #sheet-handle .barra { width: 40px; height: 4px; border-radius: 2px; background: #475569; }
+        html.movil #sheet-handle .txt { font-size: 12px; font-weight: 700; color: #e2e8f0; }
+        html.movil .filter-group { flex-direction: column; align-items: stretch; gap: 4px; }
+        html.movil .filter-select { width: 100% !important; padding: 10px 8px; }
+        html.movil .btn-nivel { padding: 12px; font-size: 14px; }
+        html.movil .btn-regresar { padding: 11px 14px; font-size: 13px; }
+        html.movil .panel-filtros-container { padding: 10px; }
+        html.movil #map-controls { left: 12px; bottom: 12px; gap: 8px; }
+        html.movil #map-controls button { width: 46px; height: 46px; font-size: 22px; border-radius: 10px; }
+        html.movil #panel-edificios { top: 10px; left: 10px; width: calc(100% - 20px); max-width: 340px; }
+        html.movil #btn-lista-edificios { padding: 12px; font-size: 14px; }
+        html.movil #lista-edificios { max-height: 50vh; max-height: 50dvh; }
+        html.movil #lista-edificios li { padding: 11px 12px; font-size: 13px; }
+        html.movil #buscar-edificio { padding: 12px; }
+        html.movil #aviso-mapa { bottom: 70px; }
+        html.movil #btn-galeria { top: 10px; right: 10px; padding: 10px 12px; }
+        html.movil #btn-calor { padding: 10px 12px; }
+        html.movil #panel-calor { bottom: 56px; max-height: 50%; overflow-y: auto; }
+        html.movil #toast-piso { top: 54px; }
+        html.movil #vista-2d { padding: 8px 8px 54px !important; }
+        html.movil #vista-2d > div:first-child { flex-direction: column !important; align-items: stretch !important; gap: 6px !important; margin-bottom: 6px !important; }
+        html.movil #vista-2d > div:first-child > div { width: 100%; flex-wrap: wrap !important; gap: 6px !important; }
+        html.movil #titulo-vista-2d { font-size: 15px !important; }
+        html.movil #titulo-vista-2d + p, html.movil #info-archivo-2d { display: none; }
+        html.movil #vista-2d > div:first-child > div:last-child > div { flex: 1 1 100%; }
+        html.movil #select-piso-2d { flex: 1; width: 100% !important; }
+        html.movil #vista-2d .btn-informe, html.movil #vista-2d .btn-regresar { flex: 1 1 140px; min-height: 42px; font-size: 12px; text-align: center; }
+        html.movil .container-svg-2d { height: auto !important; flex: 1 1 0; min-height: 0; touch-action: none; }
+        html.movil #plan-zoom-ctl { display: flex; flex-direction: column; gap: 8px; position: absolute; right: 12px; bottom: 60px; z-index: 5; }
+        html.movil #plan-zoom-ctl button { width: 46px; height: 46px; border-radius: 10px; border: 1px solid #1e293b; background: var(--bg-header); color: #fff; font-size: 22px; line-height: 1; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.25); }
+        html.movil .welcome-card { padding: 18px 16px; max-height: 94vh; max-height: 94dvh; }
+        html.movil .welcome-card h1 { font-size: 19px; }
+        html.movil .btn-primario { padding: 12px 22px; }
+        html.movil #informe-overlay { padding: 10px; }
+        html.movil .informe-card { padding: 16px; max-height: 94vh; max-height: 94dvh; overflow-y: auto; }
+        html.movil .informe-acciones .btn-primario, html.movil .informe-acciones .btn-excel { flex: 1 1 140px; min-height: 44px; }
+        html.movil #galeria-overlay { padding: 10px; }
+        html.movil .galeria-top h2 { font-size: 16px; flex: 1 1 100%; margin-right: 0; }
+        html.movil .galeria-top select { flex: 1 1 40%; }
+        html.movil .galeria-top input { width: 100%; flex: 1 1 100%; }
+        html.movil #btn-calor { top: 58px; right: 10px; }
+        html.movil #calor-pisos { grid-template-columns: repeat(3, 1fr); }
+        html.movil #calor-estado { margin-left: 0; width: 100%; }
+        html.movil #galeria-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+        html.movil .visor-barra { gap: 6px; }
+        html.movil .visor-barra button { padding: 8px 10px; font-size: 12px; }
+        html.movil #galeria-visor { padding: 12px; }
+        html.movil #galeria-visor .pie { max-width: 84vw; }
+        html.movil .welcome-steps { grid-template-columns: 1fr; }
+        html.movil .info-val { font-size: 13px; }
+        html.movil .panel-title { font-size: 15px; }
 
-            /* Cabecera compacta */
-            header { height: 46px; padding: 0 10px; }
-            .header-left { gap: 8px; min-width: 0; flex: 1 1 auto; }
-            .tag { display: none; }
-            .sub-title { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-            .header-right { gap: 8px; flex: none; }
-            .btn-ayuda { padding: 6px 10px; min-height: 32px; }
-            .excel-status { font-size: 0; gap: 0; }                         /* solo el punto de estado */
-            .excel-status .dot { width: 10px; height: 10px; }
+        /* Celular en horizontal */
+        html.movil.horiz header { height: 40px; }
+        html.movil.horiz .sidebar-left { height: calc(44px + env(safe-area-inset-bottom, 0px)); }
+        html.movil.horiz .nav-btn { height: 36px; }
+        html.movil.horiz .sidebar-right { bottom: calc(44px + env(safe-area-inset-bottom, 0px)); max-height: 80%; }
+        html.movil.horiz #vista-2d { padding-bottom: 46px !important; }
+        html.movil.horiz #panel-calor { bottom: 50px; max-height: 60%; }
 
-            /* Estructura: contenido arriba, navegación abajo */
-            .app-body { flex-direction: column; height: auto; flex: 1 1 auto; min-height: 0; }
-            .content-area { order: 1; flex: 1 1 auto; min-height: 0; width: 100%; }
-            .sidebar-left { order: 2; flex: none; width: 100%; height: calc(54px + env(safe-area-inset-bottom, 0px)); padding: 0 0 env(safe-area-inset-bottom, 0px);
-                            flex-direction: row; justify-content: space-around; align-items: center; gap: 0; border-right: none; border-top: 1px solid #1e293b; z-index: 80; }
-            .nav-btn { width: 64px; height: 44px; font-size: 22px; border-radius: 10px; }
-
-            /* Panel derecho = hoja deslizable desde abajo */
-            .sidebar-right { position: absolute; top: auto; left: 0; right: 0; bottom: calc(54px + env(safe-area-inset-bottom, 0px)); width: 100%;
-                             max-height: 62%; padding: 0 14px 18px; border-left: none; border-top: 1px solid #334155; border-radius: 16px 16px 0 0;
-                             box-shadow: 0 -8px 24px rgba(0,0,0,0.35); transform: translateY(100%); z-index: 70; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-            .sidebar-right.visible { transform: translateY(calc(100% - 46px)); }
-            .sidebar-right.visible.expandido { transform: translateY(0); }
-            .app-body:has(#vista-mapa.activa) .sidebar-right { display: none !important; }
-            #sheet-handle { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; position: sticky; top: 0; z-index: 3; flex: none;
-                            height: 46px; margin: 0 -14px 6px; background: var(--bg-panel); border-radius: 16px 16px 0 0; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
-            #sheet-handle .barra { width: 40px; height: 4px; border-radius: 2px; background: #475569; }
-            #sheet-handle .txt { font-size: 12px; font-weight: 700; color: #e2e8f0; }
-            .filter-group { flex-direction: column; align-items: stretch; gap: 4px; }
-            .filter-select { width: 100% !important; padding: 10px 8px; }
-            .btn-nivel { padding: 12px; font-size: 14px; }
-            .btn-regresar { padding: 11px 14px; font-size: 13px; }
-            .panel-filtros-container { padding: 10px; }
-
-            /* Mapa general */
-            #map-controls { left: 12px; bottom: 12px; gap: 8px; }
-            #map-controls button { width: 46px; height: 46px; font-size: 22px; border-radius: 10px; }
-            #panel-edificios { top: 10px; left: 10px; width: calc(100% - 20px); max-width: 340px; }
-            #btn-lista-edificios { padding: 12px; font-size: 14px; }
-            #lista-edificios { max-height: 50vh; max-height: 50dvh; }
-            #lista-edificios li { padding: 11px 12px; font-size: 13px; }
-            #buscar-edificio { padding: 12px; }
-            #aviso-mapa { bottom: 70px; }
-
-            /* Modelo 3D */
-            #btn-galeria { top: 10px; right: 10px; padding: 10px 12px; }
-            #btn-calor { padding: 10px 12px; }
-            #panel-calor { bottom: 56px; max-height: 50%; overflow-y: auto; }
-            #toast-piso { top: 54px; }
-
-            /* Planta 2D */
-            #vista-2d { padding: 8px 8px 54px !important; }
-            #vista-2d > div:first-child { flex-direction: column !important; align-items: stretch !important; gap: 6px !important; margin-bottom: 6px !important; }
-            #vista-2d > div:first-child > div { width: 100%; flex-wrap: wrap !important; gap: 6px !important; }
-            #titulo-vista-2d { font-size: 15px !important; }
-            #titulo-vista-2d + p, #info-archivo-2d { display: none; }
-            #vista-2d > div:first-child > div:last-child > div { flex: 1 1 100%; }
-            #select-piso-2d { flex: 1; width: 100% !important; }
-            #vista-2d .btn-informe, #vista-2d .btn-regresar { flex: 1 1 140px; min-height: 42px; font-size: 12px; text-align: center; }
-            .container-svg-2d { height: auto !important; flex: 1 1 0; min-height: 0; touch-action: none; }
-            #plan-zoom-ctl { display: flex; flex-direction: column; gap: 8px; position: absolute; right: 12px; bottom: 60px; z-index: 5; }
-            #plan-zoom-ctl button { width: 46px; height: 46px; border-radius: 10px; border: 1px solid #1e293b; background: var(--bg-header); color: #fff; font-size: 22px; line-height: 1; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.25); }
-
-            /* Ventanas */
-            .welcome-card { padding: 18px 16px; max-height: 94vh; max-height: 94dvh; }
-            .welcome-card h1 { font-size: 19px; }
-            .btn-primario { padding: 12px 22px; }
-            #informe-overlay { padding: 10px; }
-            .informe-card { padding: 16px; max-height: 94vh; max-height: 94dvh; overflow-y: auto; }
-            .informe-acciones .btn-primario, .informe-acciones .btn-excel { flex: 1 1 140px; min-height: 44px; }
-            #galeria-overlay { padding: 10px; }
-            .galeria-top h2 { font-size: 16px; flex: 1 1 100%; margin-right: 0; }
-            .galeria-top select { flex: 1 1 40%; }
-            .galeria-top input { width: 100%; flex: 1 1 100%; }
-        }
-
-        /* Celular en horizontal: más espacio para el contenido */
-        @media (max-width: 920px) and (max-height: 480px) {
-            header { height: 40px; }
-            .sidebar-left { height: calc(44px + env(safe-area-inset-bottom, 0px)); }
-            .nav-btn { height: 36px; }
-            .sidebar-right { bottom: calc(44px + env(safe-area-inset-bottom, 0px)); max-height: 80%; }
-            #vista-2d { padding-bottom: 46px !important; }
-            #panel-calor { bottom: 50px; max-height: 60%; }
-        }
+        /* Aviso cuando el navegador está en «Sitio de escritorio» */
+        #aviso-escritorio { display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 2000; background: #f59e0b; color: #1c1917; font-weight: 600; line-height: 1.35; font-size: calc(13px * var(--k, 1)); padding: calc(8px * var(--k, 1)) calc(12px * var(--k, 1)); align-items: center; gap: calc(10px * var(--k, 1)); box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+        html.escritorio-forzado #aviso-escritorio.show { display: flex; }
+        #aviso-escritorio button { flex: none; background: #1c1917; color: #fff; border: none; border-radius: calc(6px * var(--k, 1)); font-weight: 700; cursor: pointer; font-size: calc(13px * var(--k, 1)); padding: calc(6px * var(--k, 1)) calc(12px * var(--k, 1)); }
 </style>
 </head>
 <body>
