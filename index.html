@@ -959,6 +959,9 @@
                 excelBufferGlobal = arrayBuffer;
                 excelWorkbookGlobal = workbook;
                 galeriaFotos = null; galeriaPromesa = null;
+                Object.values(miniUrls).concat(Object.values(fullUrls)).forEach(u => { try { URL.revokeObjectURL(u); } catch (e) {} });
+                for (const k in miniUrls) delete miniUrls[k]; for (const k in miniPromesas) delete miniPromesas[k]; for (const k in fullUrls) delete fullUrls[k]; ordenFull.length = 0;
+                programarPrecargaGaleria();
                 const sheetNames = Object.keys(workbook.Sheets);
 
                 const hGen = sheetNames.find(n => normalizarTextoSimple(n).includes("DATOS GENERALES") || normalizarTextoSimple(n).includes("GENERALES"));
@@ -1649,7 +1652,7 @@
                 }
                 const refMasCercana = (c) => colsRef.length ? colsRef.reduce((a, b) => Math.abs(b - c) < Math.abs(a - c) ? b : a) : -1;
 
-                const agregar = async (srcUrl, idxFila, idxCol, medio) => {
+                const agregar = async (srcUrl, idxFila, idxCol, medio, zipRef, mimeRef) => {
                     const codigo = codigoDeFila(matriz, idxFila);
                     const cRef = refMasCercana(idxCol);
                     let referencia = '';
@@ -1664,20 +1667,23 @@
                         detalle: reg && reg.uso && reg.uso !== 'N/A' ? reg.uso : (reg && reg.categoria && reg.categoria !== 'N/A' ? reg.categoria : ''),
                         src: srcUrl,
                         fila: idxFila + rango.s.r + 1,
-                        medio: medio || ''
+                        medio: medio || '',
+                        zip: zipRef || null,
+                        mime: mimeRef || ''
                     });
                 };
 
                 for (const im of imagenes) {
                     const idxFila = im.fila - rango.s.r, idxCol = im.col - rango.s.c;
                     if (idxFila < 0) continue;
-                    if (!cacheBlobs[im.medio]) {
+                    if (!(im.medio in cacheBlobs)) {
                         const mime = mimeDeRuta(im.medio);
                         const f = zip.file(im.medio);
-                        if (!f || !mime) { diag.push('Formato no soportado o archivo ausente: ' + im.medio); continue; }
-                        cacheBlobs[im.medio] = URL.createObjectURL(new Blob([await f.async('uint8array')], { type: mime }));
+                        if (!f || !mime) { diag.push('Formato no soportado o archivo ausente: ' + im.medio); cacheBlobs[im.medio] = null; continue; }
+                        cacheBlobs[im.medio] = mime;
                     }
-                    await agregar(cacheBlobs[im.medio], idxFila, idxCol, im.medio);
+                    if (!cacheBlobs[im.medio]) continue;
+                    await agregar('', idxFila, idxCol, im.medio, zip, cacheBlobs[im.medio]);
                 }
 
                 // Respaldo: la columna "Foto" trae una ruta o URL escrita como texto
@@ -1696,21 +1702,94 @@
         let galeriaVisible = [];
         let galeriaIndiceVisor = -1;
 
-        function abrirGaleria() {
-            const ov = document.getElementById('galeria-overlay');
-            const grid = document.getElementById('galeria-grid');
-            ov.classList.add('show');
-            if (galeriaFotos) { renderizarGaleria(); return; }
-            grid.innerHTML = '<div class="galeria-msg">⏳ Leyendo las fotos del Excel…</div>';
-            if (!excelBufferGlobal || !excelWorkbookGlobal) {
-                grid.innerHTML = '<div class="galeria-msg">El Excel todavía no se ha cargado. Espera a que aparezca «Excel Conectado» y vuelve a abrir la galería.</div>';
-                return;
+        // ----- Fotos: carga perezosa (miniaturas pequeñas en la cuadrícula, foto original solo en el visor) -----
+        const PIXEL_VACIO = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+        const ES_MOVIL_FOTOS = /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent) || (window.matchMedia && matchMedia('(max-width: 820px)').matches);
+        const miniUrls = {}, miniPromesas = {}, fullUrls = {}, ordenFull = [];
+        const colaFotos = { activos: 0, max: ES_MOVIL_FOTOS ? 2 : 4, cola: [] };
+        let tokenVisor = 0, medioVisor = '', observadorMini = null, galeriaError = null;
+
+        function encolarFoto(tarea) {
+            return new Promise((res, rej) => { colaFotos.cola.push({ tarea, res, rej }); bombearFotos(); });
+        }
+        function bombearFotos() {
+            while (colaFotos.activos < colaFotos.max && colaFotos.cola.length) {
+                const t = colaFotos.cola.shift(); colaFotos.activos++;
+                Promise.resolve().then(t.tarea).then(t.res, t.rej).finally(() => { colaFotos.activos--; bombearFotos(); });
             }
-            if (typeof JSZip === 'undefined') {
-                grid.innerHTML = '<div class="galeria-msg">No se pudo cargar la librería JSZip (revisa tu conexión a internet).</div>';
-                return;
+        }
+        async function blobDeFoto(f) {
+            const entrada = f.zip && f.zip.file(f.medio);
+            if (!entrada) throw new Error('Imagen no encontrada en el Excel: ' + f.medio);
+            return new Blob([await entrada.async('blob')], { type: f.mime || 'image/jpeg' });
+        }
+        async function crearMiniatura(blob) {
+            const L = 400;
+            const cv = document.createElement('canvas'); cv.width = L; cv.height = L;
+            const cx = cv.getContext('2d'); cx.fillStyle = '#0f172a'; cx.fillRect(0, 0, L, L);
+            let fuente = null, w = 0, h = 0, liberar = () => {};
+            try {
+                fuente = await createImageBitmap(blob, { resizeWidth: 800, resizeQuality: 'medium' });
+                w = fuente.width; h = fuente.height; liberar = () => { try { fuente.close(); } catch (e) {} };
+            } catch (e) {
+                const u = URL.createObjectURL(blob), im = new Image(); im.decoding = 'async'; im.src = u;
+                try { await im.decode(); } catch (e2) { await new Promise((ok, no) => { im.onload = ok; im.onerror = no; }); }
+                fuente = im; w = im.naturalWidth; h = im.naturalHeight; liberar = () => URL.revokeObjectURL(u);
             }
+            const lado = Math.min(w, h), sx = (w - lado) / 2, sy = (h - lado) / 2;
+            cx.drawImage(fuente, sx, sy, lado, lado, 0, 0, L, L);
+            liberar();
+            const b = await new Promise(ok => cv.toBlob(ok, 'image/jpeg', 0.82));
+            return b ? URL.createObjectURL(b) : cv.toDataURL('image/jpeg', 0.82);
+        }
+        function miniaturaDeFoto(f, img) {
+            if (!f.zip) return Promise.resolve(f.src);
+            if (miniUrls[f.medio]) return Promise.resolve(miniUrls[f.medio]);
+            if (!miniPromesas[f.medio]) {
+                miniPromesas[f.medio] = encolarFoto(async () => {
+                    const u = await crearMiniatura(await blobDeFoto(f));
+                    miniUrls[f.medio] = u; return u;
+                }).catch(err => { delete miniPromesas[f.medio]; throw err; });
+            }
+            return miniPromesas[f.medio];
+        }
+        async function urlCompletaFoto(f) {
+            if (!f.zip) return f.src;
+            if (fullUrls[f.medio]) return fullUrls[f.medio];
+            const blob = await blobDeFoto(f);
+            const u = URL.createObjectURL(blob);
+            fullUrls[f.medio] = u; ordenFull.push(f.medio); f.src = u;
+            while (ordenFull.length > 5) {                       // se conservan solo las últimas fotos grandes para no agotar la memoria del celular
+                const viejo = ordenFull.shift();
+                if (viejo === medioVisor) { ordenFull.push(viejo); break; }
+                URL.revokeObjectURL(fullUrls[viejo]); delete fullUrls[viejo];
+            }
+            return u;
+        }
+        function cargarMiniaturaPerezosa(img, f) {
+            img.src = (f.zip && miniUrls[f.medio]) || (f.zip ? PIXEL_VACIO : f.src);
+            if (!f.zip) { img.loading = 'lazy'; return; }
+            if (miniUrls[f.medio]) return;
+            const poner = () => miniaturaDeFoto(f).then(u => { if (img.isConnected) img.src = u; }).catch(() => { img.alt = 'Sin vista previa'; });
+            if (observadorMini) { img.__foto = f; img.__poner = poner; observadorMini.observe(img); } else poner();
+        }
+        function mostrarFotoEnVisor(f, im) {
+            const tok = ++tokenVisor; medioVisor = f.medio;
+            if (!f.zip) { im.style.opacity = ''; im.src = f.src; return; }
+            im.style.opacity = '0.5';
+            im.src = miniUrls[f.medio] || PIXEL_VACIO;
+            urlCompletaFoto(f).then(u => {
+                if (tok !== tokenVisor) return;
+                im.onload = () => { if (tok === tokenVisor) im.style.opacity = ''; };
+                im.src = u;
+            }).catch(err => { if (tok === tokenVisor) { im.style.opacity = ''; console.error('[GIC] No se pudo abrir la foto', err); } });
+        }
+
+        function iniciarConstruccionGaleria() {
+            if (galeriaFotos) return Promise.resolve();
+            if (!excelBufferGlobal || !excelWorkbookGlobal || typeof JSZip === 'undefined') return null;
             if (!galeriaPromesa) {
+                galeriaError = null;
                 galeriaPromesa = construirGaleriaDesdeExcel({
                     buffer: excelBufferGlobal,
                     workbook: excelWorkbookGlobal,
@@ -1722,13 +1801,43 @@
                 }).then(res => {
                     galeriaFotos = res.fotos;
                     console.log('[GIC] Galería:', res.diag, '| total fotos:', res.fotos.length);
-                    renderizarGaleria();
                 }).catch(err => {
                     console.error('[GIC] Error leyendo fotos del Excel:', err);
-                    galeriaPromesa = null;
-                    grid.innerHTML = '<div class="galeria-msg">No se pudieron leer las fotos del Excel: ' + (err && err.message ? err.message : err) + '</div>';
+                    galeriaPromesa = null; galeriaError = err; throw err;
                 });
             }
+            return galeriaPromesa;
+        }
+        // Se prepara el índice de fotos en segundo plano apenas el Excel está listo, para que la galería abra de inmediato
+        function programarPrecargaGaleria() {
+            const ir = () => { const p = iniciarConstruccionGaleria(); if (p) p.catch(() => {}); };
+            if (window.requestIdleCallback) requestIdleCallback(ir, { timeout: 4000 }); else setTimeout(ir, 1500);
+        }
+        function esperarExcelFotos() {
+            return new Promise((res, rej) => {
+                const t0 = Date.now();
+                (function sondear() {
+                    if (excelBufferGlobal && excelWorkbookGlobal) return res();
+                    if (Date.now() - t0 > 90000) return rej(new Error('El Excel no terminó de cargar. Recarga la página.'));
+                    setTimeout(sondear, 400);
+                })();
+            });
+        }
+
+        function abrirGaleria() {
+            const ov = document.getElementById('galeria-overlay');
+            const grid = document.getElementById('galeria-grid');
+            ov.classList.add('show');
+            if (galeriaFotos) { renderizarGaleria(); return; }
+            grid.innerHTML = '<div class="galeria-msg">⏳ Leyendo las fotos del Excel…</div>';
+            esperarExcelFotos().then(() => {
+                if (typeof JSZip === 'undefined') throw new Error('No se pudo cargar la librería JSZip (revisa tu conexión a internet).');
+                return iniciarConstruccionGaleria();
+            }).then(() => {
+                if (ov.classList.contains('show')) renderizarGaleria();
+            }).catch(err => {
+                grid.innerHTML = '<div class="galeria-msg">No se pudieron leer las fotos del Excel: ' + (err && err.message ? err.message : err) + '</div>';
+            });
         }
 
         function cerrarGaleria() {
@@ -1751,6 +1860,10 @@
             );
             cont.textContent = galeriaVisible.length + ' de ' + galeriaFotos.length + ' fotos';
             grid.innerHTML = '';
+            if (observadorMini) observadorMini.disconnect();
+            observadorMini = ('IntersectionObserver' in window) ? new IntersectionObserver((entradas) => {
+                entradas.forEach(en => { if (en.isIntersecting) { observadorMini.unobserve(en.target); if (en.target.__poner) en.target.__poner(); } });
+            }, { root: grid, rootMargin: '700px 0px' }) : null;
 
             if (!galeriaFotos.length) {
                 grid.innerHTML = '<div class="galeria-msg">No se encontraron fotos en las hojas «Inventario Espacios» ni «Mobiliario y Equipo».<br>Las imágenes deben estar insertadas en el Excel (flotantes o «en celda») dentro de la columna «Foto».</div>';
@@ -1765,7 +1878,7 @@
                 const card = document.createElement('div');
                 card.className = 'galeria-card';
                 const img = document.createElement('img');
-                img.loading = 'lazy'; img.decoding = 'async'; img.alt = f.codigo; img.src = f.src;
+                img.decoding = 'async'; img.alt = f.codigo; cargarMiniaturaPerezosa(img, f);
                 const info = document.createElement('div');
                 info.className = 'info';
                 const b = document.createElement('b'); b.textContent = f.codigo;
@@ -1786,7 +1899,7 @@
             if (!galeriaVisible.length) return;
             galeriaIndiceVisor = (i + galeriaVisible.length) % galeriaVisible.length;
             const f = galeriaVisible[galeriaIndiceVisor];
-            document.getElementById('visor-img').src = f.src;
+            mostrarFotoEnVisor(f, document.getElementById('visor-img'));
             const pie = document.getElementById('visor-pie');
             pie.innerHTML = '';
             const t = document.createElement('div'); t.innerHTML = '<b></b>'; t.firstChild.textContent = f.codigo + (f.piso ? ' · Piso ' + f.piso : '');
@@ -1796,7 +1909,7 @@
             pie.appendChild(s);
             document.getElementById('galeria-visor').classList.add('show');
         }
-        function cerrarVisorFoto() { galeriaIndiceVisor = -1; document.getElementById('galeria-visor').classList.remove('show'); }
+        function cerrarVisorFoto() { galeriaIndiceVisor = -1; tokenVisor++; document.getElementById('galeria-visor').classList.remove('show'); }
         function navegarVisorFoto(d) { if (galeriaIndiceVisor >= 0) abrirVisorFoto(galeriaIndiceVisor + d); }
 
         document.addEventListener('keydown', (e) => {
