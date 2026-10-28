@@ -5169,8 +5169,8 @@
     <script>
         // ===== CAPAS DEL MAPA GENERAL: chazas informales y chazas de papelería =====
         // Cada capa se activa sobre el mapa del campus. De cada SVG solo se superponen los elementos que NO están ya en el mapa base
-        // (se comparan por posición, tamaño y color, no por el texto del SVG). Los marcadores que aparecen en ambos archivos pertenecen
-        // a «Chazas informales»; «Chazas de papelería» solo suma lo propio. No modifica ninguna función existente.
+        // (se comparan por posición, tamaño y color, no por el texto del SVG). Los marcadores nuevos se reparten entre las capas
+        // según su color de relleno: rojo = chazas informales, amarillo = chazas de papelería. No modifica ninguna función existente.
         (function () {
             const CAPAS = {
                 informal:  { archivo: 'plano_uptc_chazas_informal.svg',  nombre: 'Chazas informales' },
@@ -5231,7 +5231,7 @@
                     const m = inv.multiply(ctm), xs = [], ys = [];
                     [[bb.x, bb.y], [bb.x + bb.width, bb.y], [bb.x, bb.y + bb.height], [bb.x + bb.width, bb.y + bb.height]].forEach(([x, y]) => { xs.push(m.a * x + m.c * y + m.e); ys.push(m.b * x + m.d * y + m.f); });
                     const x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
-                    out.push({ el, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, w: x1 - x0, h: y1 - y0, fill: cs.fill, stroke: cs.stroke });
+                    out.push({ el, doc, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, w: x1 - x0, h: y1 - y0, fill: cs.fill, stroke: cs.stroke });
                 });
                 return out;
             }
@@ -5252,45 +5252,60 @@
                 return false;
             }
 
-            function crearGrupo(id, base, ext, items) {
-                const raizExt = ext.documentElement, vista = ext.defaultView;
+            function crearGrupo(id, base, items) {
                 const grupo = base.createElementNS(NS, 'g');
                 grupo.setAttribute('id', 'capa-chazas-' + id); grupo.setAttribute('data-capa', id); grupo.style.pointerEvents = 'none'; grupo.style.display = 'none';
                 const defs = base.createElementNS(NS, 'defs'); grupo.appendChild(defs);
-                const copiadas = {}, prefijo = 'capa_' + id + '_';
-                const copiarDef = (rid) => {
-                    if (copiadas[rid]) return copiadas[rid];
+                const copiadas = new Map(); let nDoc = 0; const idDoc = new Map();
+                const numDoc = (d) => { if (!idDoc.has(d)) idDoc.set(d, ++nDoc); return idDoc.get(d); };
+                const copiarDef = (ext, rid) => {
+                    const clave = numDoc(ext) + ':' + rid;
+                    if (copiadas.has(clave)) return copiadas.get(clave);
                     const src = ext.getElementById(rid); if (!src) return null;
-                    const nid = prefijo + rid; copiadas[rid] = nid;
+                    const nid = 'capa_' + id + '_' + numDoc(ext) + '_' + rid; copiadas.set(clave, nid);
                     const c = base.importNode(src, true); c.setAttribute('id', nid);
-                    defs.appendChild(c); reenlazar(c);
+                    defs.appendChild(c); reenlazar(ext, c);
                     return nid;
                 };
-                const reemplazarUrls = (v) => v.replace(/url\(\s*["']?#([^"')\s]+)["']?\s*\)/g, (m, rid) => { const n = copiarDef(rid); return n ? 'url(#' + n + ')' : m; });
-                function reenlazar(el) {
+                const reemplazarUrls = (ext, v) => v.replace(/url\(\s*["']?#([^"')\s]+)["']?\s*\)/g, (m, rid) => { const n = copiarDef(ext, rid); return n ? 'url(#' + n + ')' : m; });
+                function reenlazar(ext, el) {
                     [el].concat(Array.from(el.querySelectorAll('*'))).forEach(n => {
                         Array.from(n.attributes).forEach(a => {
-                            if ((a.name === 'href' || a.name === 'xlink:href') && a.value.charAt(0) === '#') { const nn = copiarDef(a.value.slice(1)); if (nn) n.setAttribute(a.name, '#' + nn); }
-                            else if (a.value.indexOf('url(') >= 0) n.setAttribute(a.name, reemplazarUrls(a.value));
+                            if ((a.name === 'href' || a.name === 'xlink:href') && a.value.charAt(0) === '#') { const nn = copiarDef(ext, a.value.slice(1)); if (nn) n.setAttribute(a.name, '#' + nn); }
+                            else if (a.value.indexOf('url(') >= 0) n.setAttribute(a.name, reemplazarUrls(ext, a.value));
                         });
                     });
                 }
                 items.forEach(it => {
-                    const e = it.el, cs = vista.getComputedStyle(e);
+                    const e = it.el, ext = it.doc, cs = ext.defaultView.getComputedStyle(e);
                     const c = base.importNode(e, true);
                     [c].concat(Array.from(c.querySelectorAll('*'))).forEach(n => { n.removeAttribute('id'); if (n !== c) n.removeAttribute('class'); });
                     c.removeAttribute('class');
-                    c.setAttribute('style', reemplazarUrls(PROPS.map(p => p + ':' + cs.getPropertyValue(p)).join(';')));
-                    const tr = cadenaTransform(e, raizExt);
+                    c.setAttribute('style', reemplazarUrls(ext, PROPS.map(p => p + ':' + cs.getPropertyValue(p)).join(';')));
+                    const tr = cadenaTransform(e, ext.documentElement);
                     if (tr) c.setAttribute('transform', tr); else c.removeAttribute('transform');
-                    reenlazar(c);
+                    reenlazar(ext, c);
                     grupo.appendChild(c);
                 });
                 base.documentElement.appendChild(grupo);
                 return grupo;
             }
 
-            // Se calculan las dos capas a la vez para poder repartir los marcadores compartidos
+            // Rojo = chazas informales · amarillo = chazas de papelería (según el color de relleno del marcador)
+            function claseDeColor(fill) {
+                const m = String(fill).match(/rgba?\(\s*(\d+)\D+(\d+)\D+(\d+)/); if (!m) return null;
+                const r = m[1] / 255, g = m[2] / 255, b = m[3] / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+                if (!d) return null;
+                const sat = d / (1 - Math.abs(2 * l - 1));
+                if (sat < 0.45 || l < 0.25 || l > 0.92) return null;
+                let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+                h = (h * 60 + 360) % 360;
+                if (h >= 338 || h <= 22) return 'informal';
+                if (h >= 38 && h <= 70) return 'papeleria';
+                return null;
+            }
+
+            // Se leen los dos archivos, se juntan los elementos nuevos (sin repetir) y se reparten por color
             function prepararCapas() {
                 if (preparacion) return preparacion;
                 preparacion = (async () => {
@@ -5298,29 +5313,33 @@
                     const bbR = base.documentElement.getBBox();
                     const g = Math.max(bbR.width, bbR.height) / 700;
                     const idxBase = indexar(infoHojas(base), g);
-                    const externos = {}, dif = {}, errores = {}, objetos = [];
+                    const objetos = [], union = [], errores = [];
                     try {
+                        let idxUnion = new Map();
                         for (const id of Object.keys(CAPAS)) {
                             try {
                                 if (!(await existe(CAPAS[id].archivo))) throw new Error('No se encontró «' + CAPAS[id].archivo + '» en el repositorio');
                                 const o = await cargarExterno(CAPAS[id].archivo); objetos.push(o);
                                 const ext = o.contentDocument;
                                 if (!ext || !ext.documentElement || ext.documentElement.localName !== 'svg') throw new Error('«' + CAPAS[id].archivo + '» no es un SVG válido');
-                                externos[id] = ext;
-                                dif[id] = infoHojas(ext).filter(it => !existeSimilar(idxBase, it, g));
-                            } catch (e) { errores[id] = e; }
+                                const nuevos = infoHojas(ext).filter(it => !existeSimilar(idxBase, it, g) && !existeSimilar(idxUnion, it, g));
+                                nuevos.forEach(it => { it.origen = id; union.push(it); });
+                                idxUnion = indexar(union, g);
+                            } catch (e) { errores.push(e); console.warn('[GIC] Capas:', e); }
                         }
-                        // Lo que ya está en «informal» no se repite en «papelería»
-                        if (dif.informal && dif.papeleria) {
-                            const idxInf = indexar(dif.informal, g);
-                            dif.papeleria = dif.papeleria.filter(it => !existeSimilar(idxInf, it, g));
-                        }
+                        const grupos = { informal: [], papeleria: [] }, sin = [];
+                        union.forEach(it => { it.clase = claseDeColor(it.fill); (it.clase ? grupos[it.clase] : sin).push(it); });
+                        const marcadores = grupos.informal.concat(grupos.papeleria);
+                        sin.forEach(it => {                       // contornos, etiquetas, etc.: van con el marcador clasificado más cercano
+                            let mejor = null, dmin = Infinity;
+                            marcadores.forEach(m => { const d = Math.hypot(m.cx - it.cx, m.cy - it.cy); if (d < dmin) { dmin = d; mejor = m; } });
+                            grupos[mejor ? mejor.clase : it.origen].push(it);
+                        });
+                        console.log('[GIC] Capas: elementos nuevos', union.length, '| informales', grupos.informal.length, '| papelería', grupos.papeleria.length, '| sin color definido', sin.length);
                         const res = {};
                         for (const id of Object.keys(CAPAS)) {
-                            if (!dif[id]) { res[id] = { error: errores[id] || new Error('Capa no disponible') }; continue; }
-                            if (!dif[id].length) { res[id] = { error: new Error('«' + CAPAS[id].nombre + '» no tiene elementos distintos al mapa base') }; continue; }
-                            res[id] = { grupo: crearGrupo(id, base, externos[id], dif[id]), nuevos: dif[id].length };
-                            console.log('[GIC] Capa «' + CAPAS[id].nombre + '»:', dif[id].length, 'elementos superpuestos');
+                            if (!grupos[id].length) { res[id] = { error: errores[0] || new Error('No se encontraron marcadores de «' + CAPAS[id].nombre + '» (' + (id === 'informal' ? 'rojos' : 'amarillos') + ') distintos al mapa base') }; continue; }
+                            res[id] = { grupo: crearGrupo(id, base, grupos[id]), nuevos: grupos[id].length };
                         }
                         return res;
                     } finally { objetos.forEach(o => o.remove()); }
