@@ -591,6 +591,17 @@
         .pma-ayuda { font-size: 11px; color: var(--text-muted); margin-top: 8px; line-height: 1.4; }
         html.movil .app-body:has(#vista-mapa.activa) #panel-mapa-acciones { position: static; margin: 0 0 8px; padding: 0 0 8px; border-bottom: none; }
         html.movil .pma-entrar, html.movil .pma-cerrar { min-height: 44px; }
+
+        /* ===== SELECTOR DE MAPAS (campus / chazas) ===== */
+        #selector-mapas { position: absolute; top: 14px; right: 14px; z-index: 25; display: flex; flex-direction: column; gap: 6px; background: rgba(7,13,25,0.92); border: 1px solid #1e293b; border-radius: 10px; padding: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.3); }
+        #selector-mapas .sm-titulo { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: #94a3b8; padding: 0 2px; }
+        #selector-mapas button { background: #0f172a; color: #e2e8f0; border: 1px solid #334155; border-radius: 7px; padding: 8px 12px; font-size: 12px; font-weight: 600; cursor: pointer; text-align: left; white-space: nowrap; }
+        #selector-mapas button:hover { border-color: #0284c7; }
+        #selector-mapas button.act { background: #0284c7; border-color: #0284c7; color: #fff; }
+        #map-viewport.cambiando-mapa { opacity: .45; transition: opacity .2s; }
+        @media (max-width: 820px) { #selector-mapas { top: auto; bottom: 12px; right: 12px; } #selector-mapas button { padding: 10px 12px; } }
+        html.movil #selector-mapas { top: auto; bottom: 12px; right: 12px; }
+        html.movil #selector-mapas button { padding: 10px 12px; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -639,6 +650,12 @@
                     </div>
                 </div>
                 <div id="aviso-mapa"></div>
+                <div id="selector-mapas" role="group" aria-label="Mapas del campus">
+                    <span class="sm-titulo">Mapas</span>
+                    <button type="button" data-mapa="campus" class="act">🗺️ Campus</button>
+                    <button type="button" data-mapa="informal">📍 Chazas informales</button>
+                    <button type="button" data-mapa="papeleria">📎 Chazas de papelería</button>
+                </div>
                 <div id="map-controls">
                     <button id="zoom-in" title="Acercar">+</button>
                     <button id="zoom-out" title="Alejar">&minus;</button>
@@ -5142,6 +5159,70 @@
                     if (dedos.size === 0) varios = false;
                 });
             }, 300);
+        })();
+    </script>
+
+    <script>
+        // ===== SELECTOR DE MAPAS: campus y chazas =====
+        // Solo cambia el archivo del <object id="svg-object">; el zoom, el paneo, los gestos táctiles y la nitidez
+        // ya se reconectan solos cuando el SVG vuelve a cargar. No modifica ninguna función existente.
+        (function () {
+            const MAPAS = {
+                campus:    { archivo: 'plano_uptc.svg',                    aviso: 'Mapa general del campus' },
+                informal:  { archivo: 'plano_uptc_chazas_informal.svg',    aviso: 'Chazas informales' },
+                papeleria: { archivo: 'plano_uptc_chazas_papeleria.svg',   aviso: 'Chazas de papelería' }
+            };
+            const obj = document.getElementById('svg-object'), vp = document.getElementById('map-viewport'), caja = document.getElementById('selector-mapas');
+            if (!obj || !vp || !caja) return;
+            let activo = 'campus', cambiando = false;
+
+            ['mousedown', 'touchstart', 'pointerdown', 'wheel', 'dblclick'].forEach(t => caja.addEventListener(t, (e) => e.stopPropagation(), { passive: true }));
+
+            function marcar(id) { caja.querySelectorAll('button[data-mapa]').forEach(b => b.classList.toggle('act', b.dataset.mapa === id)); }
+            function aviso(t) { if (typeof mostrarAvisoMapa === 'function') mostrarAvisoMapa(t); }
+            function vbDe() {
+                try {
+                    const a = (obj.contentDocument.documentElement.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+                    return a.length === 4 && a.every(isFinite) ? a : null;
+                } catch (e) { return null; }
+            }
+            function parecidos(a, b) { if (!a || !b) return false; const t = 0.03 * Math.max(Math.abs(b[2]), Math.abs(b[3])); return [0, 1, 2, 3].every(i => Math.abs(a[i] - b[i]) <= t); }
+            async function existe(url) { try { const r = await fetch(url, { method: 'HEAD', cache: 'no-store' }); return r.ok; } catch (e) { return true; } }
+
+            async function cambiarMapa(id) {
+                const m = MAPAS[id];
+                if (!m || cambiando || id === activo) return;
+                if (!(await existe(m.archivo))) { aviso('No se encontró «' + m.archivo + '» en el repositorio'); return; }
+                cambiando = true; marcar(id); vp.classList.add('cambiando-mapa');
+                const guardado = { x: pointX, y: pointY, s: scale }, vbPrevio = vbDe();
+                await new Promise((res) => {
+                    let listo = false;
+                    const terminar = (ok) => {
+                        if (listo) return; listo = true; obj.removeEventListener('load', alCargar); clearTimeout(limite);
+                        if (ok) {
+                            // misma base cartográfica: se conserva el encuadre actual para comparar mapas
+                            if (parecidos(vbDe(), vbPrevio)) { scale = guardado.s; pointX = guardado.x; pointY = guardado.y; setTransform(); }
+                            activo = id; aviso('Mostrando: ' + m.aviso);
+                        } else { marcar(activo); aviso('No se pudo cargar «' + m.archivo + '»'); }
+                        vp.classList.remove('cambiando-mapa'); cambiando = false; res();
+                    };
+                    const alCargar = () => setTimeout(() => terminar(true), 80);   // después de que los demás módulos ajusten el SVG
+                    const limite = setTimeout(() => terminar(false), 20000);
+                    obj.addEventListener('load', alCargar);
+                    obj.setAttribute('data', m.archivo);
+                });
+            }
+            window.cambiarMapaCampus = cambiarMapa;
+            caja.querySelectorAll('button[data-mapa]').forEach(b => b.addEventListener('click', () => cambiarMapa(b.dataset.mapa)));
+
+            // La lista de edificios solo tiene geometría en el mapa del campus: se vuelve a él antes de acercar
+            const zoomOriginal = window.zoomAEdificio;
+            if (typeof zoomOriginal === 'function') {
+                window.zoomAEdificio = function (ed) {
+                    if (activo !== 'campus' && ed && ed.svgId) { cambiarMapa('campus').then(() => zoomOriginal.call(this, ed)); return; }
+                    return zoomOriginal.apply(this, arguments);
+                };
+            }
         })();
     </script>
 </body>
