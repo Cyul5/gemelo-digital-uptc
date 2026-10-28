@@ -5168,44 +5168,32 @@
 
     <script>
         // ===== CAPAS DEL MAPA GENERAL: chazas informales y chazas de papelería =====
-        // Cada capa se activa sobre el mapa del campus. Del SVG de cada capa solo se superponen los elementos que NO existen ya
-        // en el mapa base (así funciona tanto si el archivo trae únicamente las chazas como si es una copia completa del campus).
-        // No modifica ninguna función existente.
+        // Cada capa se activa sobre el mapa del campus. De cada SVG solo se superponen los elementos que NO están ya en el mapa base
+        // (se comparan por posición, tamaño y color, no por el texto del SVG). Los marcadores que aparecen en ambos archivos pertenecen
+        // a «Chazas informales»; «Chazas de papelería» solo suma lo propio. No modifica ninguna función existente.
         (function () {
             const CAPAS = {
                 informal:  { archivo: 'plano_uptc_chazas_informal.svg',  nombre: 'Chazas informales' },
                 papeleria: { archivo: 'plano_uptc_chazas_papeleria.svg', nombre: 'Chazas de papelería' }
             };
-            const NS = 'http://www.w3.org/2000/svg', XL = 'http://www.w3.org/1999/xlink';
+            const NS = 'http://www.w3.org/2000/svg';
             const HOJAS = 'path,polygon,polyline,rect,circle,ellipse,line,text,image,use';
             const EXCL = new Set(['defs', 'clipPath', 'mask', 'pattern', 'marker', 'symbol', 'style', 'metadata', 'title', 'desc', 'linearGradient', 'radialGradient', 'filter', 'foreignObject', 'namedview']);
-            const ATR_ESTILO = ['class', 'style', 'fill', 'stroke', 'stroke-width', 'opacity', 'fill-opacity', 'stroke-opacity', 'display', 'visibility', 'fill-rule', 'stroke-dasharray', 'font-size', 'font-family'];
             const PROPS = ['fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-dasharray', 'stroke-linecap', 'stroke-linejoin', 'opacity', 'font-family', 'font-size', 'font-weight', 'text-anchor', 'display', 'visibility'];
             const obj = document.getElementById('svg-object'), caja = document.getElementById('selector-mapas');
             if (!obj || !caja) return;
-            const estado = {};            // id -> { grupo, cargando }
-            let sigsBase = null;
+            const estado = {};
+            let preparacion = null;
 
             ['mousedown', 'touchstart', 'pointerdown', 'wheel', 'dblclick'].forEach(t => caja.addEventListener(t, (e) => e.stopPropagation(), { passive: true }));
-
             const aviso = (t) => { if (typeof mostrarAvisoMapa === 'function') mostrarAvisoMapa(t); };
-            const norm = (t) => String(t).replace(/-?\d*\.\d+(?:e[-+]?\d+)?/gi, (m) => (+m).toFixed(2));
-            const ignorarAtr = (a) => /^(id|class|style|transform)$/.test(a.name) || (a.name.indexOf(':') >= 0 && a.name !== 'xlink:href') || /^data-/.test(a.name);
 
             function enExcluido(el, raiz) { for (let n = el; n && n !== raiz && n.nodeType === 1; n = n.parentNode) if (EXCL.has(n.localName)) return true; return false; }
-            function contexto(el, raiz) {
-                const cadena = []; for (let n = el; n && n !== raiz && n.nodeType === 1; n = n.parentNode) cadena.unshift(n);
-                const tr = [], est = [];
-                cadena.forEach(n => { if (n.hasAttribute('transform')) tr.push(n.getAttribute('transform')); ATR_ESTILO.forEach(a => { if (n.hasAttribute(a)) est.push(a + '=' + n.getAttribute(a)); }); });
-                return { tr: tr.join(' '), est: est.join(';') };
+            function cadenaTransform(el, raiz) {
+                const tr = [];
+                for (let n = el; n && n !== raiz && n.nodeType === 1; n = n.parentNode) if (n.hasAttribute('transform')) tr.unshift(n.getAttribute('transform'));
+                return tr.join(' ');
             }
-            function firma(el, raiz) {
-                const c = contexto(el, raiz);
-                const at = Array.from(el.attributes).filter(a => !ignorarAtr(a)).map(a => a.name + '=' + a.value).sort().join('|');
-                return norm(el.localName + '#' + at + '#' + c.tr + '#' + c.est + '#' + (el.localName === 'text' ? el.textContent.trim() : ''));
-            }
-            const hojasDe = (doc) => Array.from(doc.querySelectorAll(HOJAS)).filter(e => !enExcluido(e, doc.documentElement));
-
             function docBase() {
                 return new Promise((res, rej) => {
                     const t0 = Date.now();
@@ -5228,73 +5216,130 @@
                 });
             }
 
-            async function construirCapa(id) {
-                const def = CAPAS[id];
-                if (!(await existe(def.archivo))) throw new Error('No se encontró «' + def.archivo + '» en el repositorio');
-                const base = await docBase();
-                if (!sigsBase) sigsBase = new Set(hojasDe(base).map(e => firma(e, base.documentElement)));
-                const oExt = await cargarExterno(def.archivo);
-                try {
-                    const ext = oExt.contentDocument, raizExt = ext && ext.documentElement;
-                    if (!raizExt || raizExt.localName !== 'svg') throw new Error('El archivo no es un SVG válido');
-                    const vista = ext.defaultView;
-                    const grupo = base.createElementNS(NS, 'g');
-                    grupo.setAttribute('id', 'capa-chazas-' + id); grupo.setAttribute('data-capa', id); grupo.style.pointerEvents = 'none';
-                    const defs = base.createElementNS(NS, 'defs'); grupo.appendChild(defs);
-                    const copiadas = {};
-                    const prefijo = 'capa_' + id + '_';
-
-                    const copiarDef = (rid) => {
-                        if (copiadas[rid]) return copiadas[rid];
-                        const src = ext.getElementById(rid); if (!src) return null;
-                        const nid = prefijo + rid; copiadas[rid] = nid;
-                        const c = base.importNode(src, true); c.setAttribute('id', nid);
-                        defs.appendChild(c); reenlazar(c);
-                        return nid;
-                    };
-                    const reemplazarUrls = (v) => v.replace(/url\(\s*["']?#([^"')\s]+)["']?\s*\)/g, (m, rid) => { const n = copiarDef(rid); return n ? 'url(#' + n + ')' : m; });
-                    function reenlazar(el) {
-                        [el].concat(Array.from(el.querySelectorAll('*'))).forEach(n => {
-                            Array.from(n.attributes).forEach(a => {
-                                if ((a.name === 'href' || a.name === 'xlink:href') && a.value.charAt(0) === '#') { const nn = copiarDef(a.value.slice(1)); if (nn) n.setAttribute(a.name, '#' + nn); }
-                                else if (a.value.indexOf('url(') >= 0) n.setAttribute(a.name, reemplazarUrls(a.value));
-                            });
-                        });
+            // Posición, tamaño y colores de cada elemento dibujable, en las unidades del propio dibujo
+            function infoHojas(doc) {
+                const raiz = doc.documentElement, vista = doc.defaultView, out = [];
+                let inv = null;
+                try { inv = raiz.getScreenCTM().inverse(); } catch (e) { return out; }
+                doc.querySelectorAll(HOJAS).forEach(el => {
+                    if (enExcluido(el, raiz)) return;
+                    let bb, ctm;
+                    try { bb = el.getBBox(); ctm = el.getScreenCTM(); } catch (e) { return; }
+                    if (!bb || !ctm) return;
+                    const cs = vista.getComputedStyle(el);
+                    if (cs.display === 'none' || cs.visibility === 'hidden') return;
+                    const m = inv.multiply(ctm), xs = [], ys = [];
+                    [[bb.x, bb.y], [bb.x + bb.width, bb.y], [bb.x, bb.y + bb.height], [bb.x + bb.width, bb.y + bb.height]].forEach(([x, y]) => { xs.push(m.a * x + m.c * y + m.e); ys.push(m.b * x + m.d * y + m.f); });
+                    const x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+                    out.push({ el, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, w: x1 - x0, h: y1 - y0, fill: cs.fill, stroke: cs.stroke });
+                });
+                return out;
+            }
+            function indexar(items, g) {
+                const idx = new Map();
+                items.forEach(it => { const k = Math.floor(it.cx / g) + '|' + Math.floor(it.cy / g); (idx.get(k) || idx.set(k, []).get(k)).push(it); });
+                return idx;
+            }
+            function existeSimilar(idx, it, g) {
+                const tolC = g * 1.5, tolS = Math.max(g * 1.5, 0.05 * Math.max(it.w, it.h));
+                const gx = Math.floor(it.cx / g), gy = Math.floor(it.cy / g);
+                for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+                    const lista = idx.get((gx + dx) + '|' + (gy + dy)); if (!lista) continue;
+                    for (const o of lista) {
+                        if (Math.abs(o.cx - it.cx) <= tolC && Math.abs(o.cy - it.cy) <= tolC && Math.abs(o.w - it.w) <= tolS && Math.abs(o.h - it.h) <= tolS && o.fill === it.fill && o.stroke === it.stroke) return true;
                     }
+                }
+                return false;
+            }
 
-                    let nuevos = 0, total = 0;
-                    hojasDe(ext).forEach(e => {
-                        total++;
-                        if (sigsBase.has(firma(e, raizExt))) return;                         // ya existe en el mapa del campus
-                        const cs = vista.getComputedStyle(e);
-                        if (cs.getPropertyValue('display') === 'none' || cs.getPropertyValue('visibility') === 'hidden') return;
-                        const c = base.importNode(e, true);
-                        [c].concat(Array.from(c.querySelectorAll('*'))).forEach(n => { n.removeAttribute('id'); if (n !== c) n.removeAttribute('class'); });
-                        c.removeAttribute('class');
-                        c.setAttribute('style', reemplazarUrls(PROPS.map(p => p + ':' + cs.getPropertyValue(p)).join(';')));
-                        const tr = contexto(e, raizExt).tr;
-                        if (tr) c.setAttribute('transform', tr); else c.removeAttribute('transform');
-                        reenlazar(c);
-                        grupo.appendChild(c); nuevos++;
+            function crearGrupo(id, base, ext, items) {
+                const raizExt = ext.documentElement, vista = ext.defaultView;
+                const grupo = base.createElementNS(NS, 'g');
+                grupo.setAttribute('id', 'capa-chazas-' + id); grupo.setAttribute('data-capa', id); grupo.style.pointerEvents = 'none'; grupo.style.display = 'none';
+                const defs = base.createElementNS(NS, 'defs'); grupo.appendChild(defs);
+                const copiadas = {}, prefijo = 'capa_' + id + '_';
+                const copiarDef = (rid) => {
+                    if (copiadas[rid]) return copiadas[rid];
+                    const src = ext.getElementById(rid); if (!src) return null;
+                    const nid = prefijo + rid; copiadas[rid] = nid;
+                    const c = base.importNode(src, true); c.setAttribute('id', nid);
+                    defs.appendChild(c); reenlazar(c);
+                    return nid;
+                };
+                const reemplazarUrls = (v) => v.replace(/url\(\s*["']?#([^"')\s]+)["']?\s*\)/g, (m, rid) => { const n = copiarDef(rid); return n ? 'url(#' + n + ')' : m; });
+                function reenlazar(el) {
+                    [el].concat(Array.from(el.querySelectorAll('*'))).forEach(n => {
+                        Array.from(n.attributes).forEach(a => {
+                            if ((a.name === 'href' || a.name === 'xlink:href') && a.value.charAt(0) === '#') { const nn = copiarDef(a.value.slice(1)); if (nn) n.setAttribute(a.name, '#' + nn); }
+                            else if (a.value.indexOf('url(') >= 0) n.setAttribute(a.name, reemplazarUrls(a.value));
+                        });
                     });
-                    if (!nuevos) throw new Error('«' + def.archivo + '» no tiene elementos distintos al mapa del campus');
-                    if (total && nuevos / total > 0.6) console.warn('[GIC] Capa «' + def.nombre + '»: casi todo el archivo difiere del mapa base (' + nuevos + ' de ' + total + ' elementos). Se superpone completo.');
-                    base.documentElement.appendChild(grupo);
-                    console.log('[GIC] Capa «' + def.nombre + '»:', nuevos, 'elementos superpuestos de', total);
-                    return { grupo, nuevos };
-                } finally { oExt.remove(); }
+                }
+                items.forEach(it => {
+                    const e = it.el, cs = vista.getComputedStyle(e);
+                    const c = base.importNode(e, true);
+                    [c].concat(Array.from(c.querySelectorAll('*'))).forEach(n => { n.removeAttribute('id'); if (n !== c) n.removeAttribute('class'); });
+                    c.removeAttribute('class');
+                    c.setAttribute('style', reemplazarUrls(PROPS.map(p => p + ':' + cs.getPropertyValue(p)).join(';')));
+                    const tr = cadenaTransform(e, raizExt);
+                    if (tr) c.setAttribute('transform', tr); else c.removeAttribute('transform');
+                    reenlazar(c);
+                    grupo.appendChild(c);
+                });
+                base.documentElement.appendChild(grupo);
+                return grupo;
+            }
+
+            // Se calculan las dos capas a la vez para poder repartir los marcadores compartidos
+            function prepararCapas() {
+                if (preparacion) return preparacion;
+                preparacion = (async () => {
+                    const base = await docBase();
+                    const bbR = base.documentElement.getBBox();
+                    const g = Math.max(bbR.width, bbR.height) / 700;
+                    const idxBase = indexar(infoHojas(base), g);
+                    const externos = {}, dif = {}, errores = {}, objetos = [];
+                    try {
+                        for (const id of Object.keys(CAPAS)) {
+                            try {
+                                if (!(await existe(CAPAS[id].archivo))) throw new Error('No se encontró «' + CAPAS[id].archivo + '» en el repositorio');
+                                const o = await cargarExterno(CAPAS[id].archivo); objetos.push(o);
+                                const ext = o.contentDocument;
+                                if (!ext || !ext.documentElement || ext.documentElement.localName !== 'svg') throw new Error('«' + CAPAS[id].archivo + '» no es un SVG válido');
+                                externos[id] = ext;
+                                dif[id] = infoHojas(ext).filter(it => !existeSimilar(idxBase, it, g));
+                            } catch (e) { errores[id] = e; }
+                        }
+                        // Lo que ya está en «informal» no se repite en «papelería»
+                        if (dif.informal && dif.papeleria) {
+                            const idxInf = indexar(dif.informal, g);
+                            dif.papeleria = dif.papeleria.filter(it => !existeSimilar(idxInf, it, g));
+                        }
+                        const res = {};
+                        for (const id of Object.keys(CAPAS)) {
+                            if (!dif[id]) { res[id] = { error: errores[id] || new Error('Capa no disponible') }; continue; }
+                            if (!dif[id].length) { res[id] = { error: new Error('«' + CAPAS[id].nombre + '» no tiene elementos distintos al mapa base') }; continue; }
+                            res[id] = { grupo: crearGrupo(id, base, externos[id], dif[id]), nuevos: dif[id].length };
+                            console.log('[GIC] Capa «' + CAPAS[id].nombre + '»:', dif[id].length, 'elementos superpuestos');
+                        }
+                        return res;
+                    } finally { objetos.forEach(o => o.remove()); }
+                })().catch(e => { preparacion = null; throw e; });
+                return preparacion;
             }
 
             async function alternar(id, cb) {
                 const fila = cb.closest('.capa-fila'), txt = fila.querySelector('.capa-estado');
                 const st = estado[id] = estado[id] || {};
                 if (st.cargando) { cb.checked = !cb.checked; return; }
-                if (st.grupo) { st.grupo.style.display = cb.checked ? '' : 'none'; txt.textContent = cb.checked ? st.nuevos + ' elem.' : ''; return; }
+                if (st.grupo) { st.grupo.style.display = cb.checked ? '' : 'none'; return; }
                 if (!cb.checked) return;
                 st.cargando = true; cb.disabled = true; txt.textContent = 'cargando…';
                 try {
-                    const r = await construirCapa(id);
-                    st.grupo = r.grupo; st.nuevos = r.nuevos; txt.textContent = r.nuevos + ' elem.';
+                    const res = (await prepararCapas())[id];
+                    if (res.error) throw res.error;
+                    st.grupo = res.grupo; st.grupo.style.display = '';
+                    txt.textContent = res.nuevos + ' elem.';
                     aviso('Capa activada: ' + CAPAS[id].nombre);
                 } catch (e) {
                     console.error('[GIC] Capa', id, e); cb.checked = false; txt.textContent = '';
