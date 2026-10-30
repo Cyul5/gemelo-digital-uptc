@@ -593,17 +593,24 @@
         html.movil .pma-entrar, html.movil .pma-cerrar { min-height: 44px; }
 
 
-        /* ===== CAPAS DEL MAPA (chazas) ===== */
-        #selector-mapas { position: absolute; top: 14px; right: 14px; z-index: 25; display: flex; flex-direction: column; gap: 4px; background: rgba(7,13,25,0.92); border: 1px solid #1e293b; border-radius: 10px; padding: 8px 10px; box-shadow: 0 6px 18px rgba(0,0,0,0.3); }
-        #selector-mapas .sm-titulo { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: #94a3b8; padding: 0 2px 2px; }
-        #selector-mapas .capa-fila { display: flex; align-items: center; gap: 8px; color: #e2e8f0; font-size: 12px; font-weight: 600; padding: 6px 4px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
-        #selector-mapas .capa-fila:hover { background: #111c33; }
+        /* ===== MENÚS DEL MAPA: edificios + capas (desplegables) ===== */
+        #menus-mapa { position: absolute; top: 14px; left: 14px; z-index: 30; width: 290px; display: flex; flex-direction: column; gap: 8px; }
+        #menus-mapa #panel-edificios { position: static; width: 100%; }
+        #panel-capas { font-size: 12px; }
+        #btn-lista-capas { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--bg-header); color: #f8fafc; border: 1px solid #1e293b; border-radius: 8px; padding: 9px 12px; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,0.25); }
+        #btn-lista-capas:hover { background: #0b1324; border-color: var(--accent); }
+        #btn-lista-capas .flecha { transition: transform .2s; color: var(--accent); }
+        #panel-capas.abierto #btn-lista-capas .flecha { transform: rotate(180deg); }
+        #selector-mapas { display: none; margin-top: 6px; background: var(--bg-header); border: 1px solid #1e293b; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.35); padding: 4px; }
+        #panel-capas.abierto #selector-mapas { display: block; }
+        #selector-mapas .capa-fila { display: flex; align-items: center; gap: 8px; color: #e2e8f0; font-size: 12px; font-weight: 600; padding: 9px 8px; border-radius: 6px; cursor: pointer; }
+        #selector-mapas .capa-fila:hover { background: #1e293b; }
         #selector-mapas .capa-fila.fija { opacity: .65; cursor: default; }
-        #selector-mapas input[type=checkbox] { width: 16px; height: 16px; accent-color: #0284c7; cursor: inherit; margin: 0; }
+        #selector-mapas input[type=checkbox] { width: 16px; height: 16px; accent-color: #0284c7; cursor: inherit; margin: 0; flex: none; }
         #selector-mapas .capa-estado { font-style: normal; font-size: 10px; color: #94a3b8; margin-left: auto; padding-left: 8px; }
-        @media (max-width: 820px) { #selector-mapas { top: auto; bottom: 12px; right: 12px; } #selector-mapas .capa-fila { padding: 10px 6px; font-size: 13px; } #selector-mapas input[type=checkbox] { width: 20px; height: 20px; } }
-        html.movil #selector-mapas { top: auto; bottom: 12px; right: 12px; }
-        html.movil #selector-mapas .capa-fila { padding: 10px 6px; font-size: 13px; }
+        html.movil #menus-mapa { top: 10px; left: 10px; width: calc(100% - 20px); max-width: 340px; }
+        html.movil #btn-lista-capas { padding: 12px; font-size: 14px; }
+        html.movil #selector-mapas .capa-fila { padding: 12px 8px; font-size: 14px; }
         html.movil #selector-mapas input[type=checkbox] { width: 20px; height: 20px; }
 </style>
 </head>
@@ -641,6 +648,7 @@
                     <object id="svg-object" type="image/svg+xml" data="plano_uptc.svg"></object>
                 </div>
                 <!-- LISTA DESPLEGABLE DE EDIFICIOS -->
+                <div id="menus-mapa">
                 <div id="panel-edificios">
                     <button id="btn-lista-edificios" type="button">
                         <span>🏛️ Edificios del campus <span id="contador-edificios" style="color:#94a3b8;font-weight:400;"></span></span>
@@ -652,13 +660,20 @@
                         <div id="lista-vacia">Sin resultados</div>
                     </div>
                 </div>
-                <div id="aviso-mapa"></div>
-<div id="selector-mapas" role="group" aria-label="Capas del mapa">
-                    <span class="sm-titulo">Capas</span>
-                    <label class="capa-fila fija"><input type="checkbox" checked disabled><span>🗺️ Campus</span></label>
-                    <label class="capa-fila"><input type="checkbox" data-capa="informal"><span>📍 Chazas informales</span><em class="capa-estado"></em></label>
-                    <label class="capa-fila"><input type="checkbox" data-capa="papeleria"><span>📎 Chazas de papelería</span><em class="capa-estado"></em></label>
+                <div id="panel-capas">
+                    <button id="btn-lista-capas" type="button">
+                        <span>🗂️ Capas del mapa <span id="contador-capas" style="color:#94a3b8;font-weight:400;"></span></span>
+                        <span class="flecha">▾</span>
+                    </button>
+                    <div id="selector-mapas" role="group" aria-label="Capas del mapa">
+                        <label class="capa-fila fija"><input type="checkbox" checked disabled><span>🗺️ Campus</span></label>
+                        <label class="capa-fila"><input type="checkbox" data-capa="informal"><span>📍 Chazas informales</span><em class="capa-estado"></em></label>
+                        <label class="capa-fila"><input type="checkbox" data-capa="papeleria"><span>📎 Chazas de papelería</span><em class="capa-estado"></em></label>
+                    </div>
                 </div>
+                </div>
+                <div id="aviso-mapa"></div>
+
                 <div id="map-controls">
                     <button id="zoom-in" title="Acercar">+</button>
                     <button id="zoom-out" title="Alejar">&minus;</button>
@@ -5185,7 +5200,10 @@
             const estado = {};
             let preparacion = null;
 
-            ['mousedown', 'touchstart', 'pointerdown', 'wheel', 'dblclick'].forEach(t => caja.addEventListener(t, (e) => e.stopPropagation(), { passive: true }));
+            const panelC = document.getElementById('panel-capas'), btnC = document.getElementById('btn-lista-capas'), cont = document.getElementById('contador-capas');
+            ['mousedown', 'touchstart', 'pointerdown', 'wheel', 'dblclick'].forEach(t => (panelC || caja).addEventListener(t, (e) => e.stopPropagation(), { passive: true }));
+            if (btnC) btnC.addEventListener('click', () => panelC.classList.toggle('abierto'));
+            const contar = () => { if (!cont) return; const n = caja.querySelectorAll('input[data-capa]:checked').length; cont.textContent = n ? '(' + n + (n === 1 ? ' activa)' : ' activas)') : ''; };
             const aviso = (t) => { if (typeof mostrarAvisoMapa === 'function') mostrarAvisoMapa(t); };
 
             function enExcluido(el, raiz) { for (let n = el; n && n !== raiz && n.nodeType === 1; n = n.parentNode) if (EXCL.has(n.localName)) return true; return false; }
@@ -5365,7 +5383,7 @@
                     aviso(e && e.message ? e.message : 'No se pudo cargar la capa');
                 } finally { st.cargando = false; cb.disabled = false; }
             }
-            caja.querySelectorAll('input[data-capa]').forEach(cb => cb.addEventListener('change', () => alternar(cb.dataset.capa, cb)));
+            caja.querySelectorAll('input[data-capa]').forEach(cb => cb.addEventListener('change', () => alternar(cb.dataset.capa, cb).then(contar)));
         })();
     </script>
 </body>
