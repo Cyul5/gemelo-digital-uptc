@@ -5223,15 +5223,31 @@
                 });
             }
             async function existe(url) { try { const r = await fetch(url, { method: 'HEAD', cache: 'no-store' }); return r.status !== 404; } catch (e) { return true; } }
-            function cargarExterno(url) {
-                return new Promise((res, rej) => {
-                    const o = document.createElement('object');
-                    o.type = 'image/svg+xml';
-                    o.style.cssText = 'position:fixed;left:-99999px;top:0;width:1200px;height:900px;visibility:hidden;pointer-events:none';
-                    const t = setTimeout(() => { o.remove(); rej(new Error('Tiempo de espera agotado')); }, 25000);
-                    o.addEventListener('load', () => { clearTimeout(t); res(o); });
-                    o.data = url; document.body.appendChild(o);
-                });
+            async function cargarExterno(url) {
+                const r = await fetch(url, { cache: 'no-cache' });
+                if (!r.ok) throw new Error('No se encontró «' + url + '» en el repositorio (' + r.status + ')');
+                const d = new DOMParser().parseFromString(await r.text(), 'image/svg+xml');
+                const raiz0 = d.documentElement;
+                if (!raiz0 || raiz0.localName !== 'svg' || d.querySelector('parsererror')) throw new Error('«' + url + '» no es un SVG válido');
+                // Las imágenes incrustadas (mapa de bits) pesan mucho y no hacen falta para comparar los marcadores vectoriales
+                raiz0.querySelectorAll('script,image,foreignObject').forEach(e => e.remove());
+                raiz0.querySelectorAll('*').forEach(e => Array.from(e.attributes).forEach(a => { if (/^on/i.test(a.name)) e.removeAttribute(a.name); }));
+                if (!raiz0.hasAttribute('viewBox')) {
+                    const w = parseFloat(raiz0.getAttribute('width')), h = parseFloat(raiz0.getAttribute('height'));
+                    if (w > 0 && h > 0) raiz0.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+                }
+                const host = document.createElement('div');
+                host.style.cssText = 'position:fixed;left:-99999px;top:0;width:1200px;height:900px;pointer-events:none;overflow:hidden';
+                const sombra = host.attachShadow({ mode: 'open' });          // el <style> del SVG queda aislado y no afecta a la página
+                const raiz = document.importNode(raiz0, true);
+                raiz.setAttribute('width', '1200'); raiz.setAttribute('height', '900');
+                sombra.appendChild(raiz); document.body.appendChild(host);
+                const ext = {
+                    documentElement: raiz, defaultView: window,
+                    querySelectorAll: (q) => raiz.querySelectorAll(q),
+                    getElementById: (i) => raiz.querySelector('[id="' + String(i).replace(/"/g, '\\"') + '"]')
+                };
+                return { host, ext };
             }
 
             // Posición, tamaño y colores de cada elemento dibujable, en las unidades del propio dibujo
@@ -5336,10 +5352,8 @@
                         let idxUnion = new Map();
                         for (const id of Object.keys(CAPAS)) {
                             try {
-                                if (!(await existe(CAPAS[id].archivo))) throw new Error('No se encontró «' + CAPAS[id].archivo + '» en el repositorio');
-                                const o = await cargarExterno(CAPAS[id].archivo); objetos.push(o);
-                                const ext = o.contentDocument;
-                                if (!ext || !ext.documentElement || ext.documentElement.localName !== 'svg') throw new Error('«' + CAPAS[id].archivo + '» no es un SVG válido');
+                                const cargado = await cargarExterno(CAPAS[id].archivo); objetos.push(cargado.host);
+                                const ext = cargado.ext;
                                 const nuevos = infoHojas(ext).filter(it => !existeSimilar(idxBase, it, g) && !existeSimilar(idxUnion, it, g));
                                 nuevos.forEach(it => { it.origen = id; union.push(it); });
                                 idxUnion = indexar(union, g);
