@@ -5222,7 +5222,7 @@
                     })();
                 });
             }
-            async function existe(url) { try { const r = await fetch(url, { method: 'HEAD', cache: 'no-store' }); return r.ok; } catch (e) { return true; } }
+            async function existe(url) { try { const r = await fetch(url, { method: 'HEAD', cache: 'no-store' }); return r.status !== 404; } catch (e) { return true; } }
             function cargarExterno(url) {
                 return new Promise((res, rej) => {
                     const o = document.createElement('object');
@@ -5353,6 +5353,8 @@
                             marcadores.forEach(m => { const d = Math.hypot(m.cx - it.cx, m.cy - it.cy); if (d < dmin) { dmin = d; mejor = m; } });
                             grupos[mejor ? mejor.clase : it.origen].push(it);
                         });
+                        const hist = {}; union.forEach(it => { hist[it.fill] = (hist[it.fill] || 0) + 1; });
+                        console.log('[GIC] Capas: colores de relleno de los elementos nuevos', Object.entries(hist).sort((a, b) => b[1] - a[1]).slice(0, 8));
                         console.log('[GIC] Capas: elementos nuevos', union.length, '| informales', grupos.informal.length, '| papelería', grupos.papeleria.length, '| sin color definido', sin.length);
                         const res = {};
                         for (const id of Object.keys(CAPAS)) {
@@ -5379,8 +5381,9 @@
                     txt.textContent = res.nuevos + ' elem.';
                     aviso('Capa activada: ' + CAPAS[id].nombre);
                 } catch (e) {
-                    console.error('[GIC] Capa', id, e); cb.checked = false; txt.textContent = '';
+                    console.error('[GIC] Capa', id, e); cb.checked = false; txt.textContent = 'error'; fila.title = (e && e.message) ? e.message : String(e);
                     aviso(e && e.message ? e.message : 'No se pudo cargar la capa');
+                    if (panelC) panelC.classList.add('abierto');
                 } finally { st.cargando = false; cb.disabled = false; }
             }
             caja.querySelectorAll('input[data-capa]').forEach(cb => cb.addEventListener('change', () => alternar(cb.dataset.capa, cb).then(contar)));
