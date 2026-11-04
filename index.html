@@ -5455,7 +5455,7 @@
             const EDIFICIOS = [
                 ['COLISEO', 27, 'Coliseo'], ['CENTRO SERVICIOS', 28, 'Centro de Servicios'], ['RAFAEL AZULA', 29, 'Rafael Azula'],
                 ['JULIUS SIEBER', 31, 'Aulas Julius Sieber'], ['BIBLIOTECA', 26, 'Biblioteca Jorge Palacios'], ['CENTRAL', 23, 'Central'],
-                ['ADMINISTRATIVO', 32, 'Administrativo'], ['CARPINITERIA', 33, 'Talleres y Carpintería'], ['FESAD', 34, 'Fesad'],
+                ['ADMINISTRATIVO', 32, 'Administrativo'], ['CARPINTERIA|CARPINITERIA', 33, 'Talleres y Carpintería'], ['FESAD', 34, 'Fesad'],
                 ['DERECHO', 35, 'Derecho'], ['CAFETIN', 36, 'Cafetín Estudiantes'], ['INIAG', 38, 'Sede Iniag'],
                 ['LABORATORIO MATERIALES', 6, 'Laboratorio de Materiales'], ['INVERNADERO', 37, 'Invernadero'], ['METALURGIA', 22, 'Metalurgia'],
                 ['INGENIERIA', 18, 'Ingeniería'], ['LABORATORIOS INGENIERIA', 62, 'Laboratorios Ingeniería (EDILAB)'], ['MATEMATICAS', 10, 'Matemáticas'],
@@ -5466,7 +5466,8 @@
                 ['ARTES', 45, 'Artes'], ['LABORATORIOS', 44, 'Centro de Laboratorios'], ['CASONA', 40, 'La Casona'],
                 ['NUCLEARES', 43, 'Laboratorio Recursos Nucleares'], ['VETERINARIA', 48, 'Clínica Veterinaria'],
                 ['ENTRADA R', 2, 'Entrada R'], ['ENTRADA POSGRADOS', null, 'Entrada Posgrados'], ['ENTRADA LA COLINA', 4, 'Acceso La Colina'],
-                ['ENTRADA LABORATORIOS', null, 'Entrada Laboratorios'], ['ENTRADA L', 3, 'Entrada L']
+                ['ENTRADA LABORATORIOS', null, 'Entrada Laboratorios'], ['ENTRADA L', 3, 'Entrada L'],
+                ['ENTRADA PRINCIPAL', 1, 'Entrada Principal'], ['DEPORTIVOS', 5, 'Escenarios Deportivos'], ['GYM GENERAL', 14, 'Gym S. Generales'], ['LAB ANTIGUOS', 19, 'Lab Antiguos']
             ].map(([svg, cod, nombre, fachada]) => ({ svg, cod, nombre, fachada: fachada || null, el: null }));
 
             const obj = document.getElementById('svg-object');
@@ -5485,7 +5486,7 @@
             function limpiarHunza() {
                 try { const h = buscarElementoSvgMapa(obj.contentDocument, 'HUNZA'); if (h) { h.style.opacity = '1'; h.style.filter = 'none'; } } catch (e) {}
             }
-            const slug = (it) => it.svg.replace(/\s+/g, '_');
+            const slug = (it) => it.svg.split('|')[0].replace(/\s+/g, '_');
 
             function cargarFachada(it, cont) {
                 const tok = ++tokenFoto, clave = slug(it);
@@ -5568,7 +5569,7 @@
 
                 const faltan = [];
                 EDIFICIOS.forEach(it => {
-                    const k = norm(it.svg), el = exacto.get(k) || aprox.get(k);
+                    const el = it.svg.split('|').map(n => { const k = norm(n); return exacto.get(k) || aprox.get(k); }).find(Boolean);
                     if (!el) { faltan.push(it.svg); return; }
                     it.el = el;
                     if (it.cod != null) {
