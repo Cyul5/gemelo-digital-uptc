@@ -620,6 +620,15 @@
         .gic-ed-foto .vacia { text-align: center; color: #64748b; font-size: 12px; line-height: 1.5; padding: 12px; }
         .gic-ed-foto .vacia b { display: block; font-size: 26px; margin-bottom: 4px; }
         .gic-ed-chip { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid rgba(255,255,255,.35); }
+
+        /* ===== LIMPIEZA DE LAS BARRAS LATERALES ===== */
+        .excel-box { display: none !important; }                                   /* aviso «Archivo / Hoja» fuera de todas las barras */
+        .pma-fila { justify-content: flex-end; }                                   /* el botón ✕ siempre a la derecha */
+        #vista-2d #panel-filtros-horario { background: transparent; border: none; padding: 0; margin: 0; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; }
+        #vista-2d #panel-filtros-horario .filter-group { gap: 6px; color: #475569; font-weight: 600; margin: 0 !important; }
+        #vista-2d #panel-filtros-horario .filter-select { width: auto; min-width: 150px; }
+        #vista-2d #grupo-controles-horario .filter-group { display: inline-flex; margin-right: 10px !important; }
+        html.movil #vista-2d #panel-filtros-horario { width: 100%; }
 </style>
 </head>
 <body>
@@ -706,7 +715,7 @@
                     </div>
                     
                     <!-- NUEVA LISTA DESPLEGABLE INDEPENDIENTE PARA PLANOS 2D -->
-                    <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                         <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #475569; font-weight: 600;">
                             <span>🏢 Seleccionar Planta:</span>
                             <select id="select-piso-2d" class="filter-select" style="width: 160px;" onchange="irAVista2DPiso(this.value)">
@@ -717,31 +726,7 @@
                                 <option value="Piso 5 / Cubierta">Piso 5 / Cubierta</option>
                             </select>
                         </div>
-                        <span id="info-archivo-2d"></span>
-                        <button id="btn-informe-pdf" class="btn-informe" type="button" onclick="abrirModalInformes()" title="Descargar un informe en PDF con la información del Excel">📄 Generar informe PDF</button>
-                        <button class="btn-regresar" style="display:inline-block; margin-bottom: 0; width: auto;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
-                    </div>
-                </div>
-                <div class="container-svg-2d" id="svg-2d-wrapper">
-                    <object id="svg-2d-object" type="image/svg+xml" data="PLANTA_1_HUNZA.svg"></object>
-                </div>
-            </div>
-        </div>
-
-        <!-- PANEL DERECHO DE DATOS -->
-        <div class="sidebar-right" id="sidebar-derecha">
-            <button id="btn-volver-mapa" class="btn-regresar" onclick="irAVista('vista-mapa')">🗺️ Volver al Mapa General</button>
-
-            <!-- ACCIONES DEL PANEL EN EL MAPA GENERAL (solo visibles en esa vista) -->
-            <div id="panel-mapa-acciones">
-                <div class="pma-fila">
-                    <button type="button" class="pma-entrar" onclick="GIC_PANEL_EDIFICIO.entrar()" title="Entrar al modelo 3D del edificio">🏢 Entrar al modelo 3D</button>
-                    <button type="button" class="pma-cerrar" onclick="GIC_PANEL_EDIFICIO.cerrar()" title="Cerrar el panel (Esc)" aria-label="Cerrar el panel">✕</button>
-                </div>
-                <p class="pma-ayuda">Clic en el edificio: ver información · Doble clic: entrar al modelo 3D</p>
-            </div>
-
-            <!-- CONTENEDOR FILTROS Y MODO DE CONSULTA (VISIBLE EN PLANTA 2D) -->
+            <!-- MODO DE CONSULTA (ahora en la barra superior del plano 2D) -->
             <div class="panel-filtros-container" id="panel-filtros-horario">
                 <div class="filter-group">
                     <span>📋 Consulta:</span>
@@ -770,6 +755,29 @@
                         </select>
                     </div>
                 </div>
+            </div>
+                        <span id="info-archivo-2d"></span>
+                        <button id="btn-informe-pdf" class="btn-informe" type="button" onclick="abrirModalInformes()" title="Descargar un informe en PDF con la información del Excel">📄 Generar informe PDF</button>
+                        <button class="btn-regresar" style="display:inline-block; margin-bottom: 0; width: auto;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
+                    </div>
+                </div>
+                <div class="container-svg-2d" id="svg-2d-wrapper">
+                    <object id="svg-2d-object" type="image/svg+xml" data="PLANTA_1_HUNZA.svg"></object>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL DERECHO DE DATOS -->
+        <div class="sidebar-right" id="sidebar-derecha">
+            <button id="btn-volver-mapa" class="btn-regresar" onclick="irAVista('vista-mapa')">🗺️ Volver al Mapa General</button>
+
+            <!-- ACCIONES DEL PANEL EN EL MAPA GENERAL (solo visibles en esa vista) -->
+            <div id="panel-mapa-acciones">
+                <div class="pma-fila">
+                    <button type="button" class="pma-entrar" onclick="GIC_PANEL_EDIFICIO.entrar()" title="Entrar al modelo 3D del edificio">🏢 Entrar al modelo 3D</button>
+                    <button type="button" class="pma-cerrar" onclick="GIC_PANEL_EDIFICIO.cerrar()" title="Cerrar el panel (Esc)" aria-label="Cerrar el panel">✕</button>
+                </div>
+                <p class="pma-ayuda">Clic en el edificio: ver información · Doble clic: entrar al modelo 3D</p>
             </div>
 
             <div class="panel-title" id="panel-derecho-titulo">📊 Datos del Edificio</div>
