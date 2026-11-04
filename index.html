@@ -629,6 +629,10 @@
         #vista-2d #panel-filtros-horario .filter-select { width: auto; min-width: 150px; }
         #vista-2d #grupo-controles-horario .filter-group { display: inline-flex; margin-right: 10px !important; }
         html.movil #vista-2d #panel-filtros-horario { width: 100%; }
+
+        /* El título del edificio nunca queda tapado por la barra superior del panel */
+        .app-body:has(#vista-mapa.activa) #panel-derecho-titulo { flex: none; padding-top: 4px; line-height: 1.35; scroll-margin-top: 80px; }
+        .app-body:has(#vista-mapa.activa) #panel-mapa-acciones { flex: none; }
 </style>
 </head>
 <body>
@@ -5540,6 +5544,8 @@
                 document.body.classList.add('gic-ed-generico');
                 sb.classList.add('visible');
                 mostrarInfo(it);
+                const arriba = () => { sb.scrollTop = 0; };
+                arriba(); requestAnimationFrame(arriba); setTimeout(arriba, 120); setTimeout(arriba, 400);   // 400 ms: después de la animación del panel y de la foto
                 if (window.GIC_MOVIL) window.GIC_MOVIL.expandirPanel();
             }
             function soltar() { if (actual) resaltar(actual, false); actual = null; document.body.classList.remove('gic-ed-generico'); }
