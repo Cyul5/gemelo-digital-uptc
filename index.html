@@ -612,6 +612,14 @@
         html.movil #btn-lista-capas { padding: 12px; font-size: 14px; }
         html.movil #selector-mapas .capa-fila { padding: 12px 8px; font-size: 14px; }
         html.movil #selector-mapas input[type=checkbox] { width: 20px; height: 20px; }
+
+        /* ===== EDIFICIOS CLICKEABLES DEL MAPA GENERAL ===== */
+        body.gic-ed-generico .pma-entrar, body.gic-ed-generico .pma-ayuda { display: none; }
+        .gic-ed-foto { width: 100%; aspect-ratio: 16 / 10; border-radius: 10px; overflow: hidden; background: #0f172a; border: 1px solid #1e293b; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; }
+        .gic-ed-foto img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; }
+        .gic-ed-foto .vacia { text-align: center; color: #64748b; font-size: 12px; line-height: 1.5; padding: 12px; }
+        .gic-ed-foto .vacia b { display: block; font-size: 26px; margin-bottom: 4px; }
+        .gic-ed-chip { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid rgba(255,255,255,.35); }
 </style>
 </head>
 <body>
@@ -5431,6 +5439,158 @@
                 } finally { st.cargando = false; cb.disabled = false; }
             }
             caja.querySelectorAll('input[data-capa]').forEach(cb => cb.addEventListener('change', () => alternar(cb.dataset.capa, cb).then(contar)));
+        })();
+    </script>
+
+    <script>
+        // ===== EDIFICIOS CLICKEABLES DEL MAPA GENERAL =====
+        // Cada polígono del SVG que tenga uno de estos nombres (como id, como etiqueta de Inkscape o como <title>) se vuelve clickeable
+        // y abre la barra lateral con su información. El edificio Hunza conserva su comportamiento propio.
+        // Para agregar la foto de la fachada: subir  fachadas/NOMBRE_DEL_POLIGONO.jpg  (por ejemplo fachadas/COLISEO.jpg),
+        // o indicar la ruta en la columna «fachada» de la tabla de abajo.
+        (function () {
+            const CARPETA_FACHADAS = 'fachadas/';
+            const EXTENSIONES = ['jpg', 'jpeg', 'png', 'webp'];
+            // [nombre del polígono en el SVG, código del catálogo (o null), nombre para mostrar, foto de fachada opcional]
+            const EDIFICIOS = [
+                ['COLISEO', 27, 'Coliseo'], ['CENTRO SERVICIOS', 28, 'Centro de Servicios'], ['RAFAEL AZULA', 29, 'Rafael Azula'],
+                ['JULIUS SIEBER', 31, 'Aulas Julius Sieber'], ['BIBLIOTECA', 26, 'Biblioteca Jorge Palacios'], ['CENTRAL', 23, 'Central'],
+                ['ADMINISTRATIVO', 32, 'Administrativo'], ['CARPINITERIA', 33, 'Talleres y Carpintería'], ['FESAD', 34, 'Fesad'],
+                ['DERECHO', 35, 'Derecho'], ['CAFETIN', 36, 'Cafetín Estudiantes'], ['INIAG', 38, 'Sede Iniag'],
+                ['LABORATORIO MATERIALES', 6, 'Laboratorio de Materiales'], ['INVERNADERO', 37, 'Invernadero'], ['METALURGIA', 22, 'Metalurgia'],
+                ['INGENIERIA', 18, 'Ingeniería'], ['LABORATORIOS INGENIERIA', 62, 'Laboratorios Ingeniería (EDILAB)'], ['MATEMATICAS', 10, 'Matemáticas'],
+                ['BIENESTAR', 9, 'Bienestar'], ['ENSST', 11, 'ENSST'], ['RESTAURANTE', 12, 'Restaurante'], ['REGISTRO', 13, 'Admisiones y Registro'],
+                ['CAFETIN PROFESORES', 15, 'Cafetín Profesores'], ['GRANJA LAS FLORES', 16, 'Granja Las Flores'], ['ARCHIVO', 17, 'Archivo Histórico'],
+                ['DEPOSITO', 61, 'Depósito residuos sólidos'], ['BIOPLASMA', 21, 'Lab Bioplasma'], ['METEREOLOGICA', 20, 'Estación Metereológica'],
+                ['POSGRADOS', 49, 'Posgrados'], ['COLINA', 41, 'Casa Colina'], ['MUSICA', 46, 'Música'], ['INCITEMA', 42, 'Incitema'],
+                ['ARTES', 45, 'Artes'], ['LABORATORIOS', 44, 'Centro de Laboratorios'], ['CASONA', 40, 'La Casona'],
+                ['NUCLEARES', 43, 'Laboratorio Recursos Nucleares'], ['VETERINARIA', 48, 'Clínica Veterinaria'],
+                ['ENTRADA R', 2, 'Entrada R'], ['ENTRADA POSGRADOS', null, 'Entrada Posgrados'], ['ENTRADA LA COLINA', 4, 'Acceso La Colina'],
+                ['ENTRADA LABORATORIOS', null, 'Entrada Laboratorios'], ['ENTRADA L', 3, 'Entrada L']
+            ].map(([svg, cod, nombre, fachada]) => ({ svg, cod, nombre, fachada: fachada || null, el: null }));
+
+            const obj = document.getElementById('svg-object');
+            if (!obj) return;
+            const norm = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const decodificar = (t) => String(t || '').replace(/_x([0-9A-Fa-f]{2})_/g, (m, h) => String.fromCharCode(parseInt(h, 16)));   // Illustrator: _x20_ = espacio
+            const sinNumero = (t) => t.replace(/[-_ ]?\d+_?$/, '');
+            const porCod = {};
+            let actual = null, cacheFachada = {}, tokenFoto = 0, hover = null;
+
+            function resaltar(it, on, fuerte) {
+                if (!it || !it.el) return;
+                it.el.style.opacity = on ? (fuerte ? '0.85' : '0.7') : '1';
+                it.el.style.filter = on ? 'drop-shadow(0px 0px 8px #00b4d8)' : 'none';
+            }
+            function limpiarHunza() {
+                try { const h = buscarElementoSvgMapa(obj.contentDocument, 'HUNZA'); if (h) { h.style.opacity = '1'; h.style.filter = 'none'; } } catch (e) {}
+            }
+            const slug = (it) => it.svg.replace(/\s+/g, '_');
+
+            function cargarFachada(it, cont) {
+                const tok = ++tokenFoto, clave = slug(it);
+                const ponerVacia = () => { cont.innerHTML = '<div class="vacia"><b>📷</b>Foto de la fachada pendiente<br><span style="font-size:10px;">Agregar: ' + (it.fachada || CARPETA_FACHADAS + clave + '.jpg') + '</span></div>'; };
+                const ponerImg = (url) => {
+                    cont.innerHTML = ''; const im = document.createElement('img'); im.src = url; im.alt = 'Fachada ' + it.nombre; im.title = 'Clic para ver la foto completa';
+                    im.addEventListener('click', () => window.open(url, '_blank', 'noopener')); cont.appendChild(im);
+                };
+                if (cacheFachada[clave] !== undefined) { cacheFachada[clave] ? ponerImg(cacheFachada[clave]) : ponerVacia(); return; }
+                const candidatas = it.fachada ? [it.fachada] : EXTENSIONES.map(e => CARPETA_FACHADAS + clave + '.' + e);
+                cont.innerHTML = '<div class="vacia">Cargando foto…</div>';
+                (function probar(k) {
+                    if (k >= candidatas.length) { cacheFachada[clave] = null; if (tok === tokenFoto) ponerVacia(); return; }
+                    const t = new Image();
+                    t.onload = () => { cacheFachada[clave] = candidatas[k]; if (tok === tokenFoto) ponerImg(candidatas[k]); };
+                    t.onerror = () => probar(k + 1);
+                    t.src = candidatas[k];
+                })(0);
+            }
+
+            function mostrarInfo(it) {
+                const titulo = document.getElementById('panel-derecho-titulo'), hoja = document.getElementById('hoja-excel-indicador'), cont = document.getElementById('panel-contenido');
+                const cat = it.cod != null && typeof EDIFICIOS_CAMPUS !== 'undefined' ? EDIFICIOS_CAMPUS.find(e => e.cod === it.cod) : null;
+                if (titulo) titulo.textContent = '🏢 ' + it.nombre.toUpperCase();
+                if (hoja) hoja.innerHTML = '';
+                if (!cont) return;
+                cont.innerHTML =
+                    '<div class="gic-ed-foto" id="gic-ed-foto"></div>' +
+                    '<div class="info-section-title">📍 Identificación</div>' +
+                    '<div class="info-group"><div class="info-label">Nombre:</div><div class="info-val">' + (cat ? '<span class="gic-ed-chip" style="background:' + cat.color + '"></span>' : '') + it.nombre + '</div></div>' +
+                    (it.cod != null ? '<div class="info-group"><div class="info-label">Código en el plano:</div><div class="info-val">' + it.cod + '</div></div>' : '') +
+                    '<div class="info-section-title">ℹ️ Información</div>' +
+                    '<div class="info-group"><div class="info-val" style="color:#94a3b8;font-size:12px;line-height:1.5;">Aún no hay información registrada para este edificio. Próximamente: fotografía de la fachada y datos generales.</div></div>';
+                cargarFachada(it, document.getElementById('gic-ed-foto'));
+            }
+
+            function seleccionar(it) {
+                const sb = document.getElementById('sidebar-derecha');
+                if (!sb || typeof vistaActualGlobal === 'undefined' || vistaActualGlobal !== 'vista-mapa') return;
+                if (actual && actual !== it) resaltar(actual, false);
+                limpiarHunza();
+                actual = it; resaltar(it, true, true);
+                document.body.classList.add('gic-ed-generico');
+                sb.classList.add('visible');
+                mostrarInfo(it);
+                if (window.GIC_MOVIL) window.GIC_MOVIL.expandirPanel();
+            }
+            function soltar() { if (actual) resaltar(actual, false); actual = null; document.body.classList.remove('gic-ed-generico'); }
+
+            // Se cierra el panel: se quita el resaltado; si se abre el de Hunza, se quita el modo genérico
+            const sb0 = document.getElementById('sidebar-derecha');
+            if (sb0) new MutationObserver(() => { if (!sb0.classList.contains('visible')) soltar(); }).observe(sb0, { attributes: true, attributeFilter: ['class'] });
+            if (typeof window.restablecerPanelEdificio === 'function') {
+                const orig = window.restablecerPanelEdificio;
+                window.restablecerPanelEdificio = function () { soltar(); return orig.apply(this, arguments); };
+            }
+
+            // Desde la lista «Edificios del campus» también se abre la información
+            if (typeof window.zoomAEdificio === 'function') {
+                const z = window.zoomAEdificio;
+                window.zoomAEdificio = function (ed) { const r = z.apply(this, arguments); const it = ed && porCod[ed.cod]; if (it && it.el) setTimeout(() => seleccionar(it), 350); return r; };
+            }
+
+            function conectar() {
+                let doc; try { doc = obj.contentDocument; } catch (e) { return; }
+                if (!doc || !doc.documentElement || doc.documentElement.localName !== 'svg' || doc.__gicEdificios) return;
+                doc.__gicEdificios = true;
+                // Se indexan los nombres del SVG: id, etiqueta de Inkscape, data-name o <title>
+                const exacto = new Map(), aprox = new Map();
+                const anotar = (el, v) => {
+                    if (!v || el.localName === 'text' || el.localName === 'tspan') return;
+                    const t = decodificar(v), k = norm(t), k2 = norm(sinNumero(t));
+                    if (k && !exacto.has(k)) exacto.set(k, el);
+                    if (k2 && !aprox.has(k2)) aprox.set(k2, el);
+                };
+                doc.querySelectorAll('*').forEach(el => {
+                    anotar(el, el.getAttribute('id')); anotar(el, el.getAttribute('inkscape:label')); anotar(el, el.getAttribute('data-name')); anotar(el, el.getAttribute('aria-label'));
+                });
+                doc.querySelectorAll('title').forEach(t => { if (t.parentNode && t.parentNode.nodeType === 1) anotar(t.parentNode, t.textContent.trim()); });
+
+                const faltan = [];
+                EDIFICIOS.forEach(it => {
+                    const k = norm(it.svg), el = exacto.get(k) || aprox.get(k);
+                    if (!el) { faltan.push(it.svg); return; }
+                    it.el = el;
+                    if (it.cod != null) {
+                        porCod[it.cod] = it;
+                        if (typeof EDIFICIOS_CAMPUS !== 'undefined') {                  // la lista de edificios ya puede acercar al polígono
+                            const ed = EDIFICIOS_CAMPUS.find(e => e.cod === it.cod);
+                            if (ed && !ed.svgId) { if (!el.id) el.setAttribute('id', 'gic-ed-' + it.cod); ed.svgId = el.id; }
+                        }
+                    }
+                    el.style.cursor = 'pointer'; el.style.transition = 'opacity 0.2s, filter 0.2s';
+                    el.addEventListener('mouseenter', () => { if (typeof panning !== 'undefined' && panning) return; hover = it; if (actual !== it) resaltar(it, true); });
+                    el.addEventListener('mouseleave', () => { if (actual !== it) resaltar(it, false); });
+                    el.addEventListener('click', (e) => { if (typeof hasMoved !== 'undefined' && hasMoved) return; e.stopPropagation(); seleccionar(it); });
+                });
+                console.log('[GIC] Edificios clickeables en el mapa:', EDIFICIOS.length - faltan.length, 'de', EDIFICIOS.length, faltan.length ? '| sin encontrar en el SVG: ' + faltan.join(', ') : '');
+
+                // Tocar una zona vacía del mapa cierra el panel
+                doc.addEventListener('click', () => { if ((typeof hasMoved === 'undefined' || !hasMoved) && window.GIC_PANEL_EDIFICIO && GIC_PANEL_EDIFICIO.estaAbierto()) GIC_PANEL_EDIFICIO.cerrar(); });
+            }
+            // Después de que los demás módulos terminen de preparar el mapa
+            obj.addEventListener('load', () => setTimeout(conectar, 200));
+            setTimeout(conectar, 600);
         })();
     </script>
 </body>
