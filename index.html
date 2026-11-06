@@ -481,6 +481,43 @@
             #galeria-visor .pie { max-width: 84vw; }
         }
 
+        /* ===== FICHA PATOLÓGICA · modal que se abre desde el visor de la galería ===== */
+        #ficha-overlay { position: fixed; inset: 0; background: rgba(7,13,25,0.84); z-index: 980; display: none; align-items: flex-start; justify-content: center; padding: 26px 16px; overflow-y: auto; backdrop-filter: blur(3px); }
+        #ficha-overlay.show { display: flex; }
+        .ficha-card { background: #fff; color: #0f172a; width: min(880px, 100%); border-radius: 14px; box-shadow: 0 24px 60px rgba(0,0,0,0.45); overflow: hidden; }
+        .ficha-cab { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 18px; background: #070d19; color: #f8fafc; }
+        .ficha-cab h2 { font-size: 15px; font-weight: 700; }
+        .ficha-cerrar { background: #1e293b; color: #fff; border: 1px solid #334155; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+        .ficha-cerrar:hover { border-color: #00b4d8; }
+        #ficha-cuerpo { padding: 16px 18px 22px; font-size: 13px; line-height: 1.5; }
+        .ficha-datos { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+        .ficha-datos span { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 999px; padding: 4px 12px; font-size: 12px; color: #334155; }
+        .ficha-datos span b { color: #0f172a; }
+        .ficha-resumen { font-size: 12.5px; color: #475569; margin-bottom: 4px; }
+        .ficha-resumen b { color: #0f172a; }
+        .ficha-seccion { margin-top: 16px; }
+        .ficha-seccion h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: #0284c7; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+        .ficha-ubi img { display: block; width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; }
+        .ficha-fotos { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+        .ficha-fotos img { width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; cursor: zoom-in; }
+        .ficha-fotos img.ampliada { grid-column: 1 / -1; aspect-ratio: auto; max-height: 62vh; object-fit: contain; }
+        .ficha-tabla { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+        .ficha-tabla th, .ficha-tabla td { border: 1px solid #e2e8f0; padding: 5px 8px; text-align: left; vertical-align: top; }
+        .ficha-tabla th { background: #0284c7; color: #fff; font-size: 12px; }
+        .ficha-tabla tr:nth-child(even) td { background: #f8fafc; }
+        .ficha-tabla td.marca { text-align: center; width: 78px; font-weight: 700; }
+        .ficha-tabla td.marca.si { color: #b91c1c; }
+        .ficha-tabla td.marca.no { color: #94a3b8; font-weight: 600; }
+        .ficha-texto { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; white-space: pre-wrap; }
+        .ficha-vacio { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; border-radius: 8px; padding: 10px 12px; }
+        .ficha-sin { color: #94a3b8; font-style: italic; font-size: 12.5px; }
+        @media (max-width: 640px) {
+            #ficha-overlay { padding: 12px 10px; }
+            .ficha-fotos { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+            .ficha-tabla { font-size: 12px; }
+            .ficha-tabla th, .ficha-tabla td { padding: 4px 6px; }
+        }
+
         /* ===== NITIDEZ DEL MAPA GENERAL AL HACER ZOOM =====
            Con «will-change: transform» el navegador dibuja la capa una sola vez a escala 1 y después la estira
            al hacer zoom (de ahí el pixelado). Con «auto» el mapa vectorial se vuelve a dibujar a la escala real. */
@@ -866,6 +903,17 @@
             <button type="button" class="visor-ficha" id="visor-ficha" disabled title="Se activa al abrir una foto de «Patologías Registradas»">🩺 Ver ficha patológica</button>
         </div>
         <div id="visor-aviso"></div>
+    </div>
+
+    <!-- MODAL: FICHA PATOLÓGICA (lo abre el botón «🩺 Ver ficha patológica» del visor de la galería) -->
+    <div id="ficha-overlay" role="dialog" aria-modal="true" aria-labelledby="ficha-titulo">
+        <div class="ficha-card">
+            <div class="ficha-cab">
+                <h2 id="ficha-titulo">🩺 Ficha patológica</h2>
+                <button type="button" class="ficha-cerrar" onclick="cerrarFichaPatologica()" title="Cerrar (también con la tecla Esc)">✕ Cerrar</button>
+            </div>
+            <div id="ficha-cuerpo"></div>
+        </div>
     </div>
 
     <!-- CARTEL DE BIENVENIDA -->
@@ -2965,7 +3013,7 @@
                 { id: 'inv-acceso', t: 'Orientación y control de acceso', h: 'inv', tipo: 'esp', cols: [
                     { l: 'Orientación', k: 'orientacion' }, { l: 'Acceso libre', k: 'accesoLibre', cuenta: 1, cl: 'Acceso libre' },
                     { l: 'Tipo de control', k: 'tipoControl' }, { l: 'Responsable', k: 'responsableAcceso' }] },
-                { id: 'inv-pat', t: 'Patologías y diagnóstico', h: 'inv', tipo: 'esp', etq: 'patologías registradas',
+                { id: 'inv-pat', t: 'Patologías y diagnóstico', h: 'inv', tipo: 'esp', etq: 'patologías registradas', fichas: 1,
                     filtro: d => { const v = normalizarTextoSimple(infLimpiar(d.tipoPatologia)); return v !== '' && INF_SIN_PAT.indexOf(v) < 0; },
                     cols: [{ l: 'Tipo de patología', k: 'tipoPatologia', cuenta: 1, cl: 'Tipos de patología' }, { l: 'Ubicación', k: 'ubicacionPatologia' },
                         { l: 'Estado general', k: 'estadoGeneral', cuenta: 1, cl: 'Estado general' }, { l: 'Observaciones', k: 'observacionesPatologia', ancho: 1 },
@@ -3131,11 +3179,25 @@
             stats.unshift(tema.filtro ? ('Espacios con ' + tema.etq + ': ' + filas.length + ' de ' + esp.length + ' espacios del alcance')
                                       : ('Espacios incluidos: ' + filas.length));
             const sin = esp.length - filas.length;
-            return {
+            const inf = {
                 cols: [{ l: 'Espacio', bold: 1 }].concat(cols.map(c => ({ l: c.l, num: c.num, ancho: c.ancho }))),
                 cuerpo, stats, n: filas.length, unidad: 'espacios',
                 nota: (!tema.filtro && sin > 0) ? (sin + ' espacio(s) del alcance no tienen información registrada en este tema y no se incluyen.') : ''
             };
+            // Fichas patológicas (tema «Patologías y diagnóstico»): se añaden al PDF con su texto y sus fotos.
+            if (tema.fichas && window.GIC_FICHAS) {
+                const ya = new Set();
+                inf.fichas = [];
+                filas.forEach(fr => {
+                    const cod = fr.e && fr.e.codigo;
+                    if (!cod || ya.has(cod)) return;
+                    ya.add(cod);
+                    const f = window.GIC_FICHAS.fichaDe(cod);
+                    if (f) inf.fichas.push({ cod: f.cod, piso: f.piso, ed: f.ed, pats: f.pats, desc: f.desc, interv: f.interv });
+                });
+                if (inf.fichas.length) stats.push('Fichas patológicas que se añaden al PDF (con sus fotos): ' + inf.fichas.length);
+            }
+            return inf;
         }
 
         function infArmarPorPiso(tema, alc) {
@@ -3311,12 +3373,103 @@
             try { inf = informeConstruir(); } catch (e) { console.error('[GIC] Informe:', e); }
             if (!excelWorkbookGlobal) { vista.textContent = '⏳ Los datos del Excel aún no se han cargado. Espera unos segundos e inténtalo de nuevo.'; btn.disabled = true; return; }
             if (!inf || !inf.n) { vista.textContent = '⚠ No hay información registrada para esta selección. Prueba con otro alcance o tema.'; btn.disabled = true; return; }
-            vista.textContent = '✔ Se incluirán ' + inf.n + ' ' + inf.unidad + (inf.tituloExtra ? ' (' + inf.tituloExtra + ')' : '') + ' de la hoja «' + inf.hoja + '».';
+            vista.textContent = '✔ Se incluirán ' + inf.n + ' ' + inf.unidad + (inf.tituloExtra ? ' (' + inf.tituloExtra + ')' : '') + ' de la hoja «' + inf.hoja + '»' + (inf.fichas && inf.fichas.length ? ' · además, ' + inf.fichas.length + ' ficha(s) patológica(s) con sus fotos se añaden al PDF' : '') + '.';
             btn.disabled = false;
         }
 
+        // ---------- fichas patológicas dentro del PDF (tema «Patologías y diagnóstico») ----------
+        // Añade una página por cada ficha: clasificación con las marcas X, descripción, intervención
+        // y las fotos de la ficha (plano de ubicación + imágenes del espacio), leídas del .xlsx en memoria.
+        async function infAgregarFichasPDF(doc, inf, W, H, M) {
+            let fotos = null;
+            try { if (window.GIC_FICHAS) fotos = await window.GIC_FICHAS.imagenesDe(inf.fichas.map(f => f.cod)); }
+            catch (e) { console.warn('[GIC] Fotos de las fichas patológicas:', e); }
+
+            const fmtDe = (url) => {
+                const m = /^data:([^;,]+)/.exec(url || '');
+                const t = (m ? m[1] : '').toLowerCase();
+                return t.indexOf('png') >= 0 ? 'PNG' : (t.indexOf('jpeg') >= 0 || t.indexOf('jpg') >= 0) ? 'JPEG' : t.indexOf('gif') >= 0 ? 'GIF' : 'PNG';
+            };
+
+            for (const f of inf.fichas) {
+                doc.addPage();
+                let y = 20;
+
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(2, 132, 199);
+                doc.text('Ficha patológica · Espacio ' + f.cod, M, y); y += 6;
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(71, 85, 105);
+                doc.text('Piso ' + (f.piso || '—') + '   |   ' + (f.ed || '—') + '   |   Código ' + f.cod, M, y); y += 4;
+                doc.setDrawColor(0, 180, 216); doc.line(M, y, W - M, y); y += 6;
+
+                const pats = f.pats || [];
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(100, 116, 139);
+                doc.text('Patologías marcadas: ' + pats.filter(p => p.x).length + ' de ' + pats.length, M, y); y += 5;
+
+                // --- Clasificación: las 18 patologías con su marca X ---
+                if (pats.length) {
+                    let grupoPrev = null;
+                    const cuerpo = pats.map(p => {
+                        const g = (p.g && p.g !== grupoPrev) ? p.g : '';
+                        if (p.g) grupoPrev = p.g;
+                        return [g, p.n, p.x ? 'X' : '—'];
+                    });
+                    doc.autoTable({
+                        startY: y, margin: { top: 18, bottom: 16, left: M, right: M }, theme: 'grid',
+                        head: [['Grupo', 'Patología', 'Presente']], body: cuerpo,
+                        styles: { font: 'helvetica', fontSize: 8, cellPadding: 1.6, overflow: 'linebreak', valign: 'middle', lineColor: [226, 232, 240], lineWidth: 0.1, textColor: [15, 23, 42] },
+                        headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' },
+                        alternateRowStyles: { fillColor: [248, 250, 252] },
+                        columnStyles: { 0: { cellWidth: 32 }, 2: { cellWidth: 18, halign: 'center' } },
+                        didParseCell: d => {
+                            if (d.section === 'body' && d.column.index === 2 && d.cell.raw === 'X') {
+                                d.cell.styles.textColor = [185, 28, 28]; d.cell.styles.fontStyle = 'bold';
+                            }
+                        }
+                    });
+                    y = doc.lastAutoTable.finalY + 7;
+                }
+
+                // --- Descripción e intervención ---
+                const bloque = (etq, txt) => {
+                    if (!txt) return;
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(14, 116, 144);
+                    if (y + 12 > H - 18) { doc.addPage(); y = 20; }
+                    doc.text(etq, M, y); y += 4.8;
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(15, 23, 42);
+                    const lineas = doc.splitTextToSize(txt, W - 2 * M);
+                    const alto = lineas.length * 4.1 + 4;
+                    if (y + alto > H - 18) { doc.addPage(); y = 20; }
+                    doc.text(lineas, M, y); y += alto;
+                };
+                bloque('Descripción', f.desc);
+                bloque('Intervención', f.interv);
+
+                // --- Fotos: plano de ubicación + imágenes de la ficha ---
+                const im = (fotos && fotos[f.cod]) || { ubi: [], fotos: [] };
+                const rutas = im.ubi.concat(im.fotos);
+                if (rutas.length) {
+                    if (y + 66 > H - 18) { doc.addPage(); y = 20; }
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(14, 116, 144);
+                    doc.text(im.ubi.length ? 'Plano de ubicación y fotos' : 'Fotos', M, y); y += 5;
+                    const maxW = W - 2 * M, maxH = 54;
+                    let x = M, altoFila = 0;
+                    for (const url of rutas) {
+                        let props = null;
+                        try { props = doc.getImageProperties(url); } catch (e) { continue; }
+                        if (!props || !props.width || !props.height) continue;
+                        const esc = Math.min(maxW / props.width, maxH / props.height, 1.6);
+                        const w = props.width * esc, h = props.height * esc;
+                        if (x > M && x + w > W - M) { x = M; y += altoFila + 4; altoFila = 0; }
+                        if (y + h > H - 16) { doc.addPage(); y = 20; x = M; altoFila = 0; }
+                        try { doc.addImage(url, fmtDe(url), x, y, w, h); } catch (e) { continue; }
+                        x += w + 4; altoFila = Math.max(altoFila, h);
+                    }
+                }
+            }
+        }
+
         // ---------- generación del PDF ----------
-        function generarInformePDF() {
+        async function generarInformePDF() {
             const vista = document.getElementById('informe-vista-previa');
             const J = window.jspdf && window.jspdf.jsPDF;
             if (!J) { vista.textContent = '⚠ No se pudo cargar la librería de PDF. Revisa tu conexión a internet y recarga la página.'; return; }
@@ -3385,6 +3538,14 @@
                 if (yy > H - 22) { doc.addPage(); yy = 22; }
                 doc.setFont('helvetica', 'italic'); doc.setFontSize(8.5); doc.setTextColor(100, 116, 139);
                 doc.text(doc.splitTextToSize(inf.nota, W - 2 * M), M, yy);
+            }
+
+            // Fichas patológicas (solo el tema «Patologías y diagnóstico»): una página por ficha con
+            // clasificación, descripción, intervención y sus fotos. Van antes del encabezado corrido/pie
+            // para que también les queden numeradas.
+            if (inf.fichas && inf.fichas.length) {
+                try { await infAgregarFichasPDF(doc, inf, W, H, M); }
+                catch (e) { console.error('[GIC] Fichas patológicas del informe:', e); }
             }
 
             // Encabezado corrido (desde la pág. 2) y pie de página
@@ -5739,6 +5900,323 @@
             obj.addEventListener('load', () => setTimeout(conectar, 200));
             setTimeout(conectar, 600);
         })();
+    </script>
+
+    <!-- ===== FICHA PATOLÓGICA =====
+         Lee la hoja «Ficha Patologías» de Plantilla_Levantamiento_Edificio.xlsx (archivo que la página
+         ya descarga y guarda en excelBufferGlobal / excelWorkbookGlobal), muestra la ficha en un modal
+         al pulsar «🩺 Ver ficha patológica» en el visor de la galería y aporta las fichas con sus fotos
+         al informe de «Patologías y diagnóstico». Solo añade código nuevo: no reemplaza funciones. -->
+    <script>
+    (function () {
+        'use strict';
+
+        const $ = (id) => document.getElementById(id);
+        const norm = (t) => (t === null || t === undefined ? '' : String(t).trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+
+        // Cachés: se rehacen solas si la página vuelve a cargar el Excel.
+        const cache = { wb: null, porCod: null, buf: null, zip: null, pos: null, urls: {}, imgs: {} };
+        let tokenFicha = 0;
+
+        const libro = () => (typeof excelWorkbookGlobal !== 'undefined') ? excelWorkbookGlobal : null;
+        const buffer = () => (typeof excelBufferGlobal !== 'undefined') ? excelBufferGlobal : null;
+
+        function nombreHojaFichas(wb) {
+            const n = Object.keys((wb && wb.Sheets) || {});
+            return n.find(x => norm(x).includes('FICHA') && norm(x).includes('PATOLOG')) || n.find(x => norm(x).includes('FICHA')) || null;
+        }
+
+        // ---------- 1) índice de fichas (síncrono, a partir de la matriz con merges) ----------
+        // Cada bloque de ficha empieza en la celda «Piso» y mide 7 columnas x 34 filas:
+        //   fila encabezado: Piso | Edificio | Código de Espacio
+        //   +13: Clasificación (grupo) | nombre de la 1.ª patología | Descripción
+        //   +14..+30: las 18 patologías con su marca X en la columna anterior al nombre
+        function indiceFichas() {
+            const wb = libro();
+            if (!wb) return {};
+            if (cache.wb === wb && cache.porCod) return cache.porCod;
+            const porCod = {};
+            cache.wb = wb; cache.porCod = porCod;
+            try {
+                const nombre = nombreHojaFichas(wb);
+                const hoja = nombre && wb.Sheets[nombre];
+                if (!hoja) return porCod;
+                const m = obtenerMatrizConMerges(hoja);
+                for (let r = 0; r < m.length; r++) {
+                    const fila = m[r] || [];
+                    for (let c = 0; c < fila.length; c++) {
+                        if (norm(fila[c]) !== 'PISO') continue;
+                        let cEd = -1, cCod = -1;
+                        for (let i = 1; i <= 10; i++) {
+                            const t = norm(fila[c + i]);
+                            if (t === 'EDIFICIO') cEd = c + i;
+                            else if (t === 'CODIGO DE ESPACIO') cCod = c + i;
+                        }
+                        if (cEd < 0 || cCod < 0) continue;
+                        const cod = String(fila[cCod + 1] === undefined ? '' : fila[cCod + 1]).trim();
+                        if (!cod) continue;
+                        const pats = [];
+                        let grupo = '', desc = '', interv = '', enInterv = false;
+                        for (let rr = r + 13; rr <= r + 30 && rr < m.length; rr++) {
+                            const f2 = m[rr] || [];
+                            const g = f2[c + 1];
+                            if (g && norm(g) !== 'X') grupo = String(g).trim();
+                            const nom = f2[c + 3];
+                            if (nom) pats.push({ g: grupo, n: String(nom).trim(), x: norm(f2[c + 2]) === 'X' });
+                            const v = f2[c + 4];
+                            if (!v) continue;
+                            const nv = norm(v);
+                            if (nv === 'DESCRIPCION') continue;
+                            if (nv === 'INTERVENCION') { enInterv = true; continue; }
+                            if (enInterv) { if (!interv) interv = String(v); }
+                            else if (!desc) desc = String(v);
+                        }
+                        porCod[cod.replace(/\D/g, '')] = {
+                            cod: cod,
+                            piso: String(fila[c + 1] === undefined ? '' : fila[c + 1]),
+                            ed: String(fila[cEd + 1] === undefined ? '' : fila[cEd + 1]),
+                            row0: r, col0: c, pats: pats, desc: desc, interv: interv
+                        };
+                    }
+                }
+            } catch (e) { console.warn('[GIC] Ficha patológica (lectura):', e); }
+            return porCod;
+        }
+
+        // «A-101», «101» o «Hunza 101» → 101 (los códigos de las fichas son tres dígitos).
+        function fichaDe(codigo) {
+            const dig = String(codigo || '').replace(/\D/g, '');
+            if (!dig) return null;
+            const idx = indiceFichas();
+            return idx[dig] || idx[dig.slice(-3)] || null;
+        }
+
+        // ---------- 2) imágenes de cada ficha (asíncrono, desde el .xlsx ya cargado en memoria) ----------
+        async function cargarZip() {
+            const buf = buffer();
+            if (!buf) return null;
+            if (cache.buf !== buf) {
+                cache.buf = buf; cache.zip = null; cache.pos = null; cache.urls = {}; cache.imgs = {};
+            }
+            if (!cache.zip) cache.zip = JSZip.loadAsync(buf);
+            return cache.zip;
+        }
+
+        // Plano de ubicación (columnas c0..c0+3) y fotos (c0+4..c0+6) de cada ficha,
+        // localizadas por la posición del encabezado dentro de la hoja.
+        async function posicionImagenes() {
+            if (cache.pos) return cache.pos;
+            const zip = await cargarZip();
+            if (!zip) return null;
+            try {
+                const nombre = nombreHojaFichas(libro());
+                const rutas = await mapaHojasZip(zip);
+                const ruta = nombre && rutas[nombre];
+                if (!ruta) { cache.pos = {}; return cache.pos; }
+                const imgs = await imagenesDeHoja(zip, ruta, await mapaImagenesEnCelda(zip));
+                const idx = indiceFichas();
+                const fichas = Object.keys(idx).map(k => idx[k]);
+                const pos = {};
+                fichas.forEach(f => { pos[f.cod] = { ubi: [], fotos: [] }; });
+                imgs.forEach(im => {
+                    const due = fichas.find(f => im.fila >= f.row0 + 2 && im.fila <= f.row0 + 12 && im.col >= f.col0 && im.col <= f.col0 + 6);
+                    if (!due || !pos[due.cod]) return;
+                    (im.col <= due.col0 + 3 ? pos[due.cod].ubi : pos[due.cod].fotos).push(im.medio);
+                });
+                cache.pos = pos;
+            } catch (e) { console.warn('[GIC] Ficha patológica (imágenes):', e); cache.pos = {}; }
+            return cache.pos;
+        }
+
+        async function dataUrlDe(zip, medio) {
+            if (cache.urls[medio]) return cache.urls[medio];
+            const f = zip.file(medio);
+            if (!f) return '';
+            const mime = mimeDeRuta(medio) || 'application/octet-stream';
+            const url = 'data:' + mime + ';base64,' + (await f.async('base64'));
+            cache.urls[medio] = url;
+            return url;
+        }
+
+        async function imagenesFicha(cod) {
+            const vacio = { ubi: [], fotos: [] };
+            if (cache.imgs[cod]) return cache.imgs[cod];
+            const promesa = (async () => {
+                const pos = await posicionImagenes();
+                const p = pos && pos[cod];
+                if (!p) return vacio;
+                const zip = await cargarZip();
+                if (!zip) return vacio;
+                const conv = async (lista) => {
+                    const out = [];
+                    for (const m of lista) { const u = await dataUrlDe(zip, m); if (u) out.push(u); }
+                    return out;
+                };
+                return { ubi: await conv(p.ubi), fotos: await conv(p.fotos) };
+            })();
+            cache.imgs[cod] = promesa;
+            try { return await promesa; }
+            catch (e) { delete cache.imgs[cod]; console.warn('[GIC] Ficha patológica (fotos):', e); return vacio; }
+        }
+
+        // ---------- 3) modal ----------
+        function cerrarFichaPatologica() {
+            const ov = $('ficha-overlay');
+            if (ov) ov.classList.remove('show');
+        }
+
+        function nodo(tag, cls, txt) {
+            const e = document.createElement(tag);
+            if (cls) e.className = cls;
+            if (txt !== undefined && txt !== null) e.textContent = txt;
+            return e;
+        }
+        function seccion(titulo) {
+            const s = nodo('div', 'ficha-seccion');
+            s.appendChild(nodo('h3', null, titulo));
+            return s;
+        }
+
+        function pintarFicha(codigo, foto) {
+            const cuerpo = $('ficha-cuerpo');
+            if (!cuerpo) return;
+            cuerpo.textContent = '';
+            const f = fichaDe(codigo);
+
+            if (!f) {
+                cuerpo.appendChild(nodo('div', 'ficha-vacio',
+                    'No hay ficha patológica registrada en el Excel para el código «' + (codigo || 'sin código') +
+                    '». Las fichas disponibles cubren los espacios con patologías levantadas en la hoja «Ficha Patologías».'));
+                return;
+            }
+
+            const token = ++tokenFicha;
+
+            // --- datos generales ---
+            const datos = nodo('div', 'ficha-datos');
+            const agregar = (k, v) => {
+                if (!v) return;
+                const s = nodo('span');
+                s.appendChild(nodo('b', null, k + ': '));
+                s.appendChild(document.createTextNode(String(v)));
+                datos.appendChild(s);
+            };
+            agregar('Piso', f.piso);
+            agregar('Edificio', f.ed);
+            agregar('Código', f.cod);
+            if (foto && foto.codigo && String(foto.codigo).trim() !== f.cod) agregar('Código en la galería', foto.codigo);
+            if (foto && foto.detalle) agregar('Uso', foto.detalle);
+            if (foto && foto.referencia) agregar('Ubicación de la patología', foto.referencia);
+            cuerpo.appendChild(datos);
+
+            const marcadas = f.pats.filter(p => p.x).length;
+            const res = nodo('div', 'ficha-resumen');
+            res.appendChild(nodo('b', null, 'Patologías marcadas: '));
+            res.appendChild(document.createTextNode(marcadas + ' de ' + f.pats.length + (marcadas ? '' : ' (la ficha no tiene patologías marcadas)')));
+            cuerpo.appendChild(res);
+
+            // --- ubicación en el plano ---
+            const sUbi = seccion('Ubicación en el plano');
+            const ubi = nodo('div', 'ficha-ubi');
+            ubi.appendChild(nodo('div', 'ficha-sin', 'Cargando plano…'));
+            sUbi.appendChild(ubi); cuerpo.appendChild(sUbi);
+
+            // --- fotos ---
+            const sFotos = seccion('Fotos del espacio');
+            const contFotos = nodo('div', 'ficha-fotos');
+            contFotos.appendChild(nodo('div', 'ficha-sin', 'Cargando fotos…'));
+            sFotos.appendChild(contFotos); cuerpo.appendChild(sFotos);
+
+            // --- clasificación con las marcas X ---
+            const sClas = seccion('Clasificación de patologías');
+            const tb = nodo('table', 'ficha-tabla');
+            const thead = nodo('thead'), trh = nodo('tr');
+            ['Grupo', 'Patología', 'Presente'].forEach(t => trh.appendChild(nodo('th', null, t)));
+            thead.appendChild(trh); tb.appendChild(thead);
+            const tbody = nodo('tbody');
+            let grupoPrev = null;
+            f.pats.forEach(p => {
+                const tr = nodo('tr');
+                tr.appendChild(nodo('td', null, (p.g && p.g !== grupoPrev) ? p.g : ''));
+                if (p.g) grupoPrev = p.g;
+                tr.appendChild(nodo('td', null, p.n));
+                tr.appendChild(nodo('td', 'marca ' + (p.x ? 'si' : 'no'), p.x ? '✔  X' : '—'));
+                tbody.appendChild(tr);
+            });
+            tb.appendChild(tbody); sClas.appendChild(tb); cuerpo.appendChild(sClas);
+
+            // --- descripción e intervención ---
+            const texto = (titulo, valor) => {
+                const s = seccion(titulo);
+                s.appendChild(nodo('div', valor ? 'ficha-texto' : 'ficha-sin',
+                    valor || 'Sin ' + titulo.toLowerCase() + ' registrada en la ficha.'));
+                cuerpo.appendChild(s);
+            };
+            texto('Descripción', f.desc);
+            texto('Intervención', f.interv);
+
+            // --- imágenes (se cargan sin bloquear la ventana) ---
+            imagenesFicha(f.cod).then(im => {
+                if (token !== tokenFicha) return;         // el usuario ya abrió otra ficha
+                ubi.textContent = '';
+                if (im.ubi.length) {
+                    im.ubi.forEach(u => {
+                        const img = nodo('img');
+                        img.src = u; img.alt = 'Plano de ubicación – espacio ' + f.cod;
+                        ubi.appendChild(img);
+                    });
+                } else {
+                    ubi.appendChild(nodo('div', 'ficha-sin', 'La ficha no incluye plano de ubicación.'));
+                }
+
+                contFotos.textContent = '';
+                if (im.fotos.length) im.fotos.forEach(u => {
+                    const img = nodo('img');
+                    img.src = u; img.alt = 'Foto del espacio ' + f.cod; img.title = 'Clic para ampliar';
+                    img.addEventListener('click', () => img.classList.toggle('ampliada'));
+                    contFotos.appendChild(img);
+                });
+                else contFotos.appendChild(nodo('div', 'ficha-sin', 'Este espacio no tiene fotos adjuntas en su ficha.'));
+            }).catch(err => console.warn('[GIC] Ficha patológica (fotos):', err));
+        }
+
+        function abrirFichaPatologica(foto) {
+            const ov = $('ficha-overlay');
+            if (!ov) return;
+            const cod = (foto && foto.codigo) || '';
+            const f = fichaDe(cod);
+            const titulo = $('ficha-titulo');
+            if (titulo) titulo.textContent = '🩺 Ficha patológica' + (f ? ' · espacio ' + f.cod : '');
+            ov.classList.add('show');
+            pintarFicha(cod, foto);
+        }
+
+        // ---------- enganche con el botón «🩺 Ver ficha patológica» de la galería ----------
+        window.cerrarFichaPatologica = cerrarFichaPatologica;
+        window.onAbrirFichaPatologica = abrirFichaPatologica;
+        window.GIC_FICHAS = {
+            fichaDe: fichaDe,
+            imagenesFicha: imagenesFicha,
+            imagenesDe: async (cods) => {
+                const out = {};
+                await Promise.all((cods || []).map(async c => { out[c] = await imagenesFicha(c); }));
+                return out;
+            },
+            total: () => Object.keys(indiceFichas()).length
+        };
+
+        document.addEventListener('keydown', (e) => {
+            const ov = $('ficha-overlay');
+            if (e.key === 'Escape' && ov && ov.classList.contains('show')) {
+                cerrarFichaPatologica();
+                if (e.stopPropagation) e.stopPropagation();
+            }
+        });
+        document.addEventListener('click', (e) => {
+            const ov = $('ficha-overlay');
+            if (ov && ov.classList.contains('show') && e.target === ov) cerrarFichaPatologica();
+        });
+    })();
     </script>
 </body>
 </html>
