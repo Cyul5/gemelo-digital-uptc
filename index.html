@@ -616,7 +616,7 @@
         /* ===== EDIFICIOS CLICKEABLES DEL MAPA GENERAL ===== */
         body.gic-ed-generico .pma-entrar, body.gic-ed-generico .pma-ayuda { display: none; }
         .gic-ed-foto { width: 100%; aspect-ratio: 16 / 10; border-radius: 10px; overflow: hidden; background: #0f172a; border: 1px solid #1e293b; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; }
-        .gic-ed-foto img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; }
+        .gic-ed-foto img { width: 100%; height: 100%; object-fit: contain; display: block; cursor: zoom-in; }
         .gic-ed-foto .vacia { text-align: center; color: #64748b; font-size: 12px; line-height: 1.5; padding: 12px; }
         .gic-ed-foto .vacia b { display: block; font-size: 26px; margin-bottom: 4px; }
         .gic-ed-chip { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid rgba(255,255,255,.35); }
@@ -5454,6 +5454,122 @@
         })();
     </script>
 
+    <!-- ===== FACHADAS DESDE EL EXCEL DEL REPOSITORIO ===== -->
+    <script>
+        // Lee «Plantilla_Fachadas_Edificios_2026.xlsx» y asocia cada foto incrustada
+        // en la columna «Foto» con el código/nombre del edificio.
+        // El archivo se descarga solo cuando se necesita (primer clic en un edificio).
+        const URL_EXCEL_FACHADAS = 'Plantilla_Fachadas_Edificios_2026.xlsx';
+
+        const GIC_FACHADAS = (function () {
+            let promesa = null, zipGlobal = null;
+            const porCodigo = new Map();     // "27" -> { medio }
+            const porNombre = new Map();     // "COLISEO" -> { medio }
+            const urls = new Map();          // medio -> blob URL
+
+            const norm = t => String(t || '')
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+            function claveCodigo(cod) {
+                if (cod === null || cod === undefined || cod === '') return null;
+                const n = parseInt(String(cod).replace(/\D/g, ''), 10);
+                return Number.isFinite(n) ? String(n) : null;
+            }
+
+            async function leer() {
+                if (typeof JSZip === 'undefined') throw new Error('JSZip no está disponible');
+                if (typeof XLSX === 'undefined') throw new Error('SheetJS no está disponible');
+
+                const resp = await fetch(URL_EXCEL_FACHADAS, { cache: 'force-cache' });
+                if (!resp.ok) throw new Error('No se pudo descargar ' + URL_EXCEL_FACHADAS + ' (HTTP ' + resp.status + ')');
+
+                const buffer = await resp.arrayBuffer();
+                const workbook = XLSX.read(buffer, { type: 'array' });
+                const zip = await JSZip.loadAsync(buffer);
+                zipGlobal = zip;
+
+                const rutasHojas = await mapaHojasZip(zip);
+                const imgEnCelda = await mapaImagenesEnCelda(zip);
+
+                // La plantilla tiene una sola hoja («Hoja1»); si cambia el nombre se usa la primera.
+                const nombreHoja = workbook.SheetNames[0];
+                const hoja = workbook.Sheets[nombreHoja];
+                const rutaHoja = rutasHojas[nombreHoja];
+                if (!hoja || !rutaHoja) throw new Error('No se encontró la hoja de fachadas');
+
+                const matriz = obtenerMatrizConMerges(hoja);
+                const rango = XLSX.utils.decode_range(hoja['!ref'] || 'A1');
+                const imagenes = await imagenesDeHoja(zip, rutaHoja, imgEnCelda);
+
+                // Encabezados reales: «Código de espacio», «Nombre Edificio», «Foto», «Estado»
+                let filaEnc = -1, colCod = -1, colNom = -1, colFoto = -1;
+                for (let r = 0; r < Math.min(20, matriz.length) && filaEnc === -1; r++) {
+                    (matriz[r] || []).forEach((v, c) => {
+                        const t = norm(v);
+                        if (t.includes('CODIGO')) colCod = c;
+                        if (t.includes('NOMBRE') && t.includes('EDIFICIO')) colNom = c;
+                        if (t === 'FOTO' || t === 'FOTOS' || t === 'FOTOGRAFIA' || t === 'IMAGEN') colFoto = c;
+                    });
+                    if (colCod !== -1 && colNom !== -1) filaEnc = r;
+                }
+                if (filaEnc === -1) throw new Error('No se encontró la fila de encabezados del Excel de fachadas');
+                if (colFoto === -1) colFoto = colCod + 3;   // en la plantilla la foto está en la columna D
+
+                // Índice: fila de la matriz -> imagen incrustada de la columna «Foto»
+                const imgPorFila = new Map();
+                for (const im of imagenes) {
+                    const filaMatriz = im.fila - rango.s.r;
+                    const colMatriz = im.col - rango.s.c;
+                    if (filaMatriz < 0) continue;
+                    if (colFoto !== -1 && colMatriz !== colFoto) continue;
+                    if (!imgPorFila.has(filaMatriz)) imgPorFila.set(filaMatriz, im.medio);
+                }
+
+                for (let r = filaEnc + 1; r < matriz.length; r++) {
+                    const fila = matriz[r] || [];
+                    const cod = claveCodigo(fila[colCod]);
+                    const nombre = String(fila[colNom] || '').trim();
+                    const medio = imgPorFila.get(r);
+                    if (!medio) continue;
+
+                    const dato = { medio };
+                    if (cod) porCodigo.set(cod, dato);
+                    if (nombre) porNombre.set(norm(nombre), dato);
+                }
+
+                console.log('[GIC] Fachadas del Excel:', porCodigo.size, 'edificios con foto');
+            }
+
+            function listo() {
+                if (!promesa) {
+                    promesa = leer().catch(err => {
+                        console.warn('[GIC] No se pudo leer el Excel de fachadas:', err.message);
+                        promesa = null;          // permite reintentar en el siguiente clic
+                        throw err;
+                    });
+                }
+                return promesa;
+            }
+
+            async function obtenerFoto(cod, nombre) {
+                await listo();
+                const dato = (claveCodigo(cod) && porCodigo.get(claveCodigo(cod))) || (nombre && porNombre.get(norm(nombre)));
+                if (!dato) return null;
+                if (urls.has(dato.medio)) return urls.get(dato.medio);
+                const entrada = zipGlobal && zipGlobal.file(dato.medio);
+                if (!entrada) return null;
+                const mime = (typeof mimeDeRuta === 'function' && mimeDeRuta(dato.medio)) || 'image/png';
+                const url = URL.createObjectURL(new Blob([await entrada.async('blob')], { type: mime }));
+                urls.set(dato.medio, url);
+                return url;
+            }
+
+            return { obtenerFoto, listo };
+        })();
+        window.GIC_FACHADAS = GIC_FACHADAS;
+    </script>
+
     <script>
         // ===== EDIFICIOS CLICKEABLES DEL MAPA GENERAL =====
         // Cada polígono del SVG que tenga uno de estos nombres (como id, como etiqueta de Inkscape o como <title>) se vuelve clickeable
@@ -5502,21 +5618,37 @@
 
             function cargarFachada(it, cont) {
                 const tok = ++tokenFoto, clave = slug(it);
-                const ponerVacia = () => { cont.innerHTML = '<div class="vacia"><b>📷</b>Foto de la fachada pendiente<br><span style="font-size:10px;">Agregar: ' + (it.fachada || CARPETA_FACHADAS + clave + '.jpg') + '</span></div>'; };
+                const ponerVacia = () => { cont.innerHTML = '<div class="vacia"><b>📷</b>Foto de la fachada pendiente<br><span style="font-size:10px;">Agregar en ' + URL_EXCEL_FACHADAS + ' o subir ' + (it.fachada || CARPETA_FACHADAS + clave + '.jpg') + '</span></div>'; };
                 const ponerImg = (url) => {
                     cont.innerHTML = ''; const im = document.createElement('img'); im.src = url; im.alt = 'Fachada ' + it.nombre; im.title = 'Clic para ver la foto completa';
                     im.addEventListener('click', () => window.open(url, '_blank', 'noopener')); cont.appendChild(im);
                 };
                 if (cacheFachada[clave] !== undefined) { cacheFachada[clave] ? ponerImg(cacheFachada[clave]) : ponerVacia(); return; }
-                const candidatas = it.fachada ? [it.fachada] : EXTENSIONES.map(e => CARPETA_FACHADAS + clave + '.' + e);
+
+                // Respaldo: fotos sueltas en la carpeta fachadas/ del repositorio
+                const buscarEnCarpeta = () => {
+                    const candidatas = it.fachada ? [it.fachada] : EXTENSIONES.map(e => CARPETA_FACHADAS + clave + '.' + e);
+                    (function probar(k) {
+                        if (k >= candidatas.length) { cacheFachada[clave] = null; if (tok === tokenFoto) ponerVacia(); return; }
+                        const t = new Image();
+                        t.onload = () => { cacheFachada[clave] = candidatas[k]; if (tok === tokenFoto) ponerImg(candidatas[k]); };
+                        t.onerror = () => probar(k + 1);
+                        t.src = candidatas[k];
+                    })(0);
+                };
+
                 cont.innerHTML = '<div class="vacia">Cargando foto…</div>';
-                (function probar(k) {
-                    if (k >= candidatas.length) { cacheFachada[clave] = null; if (tok === tokenFoto) ponerVacia(); return; }
-                    const t = new Image();
-                    t.onload = () => { cacheFachada[clave] = candidatas[k]; if (tok === tokenFoto) ponerImg(candidatas[k]); };
-                    t.onerror = () => probar(k + 1);
-                    t.src = candidatas[k];
-                })(0);
+
+                // 1) Primero se busca la foto dentro del Excel de fachadas del repositorio
+                if (window.GIC_FACHADAS) {
+                    window.GIC_FACHADAS.obtenerFoto(it.cod, it.nombre).then(url => {
+                        if (tok !== tokenFoto) return;
+                        if (url) { cacheFachada[clave] = url; ponerImg(url); }
+                        else buscarEnCarpeta();
+                    }).catch(() => { if (tok === tokenFoto) buscarEnCarpeta(); });
+                } else {
+                    buscarEnCarpeta();
+                }
             }
 
             function mostrarInfo(it) {
@@ -5531,7 +5663,7 @@
                     '<div class="info-group"><div class="info-label">Nombre:</div><div class="info-val">' + (cat ? '<span class="gic-ed-chip" style="background:' + cat.color + '"></span>' : '') + it.nombre + '</div></div>' +
                     (it.cod != null ? '<div class="info-group"><div class="info-label">Código en el plano:</div><div class="info-val">' + it.cod + '</div></div>' : '') +
                     '<div class="info-section-title">ℹ️ Información</div>' +
-                    '<div class="info-group"><div class="info-val" style="color:#94a3b8;font-size:12px;line-height:1.5;">Aún no hay información registrada para este edificio. Próximamente: fotografía de la fachada y datos generales.</div></div>';
+                    '<div class="info-group"><div class="info-val" style="color:#94a3b8;font-size:12px;line-height:1.5;">Aún no hay datos generales registrados para este edificio.</div></div>';
                 cargarFachada(it, document.getElementById('gic-ed-foto'));
             }
 
