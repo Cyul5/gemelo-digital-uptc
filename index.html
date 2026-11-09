@@ -2138,7 +2138,7 @@
                 galeriaVisible = [];
                 const cont = document.getElementById('galeria-contador');
                 if (cont) cont.textContent = '0 fotos';
-                grid.innerHTML = '<div class="galeria-msg">La galería de este edificio está vacía por ahora.<br>Las fotos disponibles corresponden solo al edificio HUNZA.</div>';
+                grid.innerHTML = '<div class="galeria-msg">La galería de este edificio está vacía por ahora.</div>';
                 return;
             }
             if (galeriaFotos) { renderizarGaleria(); return; }
@@ -2165,7 +2165,7 @@
             if (typeof edificioActual !== 'undefined' && edificioActual === 'lab') {
                 galeriaVisible = [];
                 if (cont) cont.textContent = '0 fotos';
-                if (grid) grid.innerHTML = '<div class="galeria-msg">La galería de este edificio está vacía por ahora.<br>Las fotos disponibles corresponden solo al edificio HUNZA.</div>';
+                if (grid) grid.innerHTML = '<div class="galeria-msg">La galería de este edificio está vacía por ahora.</div>';
                 return;
             }
             if (!galeriaFotos) return;
@@ -5069,7 +5069,8 @@
         window.cargarModeloIFC = cargarModeloGLBReal;
 
         // ================= MAPA DE CALOR 3D (inferido de la hoja de Horarios) =================
-        (function () {
+        // Eliminado a solicitud (2026-11-08): no se crea el botón ni el panel y no se toca el modelo.
+        (function () { return;
             const DIAS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
             const H0 = 7, H1 = 23;                       // franjas 07:00 a 23:00
             const RX_CIRC = /pasillo|corredor|escalera|ascensor|elevador|ba[nñ]o|sanitar|hall|vest[ií]bulo|circulaci/i;
@@ -6067,6 +6068,7 @@
                         '<div class="gic-ed-acciones">' +
                         '<button type="button" class="btn-edificio-accion" onclick="fijarEdificio(\'lab\'); irAVista2DPiso(pisoActual2D);">📐 Entrar al plano 2D (PLANOS_LABORATORIOS_ARQ.svg)</button>' +
                         '<button type="button" class="btn-edificio-accion sec" onclick="fijarEdificio(\'lab\'); irAVista(\'vista-3d\');">🏢 Modelo 3D (próximamente)</button>' +
+                        '<a class="btn-edificio-accion" style="text-align:center;text-decoration:none" href="solicitudes.html" target="_blank" rel="noopener">📝 Solicitar turno / subir archivo</a>' +
                         '<div style="font-size:11px;color:#94a3b8;line-height:1.4;">En el plano 2D: clic en <b>LAB ARQ</b> y luego en <b>IMPRESORA 3D / PLOTER 1 / PLOTER 2 / ROUTER</b> para abrir su ficha técnica.</div>' +
                         '</div>' : '');
                 cargarFachada(it, document.getElementById('gic-ed-foto'));
@@ -6536,6 +6538,7 @@
                 '<div class="info-group"><div class="info-label">Espacios con datos:</div><div class="info-val">0</div></div>' +
                 '<div class="gic-ed-acciones">' +
                 '<button type="button" class="btn-edificio-accion" onclick="irAVista2DPiso(pisoActual2D)">📐 Plano 2D (LAB ARQ)</button>' +
+                '<a class="btn-edificio-accion" style="text-align:center;text-decoration:none" href="solicitudes.html" target="_blank" rel="noopener">📝 Solicitar turno / subir archivo</a>' +
                 '</div>';
         }
         window.mostrarPanel3DLab = mostrarPanel3DLab;
@@ -6560,6 +6563,7 @@
                 '<div class="lab-maq-list">' +
                 Object.keys(MAQUINAS).map(id => tarjetaMaquina(id, MAQUINAS[id])).join('') +
                 '</div>' +
+                '<div class="gic-ed-acciones"><a class="btn-edificio-accion" style="text-align:center;text-decoration:none" href="solicitudes.html" target="_blank" rel="noopener">📝 Solicitar turno / subir archivo</a></div>' +
                 '<div style="margin-top:12px;font-size:11px;color:var(--text-muted);line-height:1.5;border-top:1px solid #1e293b;padding-top:10px;">💡 <em>Haz clic en el polígono <b>LAB ARQ</b> del plano y luego en cada máquina para abrir su ficha técnica (PDF).</em></div>';
         }
         window.mostrarResumenPlantaLAB = mostrarResumenPlantaLAB;
@@ -6587,6 +6591,7 @@
                 '<div class="info-group"><div class="info-val" style="font-size:12px;line-height:1.5;color:#cbd5e1;">' + m.desc + '</div></div>' +
                 '<div class="gic-ed-acciones">' +
                 '<button type="button" class="btn-edificio-accion" onclick="abrirFichaMaquina(\'' + id + '\')">📄 Ver ficha técnica (PDF)</button>' +
+                '<a class="btn-edificio-accion" style="text-align:center;text-decoration:none" href="solicitudes.html" target="_blank" rel="noopener">📝 Solicitar turno / subir archivo</a>' +
                 '</div>' +
                 '<div style="font-size:11px;color:#64748b;word-break:break-all;line-height:1.4;">' + m.url + '</div>' +
                 (m.esLocal ? '<div style="font-size:11px;color:#b45309;margin-top:8px;line-height:1.4;">⚠ Enlace local (file://): solo funciona en tu PC. Súbelo al repositorio para uso público.</div>' : '');
