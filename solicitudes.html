@@ -42,9 +42,16 @@
 
 <div class="card">
   <h2>Acceso</h2>
+  <div class="fila-btn" style="margin-bottom:12px">
+    <button id="tab-solicitante" onclick="fijarRolAcceso('solicitante')" style="flex:1">👤 Ingresar como solicitante</button>
+    <button id="tab-gestor" class="sec" onclick="fijarRolAcceso('gestor')" style="flex:1">🛠️ Ingresar como gestor</button>
+  </div>
   <div id="auth-out">
     <label>Correo</label><input id="email" type="email" placeholder="tu@uptc.edu.co" autocomplete="email">
     <label>Contraseña</label><input id="pwd" type="password" placeholder="********" autocomplete="current-password">
+    <div id="codigo-wrap" style="display:none">
+      <label>Código gestor (asignado previamente)</label><input id="codigo" type="password" placeholder="Código gestor" autocomplete="off">
+    </div>
     <label>Nombre completo (solo al crear cuenta)</label><input id="nombre" type="text" placeholder="Nombre y apellido">
     <div class="fila-btn">
       <button onclick="login()">Entrar</button>
@@ -121,6 +128,18 @@ const KEY = 'sb_publishable_u8csagpfK8PveqmZmilQFw_oVtw3ITG';
 const sb = supabase.createClient(SUPABASE_URL, KEY);
 const $ = id => document.getElementById(id);
 let yo = null, miRol = 'usuario', maquinas = [];
+// Simulación: código único para crear/entrar como gestor (en producción sería una tabla/código en servidor).
+const CODIGO_GESTOR = 'LAB2026';
+let rolAcceso = 'solicitante';
+function fijarRolAcceso(r) {
+  rolAcceso = r;
+  const esG = r === 'gestor';
+  $('codigo-wrap').style.display = esG ? 'block' : 'none';
+  $('tab-solicitante').className = esG ? 'sec' : '';
+  $('tab-gestor').className = esG ? '' : 'sec';
+  if (!esG) { const c = $('codigo'); if (c) c.value = ''; }
+  $('auth-msg').textContent = '';
+}
 
 async function cargarMaquinas(){
   const { data, error } = await sb.from('machines').select('*').order('name');
@@ -154,15 +173,31 @@ async function sesion(){
   }
 }
 async function login(){
+  if (rolAcceso === 'gestor' && $('codigo').value.trim() !== CODIGO_GESTOR) {
+    $('auth-msg').className = 'msg err'; $('auth-msg').textContent = 'Código gestor incorrecto.'; return;
+  }
   const { error } = await sb.auth.signInWithPassword({ email: $('email').value, password: $('pwd').value });
-  $('auth-msg').className = 'msg' + (error ? ' err' : ' ok');
-  $('auth-msg').textContent = error ? error.message : '';
+  if (error) { $('auth-msg').className = 'msg err'; $('auth-msg').textContent = error.message; return; }
+  // Si entró como gestor con código, promover su perfil a gestor si aún es usuario
+  if (rolAcceso === 'gestor') {
+    const { data: u } = await sb.auth.getUser();
+    if (u && u.user) {
+      const { data: p } = await sb.from('profiles').select('role').eq('id', u.user.id).single();
+      if (p && p.role === 'usuario') await sb.from('profiles').update({ role: 'gestor' }).eq('id', u.user.id);
+    }
+  }
+  $('auth-msg').className = 'msg ok'; $('auth-msg').textContent = '';
   sesion();
 }
 async function registro(){
-  if ($('email').value.trim().toLowerCase().endsWith('@uptc.edu.co') === false && !confirm('¿Seguro? Se recomienda correo institucional.')) return;
+  if (rolAcceso === 'gestor' && $('codigo').value.trim() !== CODIGO_GESTOR) {
+    $('auth-msg').className = 'msg err'; $('auth-msg').textContent = 'Código gestor incorrecto. Solo el personal asignado puede crear cuentas de gestor.'; return;
+  }
   const { data, error } = await sb.auth.signUp({ email: $('email').value, password: $('pwd').value, options: { data: { full_name: $('nombre').value } } });
   if (error) { $('auth-msg').className = 'msg err'; $('auth-msg').textContent = error.message; return; }
+  if (rolAcceso === 'gestor' && data && data.session) {
+    await sb.from('profiles').update({ role: 'gestor' }).eq('id', data.session.user.id);
+  }
   if (data && data.session) { $('auth-msg').className = 'msg ok'; $('auth-msg').textContent = '✔ Cuenta creada. Entrando…'; await sesion(); }
   else { $('auth-msg').className = 'msg ok'; $('auth-msg').textContent = 'Cuenta creada. Revisa tu correo para confirmar y vuelve a entrar.'; }
 }
