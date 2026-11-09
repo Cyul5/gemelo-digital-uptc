@@ -207,6 +207,14 @@ async function sesion(){
   const dentro = !!yo;
   $('auth-out').style.display = dentro ? 'none' : 'block';
   $('auth-in').style.display = dentro ? 'block' : 'none';
+  if (!dentro) {
+    yo = null; miRol = 'usuario';
+    $('form-card').style.display = 'none';
+    $('lista-card').style.display = 'none';
+    $('prueba-card').style.display = 'none';
+    $('gestion-card').style.display = 'none';
+    return;
+  }
   if (dentro) {
     const { data: p } = await sb.from('profiles').select('*').eq('id', yo.id).single();
     miRol = p?.role || 'usuario';
