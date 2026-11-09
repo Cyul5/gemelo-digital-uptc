@@ -161,9 +161,10 @@ async function login(){
 }
 async function registro(){
   if ($('email').value.trim().toLowerCase().endsWith('@uptc.edu.co') === false && !confirm('¿Seguro? Se recomienda correo institucional.')) return;
-  const { error } = await sb.auth.signUp({ email: $('email').value, password: $('pwd').value, options: { data: { full_name: $('nombre').value } } });
-  $('auth-msg').className = 'msg' + (error ? ' err' : ' ok');
-  $('auth-msg').textContent = error ? error.message : 'Revisa tu correo para confirmar y vuelve a entrar.';
+  const { data, error } = await sb.auth.signUp({ email: $('email').value, password: $('pwd').value, options: { data: { full_name: $('nombre').value } } });
+  if (error) { $('auth-msg').className = 'msg err'; $('auth-msg').textContent = error.message; return; }
+  if (data && data.session) { $('auth-msg').className = 'msg ok'; $('auth-msg').textContent = '✔ Cuenta creada. Entrando…'; await sesion(); }
+  else { $('auth-msg').className = 'msg ok'; $('auth-msg').textContent = 'Cuenta creada. Revisa tu correo para confirmar y vuelve a entrar.'; }
 }
 async function salir(){ await sb.auth.signOut(); sesion(); }
 
