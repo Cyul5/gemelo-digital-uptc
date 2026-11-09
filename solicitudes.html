@@ -87,11 +87,29 @@
   <div id="lista"><p class="ayuda">Cargando…</p></div>
 </div>
 
+<div class="card" id="prueba-card" style="display:none">
+  <h2>🧪 Prueba de máquina (gestor)</h2>
+  <p class="ayuda">Sube un archivo de prueba para verificar la máquina. No se crea una solicitud.</p>
+  <label>Máquina</label><select id="maq-prueba"></select>
+  <div id="ext-prueba" class="ayuda"></div>
+  <label>Archivo de prueba (máx. 50 MB)</label><input id="archivo-prueba" type="file">
+  <div class="fila-btn"><button onclick="subirPrueba()">Subir y probar máquina</button></div>
+  <div id="prueba-msg" class="msg"></div>
+  <div id="prueba-link" class="msg"></div>
+</div>
+
 <div class="card" id="gestion-card" style="display:none">
-  <h2>Gestión (gestor)</h2>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+    <h2 style="margin:0">Gestión (gestor)</h2>
+    <div class="fila-btn" style="margin:0">
+      <button class="sec" onclick="mostrarSeccionGestor('sec-maint','sec-inv')">🔧 Mantenimiento</button>
+      <button class="sec" onclick="mostrarSeccionGestor('sec-inv','sec-maint')">📦 Consumo</button>
+    </div>
+  </div>
   <h3 style="font-size:14px;margin:14px 0 6px">Bandeja de solicitudes</h3>
   <div id="bandeja"><p class="ayuda">Cargando…</p></div>
   <hr style="border:0;border-top:1px solid #e2e8f0;margin:18px 0">
+  <div id="sec-maint" style="display:none">
   <h3 style="font-size:14px;margin:0 0 10px">Registrar mantenimiento</h3>
   <div class="grid2">
     <div><label>Máquina</label><select id="m-maint"></select></div>
@@ -102,8 +120,9 @@
   <div class="fila-btn"><button onclick="guardarMantenimiento()">Guardar mantenimiento</button></div>
   <div id="maint-msg" class="msg"></div>
   <div id="lista-maint" style="margin-top:10px"></div>
-  <hr style="border:0;border-top:1px solid #e2e8f0;margin:18px 0">
-  <h3 style="font-size:14px;margin:0 0 10px">Registrar consumo (tinta / papel / material)</h3>
+  </div>
+  <div id="sec-inv" style="display:none">
+  <h3 style="font-size:14px;margin:14px 0 10px">Registrar consumo (tinta / papel / material)</h3>
   <div class="grid2">
     <div><label>Máquina</label><select id="m-inv"></select></div>
     <div><label>Tipo de material</label><select id="t-inv"><option value="tinta">Tinta</option><option value="papel">Papel</option><option value="filamento">Filamento</option><option value="mdf">MDF</option><option value="acrilico">Acrílico</option><option value="otro">Otro</option></select></div>
@@ -146,14 +165,41 @@ async function cargarMaquinas(){
   if (error) { console.warn(error); return; }
   maquinas = data || [];
   const opts = maquinas.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
-  $('maquina').innerHTML = opts; $('m-maint').innerHTML = opts; $('m-inv').innerHTML = opts;
-  actualizarAyudaExt();
+  $('maquina').innerHTML = opts; $('m-maint').innerHTML = opts; $('m-inv').innerHTML = opts; $('maq-prueba').innerHTML = opts;
+  actualizarAyudaExt(); actualizarAyudaPrueba();
 }
 function actualizarAyudaExt(){
   const m = maquinas.find(x => x.id === $('maquina').value);
   $('ext-ayuda').textContent = m ? ('Tipos permitidos para ' + m.name + ': ' + m.file_types.join(', ') + ' · máx. 50 MB') : '';
 }
 $('maquina').onchange = actualizarAyudaExt;
+function actualizarAyudaPrueba(){
+  const m = maquinas.find(x => x.id === $('maq-prueba').value);
+  $('ext-prueba').textContent = m ? ('Tipos permitidos para ' + m.name + ': ' + m.file_types.join(', ') + ' · máx. 50 MB') : '';
+}
+$('maq-prueba').onchange = actualizarAyudaPrueba;
+function mostrarSeccionGestor(mostrarId, ocultarId) {
+  const a = $(mostrarId), b = $(ocultarId);
+  if (a) a.style.display = 'block';
+  if (b) b.style.display = 'none';
+  if (a) a.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+async function subirPrueba(){
+  const m = maquinas.find(x => x.id === $('maq-prueba').value);
+  const f = $('archivo-prueba').files[0];
+  if (!m) { $('prueba-msg').className='msg err'; $('prueba-msg').textContent='Elige una máquina.'; return; }
+  if (!f) { $('prueba-msg').className='msg err'; $('prueba-msg').textContent='Elige un archivo de prueba.'; return; }
+  const ext = f.name.split('.').pop().toUpperCase();
+  if (!m.file_types.includes(ext)) { $('prueba-msg').className='msg err'; $('prueba-msg').textContent='Tipo no permitido para '+m.name+': '+ext; return; }
+  if (f.size > 50*1024*1024) { $('prueba-msg').className='msg err'; $('prueba-msg').textContent='Archivo mayor a 50 MB.'; return; }
+  const ruta = yo.id + '/prueba-' + Date.now() + '-' + f.name.replace(/[^\w.-]+/g, '_');
+  $('prueba-msg').className='msg'; $('prueba-msg').textContent='Subiendo…';
+  const { error } = await sb.storage.from('solicitudes-archivos').upload(ruta, f, { upsert: false });
+  if (error) { $('prueba-msg').className='msg err'; $('prueba-msg').textContent='Error: '+error.message; return; }
+  const { data } = await sb.storage.from('solicitudes-archivos').createSignedUrl(ruta, 3600);
+  $('prueba-msg').className='msg ok'; $('prueba-msg').textContent='✔ Archivo de prueba subido al bucket (sin crear solicitud).';
+  $('prueba-link').innerHTML = data?.signedUrl ? ('Enlace temporal (1 h): <a href="' + data.signedUrl + '" target="_blank" rel="noopener">Descargar / ver prueba</a>') : '';
+}
 
 async function sesion(){
   const { data } = await sb.auth.getSession();
@@ -161,15 +207,19 @@ async function sesion(){
   const dentro = !!yo;
   $('auth-out').style.display = dentro ? 'none' : 'block';
   $('auth-in').style.display = dentro ? 'block' : 'none';
-  $('form-card').style.display = dentro ? 'block' : 'none';
-  $('lista-card').style.display = dentro ? 'block' : 'none';
   if (dentro) {
     const { data: p } = await sb.from('profiles').select('*').eq('id', yo.id).single();
     miRol = p?.role || 'usuario';
-    $('quien').textContent = yo.email + ' · ' + (miRol === 'gestor' ? 'Gestor' : miRol === 'admin' ? 'Administrador' : 'Usuario');
-    $('gestion-card').style.display = (miRol === 'gestor' || miRol === 'admin') ? 'block' : 'none';
-    await cargarMaquinas(); await listarMias();
-    if (miRol !== 'usuario') { await listarBandeja(); await listarMantenimiento(); await listarInventario(); }
+    const esGestor = (miRol === 'gestor' || miRol === 'admin');
+    $('quien').textContent = yo.email + ' · ' + (esGestor ? 'Gestor' : 'Usuario');
+    // Solicitante: formulario + mis solicitudes. Gestor: prueba + gestión (sin enviar solicitudes)
+    $('form-card').style.display = esGestor ? 'none' : 'block';
+    $('lista-card').style.display = esGestor ? 'none' : 'block';
+    $('prueba-card').style.display = esGestor ? 'block' : 'none';
+    $('gestion-card').style.display = esGestor ? 'block' : 'none';
+    await cargarMaquinas();
+    if (!esGestor) await listarMias();
+    else { await listarBandeja(); await listarMantenimiento(); await listarInventario(); }
   }
 }
 async function login(){
@@ -241,10 +291,10 @@ async function listarMias(){
   ).join('') || '<p class="ayuda">Sin solicitudes aún.</p>';
 }
 async function listarBandeja(){
-  const { data } = await sb.from('requests').select('*, machines(name)').order('created_at', { ascending: false }).limit(100);
+  const { data } = await sb.from('requests').select('*, machines(name), profiles(email)').order('created_at', { ascending: false }).limit(100);
   $('bandeja').innerHTML = (data || []).map(r =>
     `<div class="item"><b>${r.title}</b> · ${r.machines?.name || ''} <span class="tag ${r.status}">${r.status}</span><br>
-     <small>${new Date(r.created_at).toLocaleString()}${r.file_name ? ' · 📎 ' + r.file_name : ''}${r.file_url ? ' · <a href="#" onclick="descargar(\'' + r.file_url + '\');return false">Descargar archivo</a>' : ''}</small><br>
+     <small>✉️ ${r.profiles?.email || 'sin correo'} · ${new Date(r.created_at).toLocaleString()}${r.file_name ? ' · 📎 ' + r.file_name : ''}${r.file_url ? ' · <a href="#" onclick="descargar(\'' + r.file_url + '\');return false">Descargar archivo</a>' : ''}</small><br>
      <small style="color:#64748b">${r.notes || ''}</small><br>
      <span class="fila-btn" style="margin-top:6px">
        <button onclick="cambiarEstado('${r.id}','aprobado')">Aprobar</button>
