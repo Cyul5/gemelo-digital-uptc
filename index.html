@@ -1093,6 +1093,7 @@
             const w = document.getElementById('svg-2d-wrapper');
             if (!w || zoom2DIniciado) return;
             zoom2DIniciado = true;
+            try { const o = document.getElementById('svg-2d-object'); if (o && o.contentDocument) conectarZoom2DAlSvg(o.contentDocument); } catch (e) {}
             w.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 zoom2DPorFactor(e.deltaY < 0 ? 1.15 : 0.87, e.clientX, e.clientY);
@@ -1118,9 +1119,41 @@
             // Doble clic: acercar al punto
             w.addEventListener('dblclick', (e) => { zoom2DPorFactor(1.5, e.clientX, e.clientY); });
         }
+        function conectarZoom2DAlSvg(doc) {
+            // Los eventos de la rueda/arrastre ocurren DENTRO del <object> (documento SVG aparte):
+            // hay que engancharlos en el contentDocument, no solo en el wrapper del HTML.
+            if (!doc || !doc.documentElement || doc.__zoom2D) return;
+            doc.__zoom2D = true;
+            doc.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                zoom2DPorFactor(e.deltaY < 0 ? 1.15 : 0.87, e.clientX, e.clientY);
+            }, { passive: false });
+            let arrastrando = false, ux = 0, uy = 0;
+            doc.addEventListener('pointerdown', (e) => { arrastrando = true; movido2D = false; ux = e.clientX; uy = e.clientY; });
+            doc.addEventListener('pointermove', (e) => {
+                if (!arrastrando) return;
+                const dx = e.clientX - ux, dy = e.clientY - uy;
+                if (Math.abs(dx) + Math.abs(dy) > 2) movido2D = true;
+                xZoom2D += dx; yZoom2D += dy; ux = e.clientX; uy = e.clientY;
+                aplicarZoom2D();
+            });
+            const finS = () => { arrastrando = false; setTimeout(() => { movido2D = false; }, 0); };
+            doc.addEventListener('pointerup', finS);
+            doc.addEventListener('pointercancel', finS);
+            // Fallback mouse (en algunos navegadores el puntero no llega al SVG embebido)
+            doc.addEventListener('mousedown', (e) => { if (!arrastrando) { arrastrando = true; movido2D = false; ux = e.clientX; uy = e.clientY; } });
+            doc.addEventListener('mousemove', (e) => {
+                if (!arrastrando) return;
+                xZoom2D += e.clientX - ux; yZoom2D += e.clientY - uy; ux = e.clientX; uy = e.clientY; aplicarZoom2D();
+            });
+            doc.addEventListener('mouseup', finS);
+            doc.addEventListener('click', (e) => { if (movido2D) { e.stopPropagation(); e.preventDefault(); movido2D = false; } }, true);
+            doc.addEventListener('dblclick', (e) => { zoom2DPorFactor(1.5, e.clientX, e.clientY); });
+        }
         window.zoom2DPorFactor = zoom2DPorFactor;
         window.resetZoom2D = resetZoom2D;
         window.iniciarZoom2D = iniciarZoom2D;
+        window.conectarZoom2DAlSvg = conectarZoom2DAlSvg;
         // Al cargar la página, iniciar el zoom del plano 2D inicial (HUNZA Piso 1)
         document.addEventListener('DOMContentLoaded', () => { aplicarZoom2D(); iniciarZoom2D(); });
         let aulaSeleccionadaActual = null;
@@ -2100,6 +2133,14 @@
             const ov = document.getElementById('galeria-overlay');
             const grid = document.getElementById('galeria-grid');
             ov.classList.add('show');
+            // Laboratorios Ingeniería (EDILAB): la galería está vacía — las fotos son solo de HUNZA
+            if (typeof edificioActual !== 'undefined' && edificioActual === 'lab') {
+                galeriaVisible = [];
+                const cont = document.getElementById('galeria-contador');
+                if (cont) cont.textContent = '0 fotos';
+                grid.innerHTML = '<div class="galeria-msg">La galería de este edificio está vacía por ahora.<br>Las fotos disponibles corresponden solo al edificio HUNZA.</div>';
+                return;
+            }
             if (galeriaFotos) { renderizarGaleria(); return; }
             grid.innerHTML = '<div class="galeria-msg">⏳ Leyendo las fotos del Excel…</div>';
             esperarExcelFotos().then(() => {
@@ -2120,6 +2161,13 @@
         function renderizarGaleria() {
             const grid = document.getElementById('galeria-grid');
             const cont = document.getElementById('galeria-contador');
+            // Laboratorios Ingeniería (EDILAB): galería vacía (las fotos son solo de HUNZA)
+            if (typeof edificioActual !== 'undefined' && edificioActual === 'lab') {
+                galeriaVisible = [];
+                if (cont) cont.textContent = '0 fotos';
+                if (grid) grid.innerHTML = '<div class="galeria-msg">La galería de este edificio está vacía por ahora.<br>Las fotos disponibles corresponden solo al edificio HUNZA.</div>';
+                return;
+            }
             if (!galeriaFotos) return;
             const fOrigen = document.getElementById('galeria-filtro-origen').value;
             const fPiso = document.getElementById('galeria-filtro-piso').value;
@@ -2327,6 +2375,7 @@
                         aulaSeleccionadaActual = null;
                         mostrarResumenPlanta2D();
                         verificarPlantaCargada();
+                        try { if (typeof window.conectarZoom2DAlSvg === 'function' && nuevoSvgObj.contentDocument) window.conectarZoom2DAlSvg(nuevoSvgObj.contentDocument); } catch (e) {}
                         if (typeof edificioActual !== 'undefined' && edificioActual === 'lab') {
                             if (typeof window.conectarPlanoLAB === 'function') window.conectarPlanoLAB();
                         } else {
@@ -3162,6 +3211,7 @@
                 svg2dObj.addEventListener('load', () => {
                     mostrarResumenPlanta2D();
                     actualizarEstadoAulas2D();
+                    try { if (typeof window.conectarZoom2DAlSvg === 'function' && svg2dObj.contentDocument) window.conectarZoom2DAlSvg(svg2dObj.contentDocument); } catch (e) {}
                 });
             }
         });
@@ -6016,7 +6066,7 @@
                     (it.cod === 62 ?
                         '<div class="gic-ed-acciones">' +
                         '<button type="button" class="btn-edificio-accion" onclick="fijarEdificio(\'lab\'); irAVista2DPiso(pisoActual2D);">📐 Entrar al plano 2D (PLANOS_LABORATORIOS_ARQ.svg)</button>' +
-                        '<button type="button" class="btn-edificio-accion sec" onclick="fijarEdificio(\'lab\'); irAVista(\'vista-3d\');">🏢 Modelo 3D (pendiente — pestaña lista)</button>' +
+                        '<button type="button" class="btn-edificio-accion sec" onclick="fijarEdificio(\'lab\'); irAVista(\'vista-3d\');">🏢 Modelo 3D (próximamente)</button>' +
                         '<div style="font-size:11px;color:#94a3b8;line-height:1.4;">En el plano 2D: clic en <b>LAB ARQ</b> y luego en <b>IMPRESORA 3D / PLOTER 1 / PLOTER 2 / ROUTER</b> para abrir su ficha técnica.</div>' +
                         '</div>' : '');
                 cargarFachada(it, document.getElementById('gic-ed-foto'));
@@ -6084,6 +6134,14 @@
                     el.addEventListener('mouseenter', () => { if (typeof panning !== 'undefined' && panning) return; hover = it; if (actual !== it) resaltar(it, true); });
                     el.addEventListener('mouseleave', () => { if (actual !== it) resaltar(it, false); });
                     el.addEventListener('click', (e) => { if (typeof hasMoved !== 'undefined' && hasMoved) return; e.stopPropagation(); seleccionar(it); });
+                    el.addEventListener('dblclick', (e) => {
+                        if (typeof hasMoved !== 'undefined' && hasMoved) return;
+                        // Doble clic en el edificio (LABARATORIOS INGENIERIA) → pestaña Modelo 3D (próximamente)
+                        if (it.cod !== 62) return;
+                        e.stopPropagation();
+                        if (typeof window.fijarEdificio === 'function') window.fijarEdificio('lab');
+                        irAVista('vista-3d');
+                    });
                 });
                 console.log('[GIC] Edificios clickeables en el mapa:', EDIFICIOS.length - faltan.length, 'de', EDIFICIOS.length, faltan.length ? '| sin encontrar en el SVG: ' + faltan.join(', ') : '');
 
@@ -6451,7 +6509,7 @@
             const s2 = $('select-edificio-2d'); if (s2) s2.value = v;
             const s3 = $('select-edificio-3d'); if (s3) s3.value = v;
             const b2 = $('btn-nav-2d'); if (b2) b2.title = (v === 'lab' ? 'Planos 2D — Laboratorios Ingeniería (EDILAB)' : 'Planos 2D — Aulas Hunza');
-            const b3 = $('btn-nav-3d'); if (b3) b3.title = (v === 'lab' ? 'Modelo 3D — Laboratorios Ingeniería (pendiente)' : 'Modelo 3D — Aulas Hunza');
+            const b3 = $('btn-nav-3d'); if (b3) b3.title = (v === 'lab' ? 'Modelo 3D (próximamente)' : 'Modelo 3D — Aulas Hunza');
         }
 
         // ---------- direccionamiento: fijar el edificio activo ----------
@@ -6473,9 +6531,12 @@
             if (titulo) titulo.textContent = '🏢 LABORATORIOS INGENIERÍA (EDILAB) — 3D';
             if (hoja) hoja.innerHTML = '<strong>Hoja:</strong> —';
             if (cont) cont.innerHTML =
-                '<div class="info-section-title">🏗️ Modelo 3D próximamente</div>' +
+                '<div class="info-section-title">🏗️ Modelos 3D próximamente</div>' +
                 '<div class="info-group"><div class="info-label">Datos del levantamiento (Excel):</div><div class="info-val">0</div></div>' +
-                '<div class="info-group"><div class="info-label">Espacios con datos:</div><div class="info-val">0</div></div>';
+                '<div class="info-group"><div class="info-label">Espacios con datos:</div><div class="info-val">0</div></div>' +
+                '<div class="gic-ed-acciones">' +
+                '<button type="button" class="btn-edificio-accion" onclick="irAVista2DPiso(pisoActual2D)">📐 Plano 2D (LAB ARQ)</button>' +
+                '</div>';
         }
         window.mostrarPanel3DLab = mostrarPanel3DLab;
 
