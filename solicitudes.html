@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Solicitudes — Laboratorios Ingeniería (EDILAB)</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;max-width:980px;margin:24px auto;padding:0 16px;color:#0f172a;background:#f8fafc}
+  h1{font-size:22px;color:#0284c7;margin-bottom:4px}
+  .sub{color:#64748b;font-size:13px;margin-bottom:16px;line-height:1.5}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px 18px;margin:14px 0;box-shadow:0 6px 20px rgba(15,23,42,.06)}
+  .card h2{font-size:16px;color:#0284c7;margin:0 0 10px}
+  label{display:block;font-size:12px;font-weight:700;color:#475569;margin:10px 0 4px;text-transform:uppercase;letter-spacing:.4px}
+  input,select,textarea{width:100%;padding:9px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;background:#fff;color:#0f172a}
+  button{background:#0284c7;color:#fff;border:0;padding:10px 16px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px}
+  button:hover{background:#0369a1}
+  button.sec{background:#e2e8f0;color:#0f172a}
+  button.sec:hover{background:#cbd5e1}
+  button.peligro{background:#b91c1c}
+  button.ok{background:#15803d}
+  .fila-btn{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .ayuda{font-size:12px;color:#64748b;margin-top:4px}
+  .msg{font-size:13px;margin-top:10px;line-height:1.5}
+  .msg.err{color:#b91c1c}.msg.ok{color:#15803d}
+  .item{border-top:1px solid #e2e8f0;padding:12px 0}
+  .item:first-child{border-top:0}
+  .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:#f1f5f9;border:1px solid #e2e8f0;color:#334155}
+  .tag.pendiente{background:#fef3c7;color:#92400e}
+  .tag.aprobado{background:#dbeafe;color:#1e40af}
+  .tag.en_proceso{background:#e0e7ff;color:#3730a3}
+  .tag.terminado{background:#dcfce7;color:#166534}
+  .tag.rechazado{background:#fee2e2;color:#991b1b}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:640px){.grid2{grid-template-columns:1fr}}
+  a{color:#0284c7}
+</style>
+</head>
+<body>
+<h1>🖨️ Solicitudes de máquinas — Laboratorios Ingeniería (EDILAB)</h1>
+<p class="sub">Solicita un turno, sube tu archivo y sigue el estado. El gestor de cada máquina lo aprueba y lo gestiona (mantenimiento e inventario). Fase 1: sin chat, solo estados.</p>
+
+<div class="card">
+  <h2>Acceso</h2>
+  <div id="auth-out">
+    <label>Correo</label><input id="email" type="email" placeholder="tu@uptc.edu.co" autocomplete="email">
+    <label>Contraseña</label><input id="pwd" type="password" placeholder="********" autocomplete="current-password">
+    <label>Nombre completo (solo al crear cuenta)</label><input id="nombre" type="text" placeholder="Nombre y apellido">
+    <div class="fila-btn">
+      <button onclick="login()">Entrar</button>
+      <button class="sec" onclick="registro()">Crear cuenta</button>
+    </div>
+    <div id="auth-msg" class="msg"></div>
+  </div>
+  <div id="auth-in" style="display:none">
+    <p id="quien" style="margin:0 0 10px;font-size:14px"></p>
+    <div class="fila-btn"><button class="sec" onclick="salir()">Cerrar sesión</button></div>
+  </div>
+</div>
+
+<div class="card" id="form-card" style="display:none">
+  <h2>Nueva solicitud</h2>
+  <label>Máquina</label><select id="maquina"></select>
+  <div id="ext-ayuda" class="ayuda"></div>
+  <label>Título (ej. Corte MDF maqueta 1:50, placa 60×20 cm)</label><input id="titulo" placeholder="Título de la solicitud">
+  <label>Tipo de servicio</label>
+  <select id="tipo"><option value="impresion">Impresión</option><option value="corte">Corte</option><option value="grabado">Grabado</option><option value="otro">Otro</option></select>
+  <div class="grid2">
+    <div><label>Fecha/hora deseada</label><input id="fecha" type="datetime-local"></div>
+    <div><label>Cantidad</label><input id="cantidad" type="number" value="1" min="1"></div>
+  </div>
+  <label>Archivo (máx. 50 MB, según la máquina)</label><input id="archivo" type="file">
+  <label>Notas (medidas, material, acabados…)</label><textarea id="notas" rows="3"></textarea>
+  <div class="fila-btn"><button onclick="crearSolicitud()">Enviar solicitud</button></div>
+  <div id="form-msg" class="msg"></div>
+</div>
+
+<div class="card" id="lista-card" style="display:none">
+  <h2>Mis solicitudes</h2>
+  <div id="lista"><p class="ayuda">Cargando…</p></div>
+</div>
+
+<div class="card" id="gestion-card" style="display:none">
+  <h2>Gestión (gestor)</h2>
+  <h3 style="font-size:14px;margin:14px 0 6px">Bandeja de solicitudes</h3>
+  <div id="bandeja"><p class="ayuda">Cargando…</p></div>
+  <hr style="border:0;border-top:1px solid #e2e8f0;margin:18px 0">
+  <h3 style="font-size:14px;margin:0 0 10px">Registrar mantenimiento</h3>
+  <div class="grid2">
+    <div><label>Máquina</label><select id="m-maint"></select></div>
+    <div><label>Tipo</label><select id="t-maint"><option value="preventivo">Preventivo</option><option value="correctivo">Correctivo</option><option value="limpieza">Limpieza</option><option value="cambio">Cambio</option><option value="inspeccion">Inspección</option><option value="otro">Otro</option></select></div>
+  </div>
+  <label>Título</label><input id="titulo-maint" placeholder="Ej. Limpieza boquilla">
+  <label>Descripción</label><textarea id="desc-maint" rows="2"></textarea>
+  <div class="fila-btn"><button onclick="guardarMantenimiento()">Guardar mantenimiento</button></div>
+  <div id="maint-msg" class="msg"></div>
+  <div id="lista-maint" style="margin-top:10px"></div>
+  <hr style="border:0;border-top:1px solid #e2e8f0;margin:18px 0">
+  <h3 style="font-size:14px;margin:0 0 10px">Registrar consumo (tinta / papel / material)</h3>
+  <div class="grid2">
+    <div><label>Máquina</label><select id="m-inv"></select></div>
+    <div><label>Tipo de material</label><select id="t-inv"><option value="tinta">Tinta</option><option value="papel">Papel</option><option value="filamento">Filamento</option><option value="mdf">MDF</option><option value="acrilico">Acrílico</option><option value="otro">Otro</option></select></div>
+  </div>
+  <div class="grid2">
+    <div><label>Material</label><input id="mat-nombre" placeholder="Ej. PLA, papel bond, MDF 3mm"></div>
+    <div><label>Cantidad usada</label><input id="mat-cant" type="number" step="0.01" placeholder="Ej. 2.5"></div>
+  </div>
+  <label>Unidad</label><input id="mat-unidad" placeholder="Ej. gr, hojas, mm">
+  <label>Notas</label><textarea id="mat-notas" rows="2"></textarea>
+  <div class="fila-btn"><button onclick="guardarInventario()">Guardar consumo</button></div>
+  <div id="inv-msg" class="msg"></div>
+  <div id="lista-inv" style="margin-top:10px"></div>
+</div>
+
+<p class="ayuda" style="text-align:center"><a href="index.html">← Volver al Gemelo Digital (mapa general)</a></p>
+
+<script>
+// Conectado a tu proyecto Supabase "maquinas-lab-arq"
+const URL = 'https://uewmxjqtnfsxwwwebxkt.supabase.co';
+const KEY = 'sb_publishable_u8csagpfK8PveqmZmilQFw_oVtw3ITG';
+const sb = supabase.createClient(URL, KEY);
+const $ = id => document.getElementById(id);
+let yo = null, miRol = 'usuario', maquinas = [];
+
+async function cargarMaquinas(){
+  const { data, error } = await sb.from('machines').select('*').order('name');
+  if (error) { console.warn(error); return; }
+  maquinas = data || [];
+  const opts = maquinas.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  $('maquina').innerHTML = opts; $('m-maint').innerHTML = opts; $('m-inv').innerHTML = opts;
+  actualizarAyudaExt();
+}
+function actualizarAyudaExt(){
+  const m = maquinas.find(x => x.id === $('maquina').value);
+  $('ext-ayuda').textContent = m ? ('Tipos permitidos para ' + m.name + ': ' + m.file_types.join(', ') + ' · máx. 50 MB') : '';
+}
+$('maquina').onchange = actualizarAyudaExt;
+
+async function sesion(){
+  const { data } = await sb.auth.getSession();
+  yo = data.session?.user || null;
+  const dentro = !!yo;
+  $('auth-out').style.display = dentro ? 'none' : 'block';
+  $('auth-in').style.display = dentro ? 'block' : 'none';
+  $('form-card').style.display = dentro ? 'block' : 'none';
+  $('lista-card').style.display = dentro ? 'block' : 'none';
+  if (dentro) {
+    const { data: p } = await sb.from('profiles').select('*').eq('id', yo.id).single();
+    miRol = p?.role || 'usuario';
+    $('quien').textContent = yo.email + ' · ' + (miRol === 'gestor' ? 'Gestor' : miRol === 'admin' ? 'Administrador' : 'Usuario');
+    $('gestion-card').style.display = (miRol === 'gestor' || miRol === 'admin') ? 'block' : 'none';
+    await cargarMaquinas(); await listarMias();
+    if (miRol !== 'usuario') { await listarBandeja(); await listarMantenimiento(); await listarInventario(); }
+  }
+}
+async function login(){
+  const { error } = await sb.auth.signInWithPassword({ email: $('email').value, password: $('pwd').value });
+  $('auth-msg').className = 'msg' + (error ? ' err' : ' ok');
+  $('auth-msg').textContent = error ? error.message : '';
+  sesion();
+}
+async function registro(){
+  if ($('email').value.trim().toLowerCase().endsWith('@uptc.edu.co') === false && !confirm('¿Seguro? Se recomienda correo institucional.')) return;
+  const { error } = await sb.auth.signUp({ email: $('email').value, password: $('pwd').value, options: { data: { full_name: $('nombre').value } } });
+  $('auth-msg').className = 'msg' + (error ? ' err' : ' ok');
+  $('auth-msg').textContent = error ? error.message : 'Revisa tu correo para confirmar y vuelve a entrar.';
+}
+async function salir(){ await sb.auth.signOut(); sesion(); }
+
+async function crearSolicitud(){
+  const m = maquinas.find(x => x.id === $('maquina').value);
+  if (!m) { $('form-msg').className='msg err'; $('form-msg').textContent='Elige una máquina.'; return; }
+  const f = $('archivo').files[0];
+  let file_url = '', file_name = '';
+  if (f) {
+    const ext = f.name.split('.').pop().toUpperCase();
+    if (!m.file_types.includes(ext)) { $('form-msg').className='msg err'; $('form-msg').textContent = 'Tipo no permitido para ' + m.name + ': ' + ext + ' (permitidos: ' + m.file_types.join(', ') + ')'; return; }
+    if (f.size > 50*1024*1024) { $('form-msg').className='msg err'; $('form-msg').textContent = 'Archivo mayor a 50 MB.'; return; }
+    file_name = f.name;
+    const ruta = yo.id + '/' + Date.now() + '-' + f.name.replace(/[^\w.-]+/g, '_');
+    const { error: up } = await sb.storage.from('solicitudes-archivos').upload(ruta, f, { upsert: false });
+    if (up) { $('form-msg').className='msg err'; $('form-msg').textContent = 'Error subiendo archivo: ' + up.message; return; }
+    file_url = ruta;
+  }
+  const { error } = await sb.from('requests').insert({
+    user_id: yo.id, machine_id: m.id, title: $('titulo').value.trim() || 'Sin título',
+    service_type: $('tipo').value, requested_at: $('fecha').value || null,
+    quantity: +$('cantidad').value || 1, notes: $('notas').value, file_url, file_name
+  });
+  $('form-msg').className = 'msg' + (error ? ' err' : ' ok');
+  $('form-msg').textContent = error ? ('Error: ' + error.message) : '✔ Solicitud creada (estado: pendiente)';
+  if (!error) { listarMias(); if (miRol !== 'usuario') listarBandeja(); }
+}
+async function descargar(ruta){
+  const { data, error } = await sb.storage.from('solicitudes-archivos').createSignedUrl(ruta, 3600);
+  if (error) { alert('No se pudo descargar: ' + error.message); return; }
+  window.open(data.signedUrl, '_blank');
+}
+async function listarMias(){
+  const { data } = await sb.from('requests').select('*, machines(name)').eq('user_id', yo.id).order('created_at', { ascending: false });
+  $('lista').innerHTML = (data || []).map(r =>
+    `<div class="item"><b>${r.title}</b> · ${r.machines?.name || ''} <span class="tag ${r.status}">${r.status}</span><br>
+     <small>${new Date(r.created_at).toLocaleString()}${r.file_name ? ' · 📎 ' + r.file_name + '' : ''}${r.file_url ? ' · <a href="#" onclick="descargar(\'' + r.file_url + '\');return false">Descargar</a>' : ''}</small><br>
+     <small style="color:#64748b">${r.notes || ''}</small></div>`
+  ).join('') || '<p class="ayuda">Sin solicitudes aún.</p>';
+}
+async function listarBandeja(){
+  const { data } = await sb.from('requests').select('*, machines(name)').order('created_at', { ascending: false }).limit(100);
+  $('bandeja').innerHTML = (data || []).map(r =>
+    `<div class="item"><b>${r.title}</b> · ${r.machines?.name || ''} <span class="tag ${r.status}">${r.status}</span><br>
+     <small>${new Date(r.created_at).toLocaleString()}${r.file_name ? ' · 📎 ' + r.file_name : ''}${r.file_url ? ' · <a href="#" onclick="descargar(\'' + r.file_url + '\');return false">Descargar archivo</a>' : ''}</small><br>
+     <small style="color:#64748b">${r.notes || ''}</small><br>
+     <span class="fila-btn" style="margin-top:6px">
+       <button onclick="cambiarEstado('${r.id}','aprobado')">Aprobar</button>
+       <button class="sec" onclick="cambiarEstado('${r.id}','en_proceso')">En proceso</button>
+       <button class="ok" onclick="cambiarEstado('${r.id}','terminado')">Terminado</button>
+       <button class="peligro" onclick="cambiarEstado('${r.id}','rechazado')">Rechazar</button>
+     </span></div>`
+  ).join('') || '<p class="ayuda">Sin solicitudes.</p>';
+}
+async function cambiarEstado(id, estado){
+  const { error } = await sb.from('requests').update({ status: estado }).eq('id', id);
+  if (error) alert(error.message); else { listarBandeja(); listarMias(); }
+}
+async function guardarMantenimiento(){
+  const { error } = await sb.from('maintenance_logs').insert({
+    machine_id: $('m-maint').value, performed_by: yo.id, type: $('t-maint').value,
+    title: $('titulo-maint').value.trim() || 'Mantenimiento', description: $('desc-maint').value
+  });
+  $('maint-msg').className = 'msg' + (error ? ' err' : ' ok');
+  $('maint-msg').textContent = error ? error.message : '✔ Mantenimiento guardado.';
+  if (!error) listarMantenimiento();
+}
+async function listarMantenimiento(){
+  const { data } = await sb.from('maintenance_logs').select('*, machines(name)').order('created_at', { ascending: false }).limit(50);
+  $('lista-maint').innerHTML = '<b style="font-size:13px">Últimos mantenimientos</b>' + ((data || []).map(r =>
+    `<div class="item"><b>${r.title}</b> · ${r.machines?.name || ''} <span class="tag">${r.type}</span><br><small>${new Date(r.created_at).toLocaleString()} · ${r.description || ''}</small></div>`
+  ).join('') || '<p class="ayuda">Sin registros.</p>');
+}
+async function guardarInventario(){
+  const { error } = await sb.from('inventory_logs').insert({
+    machine_id: $('m-inv').value, recorded_by: yo.id, material_type: $('t-inv').value,
+    material_name: $('mat-nombre').value.trim() || 'Material', quantity_used: +$('mat-cant').value || 0,
+    unit: $('mat-unidad').value, notes: $('mat-notas').value
+  });
+  $('inv-msg').className = 'msg' + (error ? ' err' : ' ok');
+  $('inv-msg').textContent = error ? error.message : '✔ Consumo guardado.';
+  if (!error) listarInventario();
+}
+async function listarInventario(){
+  const { data } = await sb.from('inventory_logs').select('*, machines(name)').order('created_at', { ascending: false }).limit(50);
+  $('lista-inv').innerHTML = '<b style="font-size:13px">Últimos consumos</b>' + ((data || []).map(r =>
+    `<div class="item"><b>${r.material_name}</b> · ${r.quantity_used} ${r.unit || ''} · ${r.machines?.name || ''} <span class="tag">${r.material_type}</span><br><small>${new Date(r.created_at).toLocaleString()} · ${r.notes || ''}</small></div>`
+  ).join('') || '<p class="ayuda">Sin registros.</p>');
+}
+sb.auth.onAuthStateChange(() => sesion());
+sesion();
+</script>
+</body>
+</html>
