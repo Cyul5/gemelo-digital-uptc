@@ -234,7 +234,15 @@
             border: none; 
             object-fit: contain;
             background-color: #ffffff;
+            transform-origin: 0 0;
+            cursor: grab;
+            touch-action: none;
         }
+        #svg-2d-object.arrastrando { cursor: grabbing; }
+        .zoom2d-controles { position: absolute; right: 12px; bottom: 12px; z-index: 40; display: flex; gap: 6px; background: rgba(255,255,255,.92); border: 1px solid #cbd5e1; border-radius: 10px; padding: 6px; box-shadow: 0 8px 22px rgba(15,23,42,.18); }
+        .zoom2d-controles button { min-width: 36px; height: 36px; border: 1px solid #cbd5e1; background: #fff; color: #0f172a; border-radius: 8px; font-size: 16px; font-weight: 800; cursor: pointer; line-height: 1; padding: 0 8px; }
+        .zoom2d-controles button:hover { background: #0284c7; color: #fff; border-color: #0284c7; }
+        .zoom2d-indicador { align-self: center; font-size: 11px; color: #64748b; font-weight: 700; min-width: 44px; text-align: center; }
 
         /* PANEL DERECHO DE DATOS */
         .sidebar-right { 
@@ -772,14 +780,7 @@
                 <div id="ifc-canvas-container"></div>
                 <div id="lab-3d-sin-modelo">
                     <div class="lab-3d-caja">
-                        <h3>🏗️ Modelo 3D pendiente — Laboratorios Ingeniería (EDILAB)</h3>
-                        <p>Aún no hay modelo 3D para este edificio. La pestaña ya está lista: cuando subas el archivo <code>.glb</code> del laboratorio, esta misma vista lo cargará igual que el de HUNZA.</p>
-                        <p>Por ahora usa el plano 2D <strong>PLANOS_LABORATORIOS_ARQ.svg</strong>: haz clic en el espacio <strong>LAB ARQ</strong> y luego en cada máquina para abrir su ficha técnica.</p>
-                        <div class="lab-3d-acciones">
-                            <button type="button" class="btn-edificio-accion" onclick="irAVista2DPiso(pisoActual2D)">📐 Ver plano 2D de LAB</button>
-                            <button type="button" class="btn-edificio-accion sec" onclick="fijarEdificio('hunza'); irAVista('vista-3d');">🏢 Ver modelo 3D de HUNZA</button>
-                            <button type="button" class="btn-edificio-accion sec" onclick="irAVista('vista-mapa')">🗺️ Volver al mapa</button>
-                        </div>
+                        <h3>Modelos 3D próximamente</h3>
                     </div>
                 </div>
                 <div id="selector-edificio-3d-wrap" style="position:absolute; left:14px; bottom:14px; z-index:30; background:var(--bg-header); border:1px solid #1e293b; border-radius:8px; padding:8px 10px;">
@@ -859,6 +860,12 @@
                 </div>
                 <div class="container-svg-2d" id="svg-2d-wrapper">
                     <object id="svg-2d-object" type="image/svg+xml" data="PLANTA_1_HUNZA.svg"></object>
+                    <div class="zoom2d-controles" id="zoom2d-controles">
+                        <button type="button" onclick="zoom2DPorFactor(1.25)" title="Acercar (+)">+</button>
+                        <span class="zoom2d-indicador" id="zoom2d-indicador">100%</span>
+                        <button type="button" onclick="zoom2DPorFactor(0.8)" title="Alejar (−)">−</button>
+                        <button type="button" onclick="resetZoom2D()" title="Restablecer vista (100%)">⟲</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1059,6 +1066,63 @@
         };
         function cfgEdificioActual() { return CONFIG_EDIFICIOS[edificioActual] || CONFIG_EDIFICIOS.hunza; }
         function nombreEdificioActual() { return cfgEdificioActual().nombre; }
+        // ===== ZOOM / PANEO DEL PLANO 2D =====
+        let escZoom2D = 1, xZoom2D = 0, yZoom2D = 0;
+        let arrastra2D = false, ultimoX2D = 0, ultimoY2D = 0, movido2D = false, zoom2DIniciado = false;
+        function aplicarZoom2D() {
+            const o = document.getElementById('svg-2d-object');
+            if (o) o.style.transform = 'translate(' + xZoom2D + 'px, ' + yZoom2D + 'px) scale(' + escZoom2D + ')';
+            const ind = document.getElementById('zoom2d-indicador');
+            if (ind) ind.textContent = Math.round(escZoom2D * 100) + '%';
+        }
+        function zoom2DPorFactor(f, cx, cy) {
+            const w = document.getElementById('svg-2d-wrapper');
+            const rect = w ? w.getBoundingClientRect() : { left: 0, top: 0, width: 800, height: 600 };
+            const px = (cx !== undefined && cx !== null ? cx : rect.left + rect.width / 2) - rect.left;
+            const py = (cy !== undefined && cy !== null ? cy : rect.top + rect.height / 2) - rect.top;
+            const nuevo = Math.min(6, Math.max(1, escZoom2D * (f || 1.25)));
+            const k = nuevo / escZoom2D;
+            xZoom2D = px - (px - xZoom2D) * k;
+            yZoom2D = py - (py - yZoom2D) * k;
+            escZoom2D = nuevo;
+            if (escZoom2D <= 1.01) { escZoom2D = 1; xZoom2D = 0; yZoom2D = 0; }
+            aplicarZoom2D();
+        }
+        function resetZoom2D() { escZoom2D = 1; xZoom2D = 0; yZoom2D = 0; aplicarZoom2D(); }
+        function iniciarZoom2D() {
+            const w = document.getElementById('svg-2d-wrapper');
+            if (!w || zoom2DIniciado) return;
+            zoom2DIniciado = true;
+            w.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                zoom2DPorFactor(e.deltaY < 0 ? 1.15 : 0.87, e.clientX, e.clientY);
+            }, { passive: false });
+            w.addEventListener('pointerdown', (e) => {
+                if (e.target && e.target.closest && e.target.closest('#zoom2d-controles')) return;
+                arrastra2D = true; movido2D = false; ultimoX2D = e.clientX; ultimoY2D = e.clientY;
+                const o = document.getElementById('svg-2d-object'); if (o) o.classList.add('arrastrando');
+                try { w.setPointerCapture(e.pointerId); } catch (err) {}
+            });
+            w.addEventListener('pointermove', (e) => {
+                if (!arrastra2D) return;
+                const dx = e.clientX - ultimoX2D, dy = e.clientY - ultimoY2D;
+                if (Math.abs(dx) + Math.abs(dy) > 2) movido2D = true;
+                xZoom2D += dx; yZoom2D += dy; ultimoX2D = e.clientX; ultimoY2D = e.clientY;
+                aplicarZoom2D();
+            });
+            const finArrastre = () => { arrastra2D = false; const o = document.getElementById('svg-2d-object'); if (o) o.classList.remove('arrastrando'); setTimeout(() => { movido2D = false; }, 0); };
+            w.addEventListener('pointerup', finArrastre);
+            w.addEventListener('pointercancel', finArrastre);
+            // Un arrastre no debe disparar el clic de un aula/máquina
+            w.addEventListener('click', (e) => { if (movido2D) { e.stopPropagation(); e.preventDefault(); movido2D = false; } }, true);
+            // Doble clic: acercar al punto
+            w.addEventListener('dblclick', (e) => { zoom2DPorFactor(1.5, e.clientX, e.clientY); });
+        }
+        window.zoom2DPorFactor = zoom2DPorFactor;
+        window.resetZoom2D = resetZoom2D;
+        window.iniciarZoom2D = iniciarZoom2D;
+        // Al cargar la página, iniciar el zoom del plano 2D inicial (HUNZA Piso 1)
+        document.addEventListener('DOMContentLoaded', () => { aplicarZoom2D(); iniciarZoom2D(); });
         let aulaSeleccionadaActual = null;
         let vistaActualGlobal = "vista-mapa";
 
@@ -1602,7 +1666,7 @@
                 if (esLab) {
                     if (cont3d) cont3d.style.display = 'none';
                     if (sinModelo) sinModelo.classList.add('show');
-                    if (breadcrumb) breadcrumb.innerText = nombreEdificioActual() + ' (Modelo 3D pendiente)';
+                    if (breadcrumb) breadcrumb.innerText = 'Laboratorios Ingeniería (EDILAB) · Modelos 3D próximamente';
                     if (typeof actualizarPanelDetallePiso3D !== 'undefined') actualizarPanelDetallePiso3D("Edificio Completo");
                     if (typeof window.mostrarPanel3DLab === 'function') window.mostrarPanel3DLab();
                 } else {
@@ -2251,7 +2315,11 @@
             if (wrapper && !archivoSVG) {
                 wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#64748b;font-size:14px;text-align:center;padding:20px;">No hay un plano SVG asociado a este piso.<br>Revisa los archivos PLANTA_X_HUNZA.svg / PLANOS_LABORATORIOS_ARQ.svg o fuerza la asignación en ARCHIVOS_PISOS_FORZADOS.</div>';
             } else if (wrapper) {
-                wrapper.innerHTML = `<object id="svg-2d-object" type="image/svg+xml" data="${archivoSVG}" style="width:100%; height:100%; border:none; object-fit:contain; background-color:#ffffff;"></object>`;
+                wrapper.innerHTML = `<object id="svg-2d-object" type="image/svg+xml" data="${archivoSVG}" style="width:100%; height:100%; border:none; object-fit:contain; background-color:#ffffff;"></object>` +
+                    '<div class="zoom2d-controles" id="zoom2d-controles"><button type="button" onclick="zoom2DPorFactor(1.25)" title="Acercar (+)">+</button><span class="zoom2d-indicador" id="zoom2d-indicador">100%</span><button type="button" onclick="zoom2DPorFactor(0.8)" title="Alejar (−)">−</button><button type="button" onclick="resetZoom2D()" title="Restablecer vista (100%)">⟲</button></div>';
+
+                if (typeof window.resetZoom2D === 'function') window.resetZoom2D();
+                if (typeof window.iniciarZoom2D === 'function') window.iniciarZoom2D();
 
                 const nuevoSvgObj = document.getElementById('svg-2d-object');
                 if (nuevoSvgObj) {
@@ -6358,17 +6426,17 @@
             IMPRESORA_3D: {
                 etiqueta: 'IMPRESORA 3D', nombre: 'Impresora 3D Creality Ender 5 Max',
                 desc: 'Impresora 3D de trabajo para producción de maquetas en el laboratorio LAB ARQ.',
-                url: 'file:///C:/Users/ASUS/Downloads/Impresora_3D_Creality_Ender_5_max__1_.pdf', esLocal: true
+                url: 'https://makamba.com.ec/wp-content/uploads/2025/08/Plotter-audley-130cm-ficha-tecnica.pdf?srsltid=AYCX9vICqAvQgCYmVJsPHToP_sfoxpRBPI4Z0s2Oc21S4b3EALEerVXq', esLocal: false
             },
             PLOTER_1: {
                 etiqueta: 'PLOTER 1', nombre: 'Plotter Audley 130 cm (Plotter 1)',
                 desc: 'Plotter de corte para láminas y maquetas — puesto 1 del LAB ARQ.',
-                url: 'https://makamba.com.ec/wp-content/uploads/2025/08/Plotter-audley-130cm-ficha-tecnica.pdf?srsltid', esLocal: false
+                url: 'https://makamba.com.ec/wp-content/uploads/2025/08/Plotter-audley-130cm-ficha-tecnica.pdf?srsltid=AYCX9vICqAvQgCYmVJsPHToP_sfoxpRBPI4Z0s2Oc21S4b3EALEerVXq', esLocal: false
             },
             PLOTER_2: {
                 etiqueta: 'PLOTER 2', nombre: 'Plotter Audley 130 cm (Plotter 2)',
                 desc: 'Plotter de corte para láminas y maquetas — puesto 2 del LAB ARQ.',
-                url: 'https://makamba.com.ec/wp-content/uploads/2025/08/Plotter-audley-130cm-ficha-tecnica.pdf?srsltid', esLocal: false
+                url: 'https://makamba.com.ec/wp-content/uploads/2025/08/Plotter-audley-130cm-ficha-tecnica.pdf?srsltid=AYCX9vICqAvQgCYmVJsPHToP_sfoxpRBPI4Z0s2Oc21S4b3EALEerVXq', esLocal: false
             },
             ROUTER: {
                 etiqueta: 'ROUTER', nombre: 'Router láser MR6090B',
@@ -6405,12 +6473,9 @@
             if (titulo) titulo.textContent = '🏢 LABORATORIOS INGENIERÍA (EDILAB) — 3D';
             if (hoja) hoja.innerHTML = '<strong>Hoja:</strong> —';
             if (cont) cont.innerHTML =
-                '<div class="info-section-title">🏗️ Modelo 3D pendiente</div>' +
-                '<div class="info-group"><div class="info-val" style="font-size:12px;line-height:1.55;color:#cbd5e1;">Todavía no hay modelo 3D para este edificio. La pestaña <b>Modelo 3D</b> ya existe y cuando subas el <code>.glb</code> del laboratorio cargará aquí igual que el de HUNZA.</div></div>' +
-                '<div class="gic-ed-acciones">' +
-                '<button type="button" class="btn-edificio-accion" onclick="irAVista2DPiso(pisoActual2D)">📐 Usar el plano 2D de LAB</button>' +
-                '<button type="button" class="btn-edificio-accion sec" onclick="fijarEdificio(\'hunza\');">🏢 Cambiar al 3D de HUNZA</button>' +
-                '</div>';
+                '<div class="info-section-title">🏗️ Modelo 3D próximamente</div>' +
+                '<div class="info-group"><div class="info-label">Datos del levantamiento (Excel):</div><div class="info-val">0</div></div>' +
+                '<div class="info-group"><div class="info-label">Espacios con datos:</div><div class="info-val">0</div></div>';
         }
         window.mostrarPanel3DLab = mostrarPanel3DLab;
 
@@ -6426,6 +6491,9 @@
             cont.innerHTML =
                 '<div class="info-section-title">🏢 Laboratorios Ingeniería (EDILAB)</div>' +
                 '<div class="info-group"><div class="info-label">Plano:</div><div class="info-val">PLANOS_LABORATORIOS_ARQ.svg · plano único</div></div>' +
+                '<div class="info-group"><div class="info-label">Datos del levantamiento (Excel):</div><div class="info-val">0</div></div>' +
+                '<div class="info-group"><div class="info-label">Espacios con datos:</div><div class="info-val">0</div></div>' +
+                '<div class="info-group"><div class="info-val" style="font-size:11px;color:#94a3b8;line-height:1.4;">El Excel de este edificio aún no se ha subido; tiene la misma estructura que el del HUNZA, así que por ahora los datos muestran 0.</div></div>' +
                 '<div class="info-group"><div class="info-label">Espacio:</div><div class="info-val"><b>LAB ARQ</b></div></div>' +
                 '<div class="info-section-title">🤖 Máquinas (tienen ficha técnica)</div>' +
                 '<div class="lab-maq-list">' +
