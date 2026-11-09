@@ -116,9 +116,9 @@
 
 <script>
 // Conectado a tu proyecto Supabase "maquinas-lab-arq"
-const URL = 'https://uewmxjqtnfsxwwwebxkt.supabase.co';
+const SUPABASE_URL = 'https://uewmxjqtnfsxwwwebxkt.supabase.co';
 const KEY = 'sb_publishable_u8csagpfK8PveqmZmilQFw_oVtw3ITG';
-const sb = supabase.createClient(URL, KEY);
+const sb = supabase.createClient(SUPABASE_URL, KEY);
 const $ = id => document.getElementById(id);
 let yo = null, miRol = 'usuario', maquinas = [];
 
