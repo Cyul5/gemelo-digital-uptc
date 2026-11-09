@@ -518,6 +518,34 @@
             .ficha-tabla th, .ficha-tabla td { padding: 4px 6px; }
         }
 
+        /* ===== EDIFICIOS: selector, placeholder 3D y máquinas LAB ===== */
+        .edificio-selector { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #475569; font-weight: 600; }
+        .edificio-selector .filter-select { width: 210px; }
+        #lab-3d-sin-modelo { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: #f8fafc; padding: 24px; text-align: center; }
+        #lab-3d-sin-modelo.show { display: flex; }
+        .lab-3d-caja { max-width: 560px; background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 22px 24px; box-shadow: 0 10px 30px rgba(15,23,42,.12); }
+        .lab-3d-caja h3 { font-size: 17px; color: #0284c7; margin-bottom: 8px; }
+        .lab-3d-caja p { font-size: 13px; color: #475569; line-height: 1.55; margin-bottom: 10px; }
+        .lab-3d-caja .lab-3d-acciones { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
+        .btn-edificio-accion { background: #0284c7; color: #fff; border: none; border-radius: 8px; padding: 9px 14px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+        .btn-edificio-accion:hover { background: #0369a1; }
+        .btn-edificio-accion.sec { background: #e2e8f0; color: #0f172a; }
+        .btn-edificio-accion.sec:hover { background: #cbd5e1; }
+        .btn-edificio-accion:disabled { opacity: .5; cursor: not-allowed; }
+        .gic-ed-acciones { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+        #maquina-overlay { position: fixed; inset: 0; background: rgba(7,13,25,0.84); z-index: 985; display: none; align-items: center; justify-content: center; padding: 20px; }
+        #maquina-overlay.show { display: flex; }
+        .maquina-card { background: #fff; color: #0f172a; width: min(520px, 100%); border-radius: 14px; padding: 18px 20px; box-shadow: 0 20px 50px rgba(0,0,0,.45); }
+        .maquina-card h2 { font-size: 16px; color: #0284c7; margin-bottom: 4px; }
+        .maquina-card .sub { font-size: 12px; color: #64748b; margin-bottom: 10px; line-height: 1.45; }
+        .maquina-card .ficha-link { display: inline-block; margin-top: 10px; background: #0284c7; color: #fff; text-decoration: none; border-radius: 8px; padding: 10px 16px; font-size: 13px; font-weight: 700; }
+        .maquina-card .ficha-link:hover { background: #0369a1; }
+        .maquina-card .url-txt { display: block; margin-top: 8px; font-size: 11px; color: #94a3b8; word-break: break-all; }
+        .maquina-cerrar { margin-top: 12px; background: #e2e8f0; border: none; border-radius: 8px; padding: 9px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+        .lab-maq-list { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+        .lab-maq-list button { text-align: left; background: #1e293b; color: #e2e8f0; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px; font-size: 12px; cursor: pointer; }
+        .lab-maq-list button:hover { border-color: #00b4d8; }
+
         /* ===== NITIDEZ DEL MAPA GENERAL AL HACER ZOOM =====
            Con «will-change: transform» el navegador dibuja la capa una sola vez a escala 1 y después la estira
            al hacer zoom (de ahí el pixelado). Con «auto» el mapa vectorial se vuelve a dibujar a la escala real. */
@@ -742,6 +770,26 @@
             <!-- VISTA 2: MODELO 3D -->
             <div id="vista-3d" class="vista">
                 <div id="ifc-canvas-container"></div>
+                <div id="lab-3d-sin-modelo">
+                    <div class="lab-3d-caja">
+                        <h3>🏗️ Modelo 3D pendiente — Laboratorios Ingeniería (EDILAB)</h3>
+                        <p>Aún no hay modelo 3D para este edificio. La pestaña ya está lista: cuando subas el archivo <code>.glb</code> del laboratorio, esta misma vista lo cargará igual que el de HUNZA.</p>
+                        <p>Por ahora usa el plano 2D <strong>PLANOS_LABORATORIOS_ARQ.svg</strong>: haz clic en el espacio <strong>LAB ARQ</strong> y luego en cada máquina para abrir su ficha técnica.</p>
+                        <div class="lab-3d-acciones">
+                            <button type="button" class="btn-edificio-accion" onclick="irAVista2DPiso(pisoActual2D)">📐 Ver plano 2D de LAB</button>
+                            <button type="button" class="btn-edificio-accion sec" onclick="fijarEdificio('hunza'); irAVista('vista-3d');">🏢 Ver modelo 3D de HUNZA</button>
+                            <button type="button" class="btn-edificio-accion sec" onclick="irAVista('vista-mapa')">🗺️ Volver al mapa</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="selector-edificio-3d-wrap" style="position:absolute; left:14px; bottom:14px; z-index:30; background:var(--bg-header); border:1px solid #1e293b; border-radius:8px; padding:8px 10px;">
+                    <label class="edificio-selector" style="color:#e2e8f0;">🏢 Edificio:
+                        <select id="select-edificio-3d" class="filter-select" onchange="fijarEdificio(this.value)">
+                            <option value="hunza">Aulas Hunza</option>
+                            <option value="lab">Laboratorios Ingeniería (EDILAB)</option>
+                        </select>
+                    </label>
+                </div>
                 <button id="btn-galeria" type="button" onclick="abrirGaleria()" title="Ver todas las fotos del levantamiento">🖼️ Galería</button>
             </div>
 
@@ -757,6 +805,13 @@
                     
                     <!-- NUEVA LISTA DESPLEGABLE INDEPENDIENTE PARA PLANOS 2D -->
                     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <div class="edificio-selector">
+                            <span>🏢 Edificio:</span>
+                            <select id="select-edificio-2d" class="filter-select" onchange="fijarEdificio(this.value)">
+                                <option value="hunza">Aulas Hunza</option>
+                                <option value="lab">Laboratorios Ingeniería (EDILAB)</option>
+                            </select>
+                        </div>
                         <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #475569; font-weight: 600;">
                             <span>🏢 Seleccionar Planta:</span>
                             <select id="select-piso-2d" class="filter-select" style="width: 160px;" onchange="irAVista2DPiso(this.value)">
@@ -980,6 +1035,30 @@
         let nombreHojaInstalacionesReal = "Instalaciones por Piso";
 
         let pisoActual2D = "Piso 1";
+        let edificioActual = "hunza";   // "hunza" | "lab" — direcciona las pestañas 2D/3D
+        // Config por edificio: qué plano 2D y qué modelo 3D toca a cada pestaña.
+        // HUNZA: 5 plantas + glb existente. LAB: plano único PLANTAS/PLANOS_LABORATORIOS_ARQ.svg,
+        // modelo 3D pendiente (glb null -> placeholder en vista-3d, pero la pestaña existe).
+        const CONFIG_EDIFICIOS = {
+            hunza: {
+                nombre: 'Aulas Hunza', cod: 30, glb: 'EDIFICIO_AULAS_M3D.glb',
+                planos: {
+                    "Piso 1": "PLANTA_1_HUNZA.svg",
+                    "Piso 2": "PLANTA_2_HUNZA.svg",
+                    "Piso 3": "PLANTA_3_HUNZA.svg",
+                    "Piso 4": "PLANTA_4_HUNZA.svg",
+                    "Piso 5 / Cubierta": "PLANTA_5_HUNZA.svg"
+                }
+            },
+            lab: {
+                nombre: 'Laboratorios Ingeniería (EDILAB)', cod: 62, glb: null,
+                planos: {
+                    "Piso 1": "PLANOS_LABORATORIOS_ARQ.svg"
+                }
+            }
+        };
+        function cfgEdificioActual() { return CONFIG_EDIFICIOS[edificioActual] || CONFIG_EDIFICIOS.hunza; }
+        function nombreEdificioActual() { return cfgEdificioActual().nombre; }
         let aulaSeleccionadaActual = null;
         let vistaActualGlobal = "vista-mapa";
 
@@ -1514,25 +1593,51 @@
                 if(btnVolver) btnVolver.style.display = 'block';
                 if(seccionCortes) seccionCortes.style.display = 'block';
                 if(panelFiltros) panelFiltros.style.display = 'none';
-                if(breadcrumb) breadcrumb.innerText = 'Edificio 30 Hunza (Modelo 3D)';
-                actualizarPanelDetallePiso3D("Edificio Completo");
-                if (window.cargarModeloIFC) window.cargarModeloIFC();
+                // Direccionamiento por edificio: 3D de HUNZA o placeholder de LAB
+                const esLab = (typeof edificioActual !== 'undefined' && edificioActual === 'lab');
+                const cont3d = document.getElementById('ifc-canvas-container');
+                const sinModelo = document.getElementById('lab-3d-sin-modelo');
+                const selEd3d = document.getElementById('select-edificio-3d');
+                if (selEd3d) selEd3d.value = esLab ? 'lab' : 'hunza';
+                if (esLab) {
+                    if (cont3d) cont3d.style.display = 'none';
+                    if (sinModelo) sinModelo.classList.add('show');
+                    if (breadcrumb) breadcrumb.innerText = nombreEdificioActual() + ' (Modelo 3D pendiente)';
+                    if (typeof actualizarPanelDetallePiso3D !== 'undefined') actualizarPanelDetallePiso3D("Edificio Completo");
+                    if (typeof window.mostrarPanel3DLab === 'function') window.mostrarPanel3DLab();
+                } else {
+                    if (cont3d) cont3d.style.display = '';
+                    if (sinModelo) sinModelo.classList.remove('show');
+                    if (breadcrumb) breadcrumb.innerText = 'Edificio 30 Hunza (Modelo 3D)';
+                    actualizarPanelDetallePiso3D("Edificio Completo");
+                    if (window.cargarModeloIFC) window.cargarModeloIFC();
+                }
             } else if (idVista === 'vista-2d') {
                 if(sidebarDerecha) sidebarDerecha.classList.add('visible');
                 if(btnVolver) btnVolver.style.display = 'block';
                 if(seccionCortes) seccionCortes.style.display = 'none';
                 if(panelFiltros) panelFiltros.style.display = 'flex';
                 const titulo2d = document.getElementById('titulo-vista-2d');
-                if(titulo2d) titulo2d.innerText = `Planta 2D - ${pisoActual2D}`;
-                if(breadcrumb) breadcrumb.innerText = `Edificio 30 Hunza (${pisoActual2D})`;
+                const esLab2d = (typeof edificioActual !== 'undefined' && edificioActual === 'lab');
+                if(titulo2d) titulo2d.innerText = esLab2d ? ('Planta 2D - LAB ARQ · ' + nombreEdificioActual()) : (`Planta 2D - ${pisoActual2D}`);
+                if(breadcrumb) breadcrumb.innerText = nombreEdificioActual() + (esLab2d ? ' (Plano LAB ARQ)' : ' (' + pisoActual2D + ')');
+                const selEd2d = document.getElementById('select-edificio-2d');
+                if (selEd2d) selEd2d.value = esLab2d ? 'lab' : 'hunza';
                 
-                // Sincronizar el selector desplegable con el piso actual
+                // Sincronizar el selector desplegable con el piso actual (LAB: plano único)
                 const selectPiso2D = document.getElementById('select-piso-2d');
-                if(selectPiso2D) selectPiso2D.value = pisoActual2D;
+                if (selectPiso2D) {
+                    if (esLab2d) {
+                        selectPiso2D.innerHTML = '<option value="Piso 1">Plano único · LAB ARQ</option>';
+                    } else if (!selectPiso2D.querySelector('option[value="Piso 5 / Cubierta"]')) {
+                        selectPiso2D.innerHTML = '<option value="Piso 1">Piso 1</option><option value="Piso 2">Piso 2</option><option value="Piso 3">Piso 3</option><option value="Piso 4">Piso 4</option><option value="Piso 5 / Cubierta">Piso 5 / Cubierta</option>';
+                    }
+                    selectPiso2D.value = "Piso 1";
+                }
 
                 aulaSeleccionadaActual = null;
                 mostrarResumenPlanta2D();
-                setTimeout(actualizarEstadoAulas2D, 150);
+                if (!esLab2d) setTimeout(actualizarEstadoAulas2D, 150);
             } else {
                 if(sidebarDerecha) sidebarDerecha.classList.remove('visible');
                 if(btnVolver) btnVolver.style.display = 'none';
@@ -2063,6 +2168,7 @@
         }
 
         async function autoMapearPlantas() {
+            if (typeof edificioActual !== 'undefined' && edificioActual === 'lab') return;  // LAB: plano único, sin auto-mapeo de HUNZA
             const hallado = {};
             await Promise.all(LISTA_PISOS_2D.map(async (nombre) => {
                 const archivo = MAPA_ARCHIVOS_PISOS[nombre];
@@ -2111,8 +2217,10 @@
             const obj = document.getElementById('svg-2d-object');
             if (!info) return;
             info.classList.remove('alerta');
-            const archivo = (pisoActual2D in archivosPorPiso) ? archivosPorPiso[pisoActual2D] : (MAPA_ARCHIVOS_PISOS[pisoActual2D] || '');
+            const esLabV = (typeof edificioActual !== 'undefined' && edificioActual === 'lab');
+            const archivo = esLabV ? (cfgEdificioActual().planos["Piso 1"] || "PLANOS_LABORATORIOS_ARQ.svg") : ((pisoActual2D in archivosPorPiso) ? archivosPorPiso[pisoActual2D] : (MAPA_ARCHIVOS_PISOS[pisoActual2D] || ''));
             let txt = '📄 ' + (archivo || 'sin plano asignado');
+            if (esLabV) { info.textContent = txt + ' · LAB ARQ (plano único)'; return; }
             try {
                 if (obj && obj.contentDocument) {
                     const ids = Array.from(obj.contentDocument.querySelectorAll('[id]')).map(e => e.id);
@@ -2128,8 +2236,11 @@
         }
 
         window.irAVista2DPiso = function(nombrePiso) {
-            pisoActual2D = nombrePiso || "Piso 1";
-            const archivoSVG = (pisoActual2D in archivosPorPiso) ? archivosPorPiso[pisoActual2D] : (MAPA_ARCHIVOS_PISOS[pisoActual2D] || "PLANTA_1_HUNZA.svg");
+            const esLab = (typeof edificioActual !== 'undefined' && edificioActual === 'lab');
+            pisoActual2D = esLab ? "Piso 1" : (nombrePiso || "Piso 1");
+            const archivoSVG = esLab
+                ? (cfgEdificioActual().planos["Piso 1"] || "PLANOS_LABORATORIOS_ARQ.svg")
+                : ((pisoActual2D in archivosPorPiso) ? archivosPorPiso[pisoActual2D] : (MAPA_ARCHIVOS_PISOS[pisoActual2D] || "PLANTA_1_HUNZA.svg"));
 
             const selectPiso2D = document.getElementById('select-piso-2d');
             if (selectPiso2D && selectPiso2D.value !== pisoActual2D) {
@@ -2138,7 +2249,7 @@
 
             const wrapper = document.getElementById('svg-2d-wrapper');
             if (wrapper && !archivoSVG) {
-                wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#64748b;font-size:14px;text-align:center;padding:20px;">No hay un plano SVG asociado a este piso.<br>Revisa los archivos PLANTA_X_HUNZA.svg o fuerza la asignación en ARCHIVOS_PISOS_FORZADOS.</div>';
+                wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#64748b;font-size:14px;text-align:center;padding:20px;">No hay un plano SVG asociado a este piso.<br>Revisa los archivos PLANTA_X_HUNZA.svg / PLANOS_LABORATORIOS_ARQ.svg o fuerza la asignación en ARCHIVOS_PISOS_FORZADOS.</div>';
             } else if (wrapper) {
                 wrapper.innerHTML = `<object id="svg-2d-object" type="image/svg+xml" data="${archivoSVG}" style="width:100%; height:100%; border:none; object-fit:contain; background-color:#ffffff;"></object>`;
 
@@ -2148,7 +2259,11 @@
                         aulaSeleccionadaActual = null;
                         mostrarResumenPlanta2D();
                         verificarPlantaCargada();
-                        setTimeout(actualizarEstadoAulas2D, 100);
+                        if (typeof edificioActual !== 'undefined' && edificioActual === 'lab') {
+                            if (typeof window.conectarPlanoLAB === 'function') window.conectarPlanoLAB();
+                        } else {
+                            setTimeout(actualizarEstadoAulas2D, 100);
+                        }
                     });
                 }
             }
@@ -2157,7 +2272,7 @@
             if (info) { info.classList.remove('alerta'); info.textContent = '📄 ' + (archivoSVG || 'sin plano asignado'); }
 
             const titulo2d = document.getElementById('titulo-vista-2d');
-            if (titulo2d) titulo2d.innerText = `Planta 2D - ${pisoActual2D}`;
+            if (titulo2d) titulo2d.innerText = (typeof edificioActual !== 'undefined' && edificioActual === 'lab') ? ('Planta 2D - LAB ARQ · ' + nombreEdificioActual()) : (`Planta 2D - ${pisoActual2D}`);
             irAVista('vista-2d');
         };
 
@@ -2186,6 +2301,7 @@
         }
 
         function actualizarEstadoAulas2D() {
+            if (typeof edificioActual !== 'undefined' && edificioActual === 'lab') return;  // LAB: lo conecta conectarPlanoLAB
             const svg2d = document.getElementById('svg-2d-object');
             if (!svg2d) return;
 
@@ -2249,6 +2365,10 @@
         }
 
         function mostrarResumenPlanta2D() {
+            if (typeof edificioActual !== 'undefined' && edificioActual === 'lab' && typeof window.mostrarResumenPlantaLAB === 'function') {
+                window.mostrarResumenPlantaLAB();
+                return;
+            }
             const svg2d = document.getElementById('svg-2d-object');
             let totalAulas = 0;
             let ocupadas = 0;
@@ -5824,7 +5944,13 @@
                     '<div class="info-group"><div class="info-label">Nombre:</div><div class="info-val">' + (cat ? '<span class="gic-ed-chip" style="background:' + cat.color + '"></span>' : '') + it.nombre + '</div></div>' +
                     (it.cod != null ? '<div class="info-group"><div class="info-label">Código en el plano:</div><div class="info-val">' + it.cod + '</div></div>' : '') +
                     '<div class="info-section-title">ℹ️ Información</div>' +
-                    '<div class="info-group"><div class="info-val" style="color:#94a3b8;font-size:12px;line-height:1.5;">Aún no hay datos generales registrados para este edificio.</div></div>';
+                    '<div class="info-group"><div class="info-val" style="color:#94a3b8;font-size:12px;line-height:1.5;">Aún no hay datos generales registrados para este edificio.</div></div>' +
+                    (it.cod === 62 ?
+                        '<div class="gic-ed-acciones">' +
+                        '<button type="button" class="btn-edificio-accion" onclick="fijarEdificio(\'lab\'); irAVista2DPiso(pisoActual2D);">📐 Entrar al plano 2D (PLANOS_LABORATORIOS_ARQ.svg)</button>' +
+                        '<button type="button" class="btn-edificio-accion sec" onclick="fijarEdificio(\'lab\'); irAVista(\'vista-3d\');">🏢 Modelo 3D (pendiente — pestaña lista)</button>' +
+                        '<div style="font-size:11px;color:#94a3b8;line-height:1.4;">En el plano 2D: clic en <b>LAB ARQ</b> y luego en <b>IMPRESORA 3D / PLOTER 1 / PLOTER 2 / ROUTER</b> para abrir su ficha técnica.</div>' +
+                        '</div>' : '');
                 cargarFachada(it, document.getElementById('gic-ed-foto'));
             }
 
@@ -6216,6 +6342,233 @@
             const ov = $('ficha-overlay');
             if (ov && ov.classList.contains('show') && e.target === ov) cerrarFichaPatologica();
         });
+    })();
+    </script>
+
+    <!-- ===== LABORATORIOS INGENIERÍA (EDILAB) =====
+         - Direccionamiento 2D/3D por edificio (edificioActual: hunza | lab).
+         - Plano PLANOS_LABORATORIOS_ARQ.svg: clic en LAB ARQ y luego en cada máquina
+           (IMPRESORA_3D, PLOTER_1, PLOTER_2, ROUTER) para abrir su ficha técnica (link PDF).
+         - El modelo 3D de LAB aún no existe (glb null): la pestaña 3D existe y muestra el placeholder. -->
+    <script>
+    (function () {
+        'use strict';
+        const $ = (id) => document.getElementById(id);
+        const MAQUINAS = {
+            IMPRESORA_3D: {
+                etiqueta: 'IMPRESORA 3D', nombre: 'Impresora 3D Creality Ender 5 Max',
+                desc: 'Impresora 3D de trabajo para producción de maquetas en el laboratorio LAB ARQ.',
+                url: 'file:///C:/Users/ASUS/Downloads/Impresora_3D_Creality_Ender_5_max__1_.pdf', esLocal: true
+            },
+            PLOTER_1: {
+                etiqueta: 'PLOTER 1', nombre: 'Plotter Audley 130 cm (Plotter 1)',
+                desc: 'Plotter de corte para láminas y maquetas — puesto 1 del LAB ARQ.',
+                url: 'https://makamba.com.ec/wp-content/uploads/2025/08/Plotter-audley-130cm-ficha-tecnica.pdf?srsltid', esLocal: false
+            },
+            PLOTER_2: {
+                etiqueta: 'PLOTER 2', nombre: 'Plotter Audley 130 cm (Plotter 2)',
+                desc: 'Plotter de corte para láminas y maquetas — puesto 2 del LAB ARQ.',
+                url: 'https://makamba.com.ec/wp-content/uploads/2025/08/Plotter-audley-130cm-ficha-tecnica.pdf?srsltid', esLocal: false
+            },
+            ROUTER: {
+                etiqueta: 'ROUTER', nombre: 'Router láser MR6090B',
+                desc: 'Router/CNC láser para corte y grabado en el LAB ARQ.',
+                url: 'https://macrolaser.com.co/wp-content/uploads/2016/06/MR6090B.pdf', esLocal: false
+            }
+        };
+        const LAB_ARQ = { id: 'LAB_ARQ', nombre: 'LAB ARQ — Laboratorio de Arquitectura', desc: 'Espacio general de trabajo de maquetas de Laboratorios Ingeniería (EDILAB), con impresora 3D, 2 plotters y router láser.' };
+
+        function sincronizarSelectoresEdificio() {
+            const v = (typeof edificioActual !== 'undefined' ? edificioActual : 'hunza');
+            const s2 = $('select-edificio-2d'); if (s2) s2.value = v;
+            const s3 = $('select-edificio-3d'); if (s3) s3.value = v;
+            const b2 = $('btn-nav-2d'); if (b2) b2.title = (v === 'lab' ? 'Planos 2D — Laboratorios Ingeniería (EDILAB)' : 'Planos 2D — Aulas Hunza');
+            const b3 = $('btn-nav-3d'); if (b3) b3.title = (v === 'lab' ? 'Modelo 3D — Laboratorios Ingeniería (pendiente)' : 'Modelo 3D — Aulas Hunza');
+        }
+
+        // ---------- direccionamiento: fijar el edificio activo ----------
+        function fijarEdificio(ed) {
+            const nuevo = (ed === 'lab' ? 'lab' : 'hunza');
+            try { edificioActual = nuevo; } catch (e) { window.edificioActual = nuevo; }
+            try { pisoActual2D = 'Piso 1'; } catch (e) {}
+            sincronizarSelectoresEdificio();
+            const vista = (typeof vistaActualGlobal !== 'undefined' ? vistaActualGlobal : 'vista-mapa');
+            if (vista === 'vista-3d' && typeof irAVista === 'function') irAVista('vista-3d');
+            else if (vista === 'vista-2d' && typeof window.irAVista2DPiso === 'function') window.irAVista2DPiso('Piso 1');
+        }
+        window.fijarEdificio = fijarEdificio;
+
+        // ---------- panel lateral 3D pendiente (LAB) ----------
+        function mostrarPanel3DLab() {
+            const titulo = $('panel-derecho-titulo'), cont = $('panel-contenido'), hoja = $('hoja-excel-indicador');
+            const cortes = $('seccion-cortes-3d'); if (cortes) cortes.style.display = 'none';
+            if (titulo) titulo.textContent = '🏢 LABORATORIOS INGENIERÍA (EDILAB) — 3D';
+            if (hoja) hoja.innerHTML = '<strong>Hoja:</strong> —';
+            if (cont) cont.innerHTML =
+                '<div class="info-section-title">🏗️ Modelo 3D pendiente</div>' +
+                '<div class="info-group"><div class="info-val" style="font-size:12px;line-height:1.55;color:#cbd5e1;">Todavía no hay modelo 3D para este edificio. La pestaña <b>Modelo 3D</b> ya existe y cuando subas el <code>.glb</code> del laboratorio cargará aquí igual que el de HUNZA.</div></div>' +
+                '<div class="gic-ed-acciones">' +
+                '<button type="button" class="btn-edificio-accion" onclick="irAVista2DPiso(pisoActual2D)">📐 Usar el plano 2D de LAB</button>' +
+                '<button type="button" class="btn-edificio-accion sec" onclick="fijarEdificio(\'hunza\');">🏢 Cambiar al 3D de HUNZA</button>' +
+                '</div>';
+        }
+        window.mostrarPanel3DLab = mostrarPanel3DLab;
+
+        // ---------- resumen 2D del LAB ----------
+        function tarjetaMaquina(id, m) {
+            return '<button type="button" onclick="abrirFichaMaquina(\'' + id + '\')">🖨️ <b>' + m.etiqueta + '</b> — ' + m.nombre + '</button>';
+        }
+        function mostrarResumenPlantaLAB() {
+            const titulo = $('panel-derecho-titulo'), cont = $('panel-contenido'), hoja = $('hoja-excel-indicador');
+            if (titulo) titulo.textContent = '📊 LAB ARQ — Resumen';
+            if (hoja) hoja.innerHTML = '<strong>Hoja:</strong> —';
+            if (!cont) return;
+            cont.innerHTML =
+                '<div class="info-section-title">🏢 Laboratorios Ingeniería (EDILAB)</div>' +
+                '<div class="info-group"><div class="info-label">Plano:</div><div class="info-val">PLANOS_LABORATORIOS_ARQ.svg · plano único</div></div>' +
+                '<div class="info-group"><div class="info-label">Espacio:</div><div class="info-val"><b>LAB ARQ</b></div></div>' +
+                '<div class="info-section-title">🤖 Máquinas (tienen ficha técnica)</div>' +
+                '<div class="lab-maq-list">' +
+                Object.keys(MAQUINAS).map(id => tarjetaMaquina(id, MAQUINAS[id])).join('') +
+                '</div>' +
+                '<div style="margin-top:12px;font-size:11px;color:var(--text-muted);line-height:1.5;border-top:1px solid #1e293b;padding-top:10px;">💡 <em>Haz clic en el polígono <b>LAB ARQ</b> del plano y luego en cada máquina para abrir su ficha técnica (PDF).</em></div>';
+        }
+        window.mostrarResumenPlantaLAB = mostrarResumenPlantaLAB;
+
+        // ---------- panel: espacio y máquinas ----------
+        function mostrarDetalleLabArq() {
+            const titulo = $('panel-derecho-titulo'), cont = $('panel-contenido');
+            if (titulo) titulo.textContent = '📌 ESPACIO LAB ARQ';
+            if (!cont) return;
+            cont.innerHTML =
+                '<div class="info-section-title">🏢 LAB ARQ</div>' +
+                '<div class="info-group"><div class="info-val" style="font-size:12px;line-height:1.55;color:#cbd5e1;">' + LAB_ARQ.desc + '</div></div>' +
+                '<div class="info-section-title">🤖 Máquinas del espacio</div>' +
+                '<div class="lab-maq-list">' + Object.keys(MAQUINAS).map(id => tarjetaMaquina(id, MAQUINAS[id])).join('') + '</div>' +
+                '<div style="margin-top:12px;font-size:11px;color:var(--text-muted);line-height:1.5;">💡 Haz clic en una máquina del plano para abrir su ficha técnica.</div>';
+        }
+        function mostrarDetalleMaquina(id) {
+            const m = MAQUINAS[id]; if (!m) return;
+            const titulo = $('panel-derecho-titulo'), cont = $('panel-contenido');
+            if (titulo) titulo.textContent = '🖨️ ' + m.etiqueta;
+            if (!cont) return;
+            cont.innerHTML =
+                '<div class="info-section-title">🖨️ ' + m.etiqueta + '</div>' +
+                '<div class="info-group"><div class="info-label">Equipo:</div><div class="info-val">' + m.nombre + '</div></div>' +
+                '<div class="info-group"><div class="info-val" style="font-size:12px;line-height:1.5;color:#cbd5e1;">' + m.desc + '</div></div>' +
+                '<div class="gic-ed-acciones">' +
+                '<button type="button" class="btn-edificio-accion" onclick="abrirFichaMaquina(\'' + id + '\')">📄 Ver ficha técnica (PDF)</button>' +
+                '</div>' +
+                '<div style="font-size:11px;color:#64748b;word-break:break-all;line-height:1.4;">' + m.url + '</div>' +
+                (m.esLocal ? '<div style="font-size:11px;color:#b45309;margin-top:8px;line-height:1.4;">⚠ Enlace local (file://): solo funciona en tu PC. Súbelo al repositorio para uso público.</div>' : '');
+        }
+
+        // ---------- modal ficha técnica ----------
+        function asegurarModalMaquina() {
+            let ov = $('maquina-overlay');
+            if (ov) return ov;
+            ov = document.createElement('div');
+            ov.id = 'maquina-overlay';
+            ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+            ov.innerHTML =
+                '<div class="maquina-card">' +
+                '<h2 id="maquina-titulo">Ficha técnica</h2>' +
+                '<div class="sub" id="maquina-sub"></div>' +
+                '<div id="maquina-desc" style="font-size:12.5px;line-height:1.5;color:#334155;"></div>' +
+                '<a id="maquina-link" class="ficha-link" href="#" target="_blank" rel="noopener noreferrer">📄 Abrir ficha técnica (PDF)</a>' +
+                '<span class="url-txt" id="maquina-url"></span>' +
+                '<div id="maquina-aviso" style="display:none;font-size:11.5px;color:#b45309;margin-top:10px;line-height:1.45;"></div>' +
+                '<div><button type="button" class="maquina-cerrar" id="maquina-cerrar">✕ Cerrar</button></div>' +
+                '</div>';
+            document.body.appendChild(ov);
+            ov.addEventListener('click', (e) => { if (e.target === ov) cerrarFichaMaquina(); });
+            $('maquina-cerrar').addEventListener('click', cerrarFichaMaquina);
+            return ov;
+        }
+        function abrirFichaMaquina(id) {
+            const m = MAQUINAS[id]; if (!m) return;
+            const ov = asegurarModalMaquina();
+            $('maquina-titulo').textContent = '🖨️ ' + m.etiqueta + ' — ' + m.nombre;
+            $('maquina-sub').textContent = 'Ficha técnica · LAB ARQ · Laboratorios Ingeniería (EDILAB)';
+            $('maquina-desc').textContent = m.desc;
+            const a = $('maquina-link'); a.href = m.url;
+            $('maquina-url').textContent = m.url;
+            const aviso = $('maquina-aviso');
+            if (m.esLocal) { aviso.style.display = 'block'; aviso.textContent = '⚠ Este enlace es local (file:///…). Solo funcionará en tu equipo. Súbelo al repositorio (p. ej. como PDF en la raíz) y cambia aquí la URL por la ruta del repositorio.'; }
+            else aviso.style.display = 'none';
+            ov.classList.add('show');
+            mostrarDetalleMaquina(id);
+        }
+        function cerrarFichaMaquina() { const ov = $('maquina-overlay'); if (ov) ov.classList.remove('show'); }
+        window.abrirFichaMaquina = abrirFichaMaquina;
+        window.cerrarFichaMaquina = cerrarFichaMaquina;
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { const ov = $('maquina-overlay'); if (ov && ov.classList.contains('show')) { cerrarFichaMaquina(); e.stopPropagation(); } }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => { asegurarModalMaquina(); sincronizarSelectoresEdificio(); });
+
+        // ---------- clics en el plano LAB ----------
+        function buscarEl(doc, id) {
+            return doc.getElementById(id)
+                || doc.querySelector('[id="' + id + '"]')
+                || doc.querySelector('[data-name="' + id + '"]')
+                || doc.querySelector('[aria-label="' + id + '"]');
+        }
+        function conectarPlanoLAB() {
+            const obj = $('svg-2d-object');
+            const doc = obj && obj.contentDocument;
+            if (!doc || !doc.documentElement || doc.documentElement.localName !== 'svg' || doc.__gicLab) return;
+            doc.__gicLab = true;
+            const descubrir = (selector) => {
+                let el = doc.querySelector(selector);
+                if (el) return el;
+                return buscarEl(doc, selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) || null;
+            };
+            const labEl = buscarEl(doc, LAB_ARQ.id);
+            const infoEl = id => buscarEl(doc, id);
+            const activar = (el, selLab, selMaq) => {
+                if (!el) return;
+                el.style.cursor = 'pointer';
+                el.style.transition = 'fill .2s, stroke .2s, opacity .2s';
+                el.style.pointerEvents = 'all';
+                el.style.fill = selLab ? 'rgba(2,132,199,0.22)' : 'rgba(249,115,22,0.40)';
+                el.style.stroke = selLab ? '#0284c7' : '#ea580c';
+                el.style.strokeWidth = selLab ? '2' : '1.5';
+                el.style.strokeDasharray = selLab ? 'none' : '4 2';
+                el.addEventListener('mouseenter', () => { el.style.opacity = '.85'; });
+                el.addEventListener('mouseleave', () => { el.style.opacity = '1'; });
+            };
+            if (labEl) {
+                activar(labEl, true, false);
+                labEl.addEventListener('click', (e) => { e.stopPropagation(); mostrarDetalleLabArq(); });
+                labEl.title = LAB_ARQ.nombre + ' — clic para ver el espacio';
+            }
+            Object.keys(MAQUINAS).forEach(id => {
+                const el = infoEl(id);
+                if (!el) return;
+                activar(el, false, true);
+                el.title = MAQUINAS[id].etiqueta + ' — clic para ver su ficha técnica';
+                el.addEventListener('click', (e) => { e.stopPropagation(); abrirFichaMaquina(id); });
+            });
+            console.log('[GIC] LAB: polígonos conectados:', labEl ? LAB_ARQ.id : '(LAB_ARQ no encontrado)', Object.keys(MAQUINAS).filter(id => !!infoEl(id)).join(', ') || '(máquinas no encontradas)');
+            // Al cargar el plano se abre el resumen del laboratorio
+            mostrarResumenPlantaLAB();
+        }
+        window.conectarPlanoLAB = conectarPlanoLAB;
+
+        // Doble clic en HUNZA (panel) debe fijar el edificio HUNZA antes de entrar al 3D
+        if (window.GIC_PANEL_EDIFICIO && typeof window.GIC_PANEL_EDIFICIO.entrar === 'function' && !window.GIC_PANEL_EDIFICIO.__gicEdificio) {
+            const origEntrar = window.GIC_PANEL_EDIFICIO.entrar.bind(window.GIC_PANEL_EDIFICIO);
+            window.GIC_PANEL_EDIFICIO.entrar = function () {
+                try { edificioActual = 'hunza'; } catch (e) {}
+                sincronizarSelectoresEdificio();
+                return origEntrar();
+            };
+            window.GIC_PANEL_EDIFICIO.__gicEdificio = true;
+        }
+
+        window.GIC_LAB = { edificioActual: () => edificioActual, fijarEdificio, conectarPlanoLAB, maquinas: Object.keys(MAQUINAS) };
     })();
     </script>
 </body>
