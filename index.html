@@ -56,6 +56,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <!-- GENERACIÓN DE INFORMES EXCEL (con formato) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+    <!-- INVENTARIO DEL LAB: generación de QR y códigos de barras, y lector de QR de respaldo -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 
     <!-- Import Maps para Three.js -->
     <script type="importmap">
@@ -706,6 +710,107 @@
         /* El título del edificio nunca queda tapado por la barra superior del panel */
         .app-body:has(#vista-mapa.activa) #panel-derecho-titulo { flex: none; padding-top: 4px; line-height: 1.35; scroll-margin-top: 80px; }
         .app-body:has(#vista-mapa.activa) #panel-mapa-acciones { flex: none; }
+
+        /* ===== LAB ARQ: SIMULADOR DE MÁQUINAS E INVENTARIO ===== */
+        .gl-overlay { position: fixed; inset: 0; z-index: 1100; display: none; align-items: center; justify-content: center; padding: 14px; background: rgba(7,13,25,.84); backdrop-filter: blur(3px); }
+        .gl-overlay.show { display: flex; }
+        .gl-card { background: var(--bg-panel); color: var(--text-main); border: 1px solid #1e293b; border-radius: 12px; width: min(1000px, 100%); max-height: 94vh; max-height: 94dvh; overflow-y: auto; padding: 16px 18px; box-shadow: 0 20px 60px rgba(0,0,0,.5); font-size: 12px; }
+        .gl-card.estrecha { width: min(560px, 100%); }
+        .gl-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+        .gl-top h2 { font-size: 17px; flex: 1 1 auto; }
+        .gl-aviso { background: rgba(245,158,11,.12); border-left: 3px solid #f59e0b; color: #fde68a; padding: 7px 10px; border-radius: 4px; margin-bottom: 10px; line-height: 1.4; }
+        .gl-btn { background: #111c33; color: #e2e8f0; border: 1px solid #1e293b; border-radius: 6px; padding: 7px 11px; font-size: 12px; cursor: pointer; transition: .15s; }
+        .gl-btn:hover:not(:disabled) { border-color: var(--accent); background: #1e293b; }
+        .gl-btn.pri { background: #0284c7; border-color: #0284c7; color: #fff; font-weight: 700; }
+        .gl-btn.pri:hover:not(:disabled) { background: #0369a1; }
+        .gl-btn.peligro { border-color: #7f1d1d; color: #fca5a5; }
+        .gl-btn.peligro:hover:not(:disabled) { background: #7f1d1d; color: #fff; }
+        .gl-btn:disabled { opacity: .38; cursor: not-allowed; }
+        .gl-mini { background: transparent; border: none; color: #64748b; font-size: 10px; cursor: pointer; text-decoration: underline; margin-left: 6px; }
+        .gl-archivo { display: inline-block; position: relative; overflow: hidden; }
+        .gl-archivo input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .gl-in { background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 6px; padding: 7px 9px; font-size: 12px; width: 100%; outline: none; }
+        .gl-in:focus { border-color: var(--accent); }
+        .gl-in:disabled { opacity: .5; }
+        .gl-campo { display: block; margin-top: 8px; }
+        .gl-campo > span { display: block; font-size: 10px; color: #94a3b8; margin-bottom: 3px; text-transform: uppercase; letter-spacing: .3px; }
+        .gl-fila { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+        .gl-envolver { flex-wrap: wrap; }
+        .gl-etq { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; margin: 10px 0 5px; }
+        .gl-ref { color: #64748b; font-size: 10px; line-height: 1.4; }
+        .gl-chip { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 10px; font-weight: 700; color: #fff; vertical-align: middle; }
+        .gl-punto { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; border: 1px solid rgba(255,255,255,.35); }
+
+        /* simulador */
+        .gl-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+        .gl-tab { background: #111c33; color: #cbd5e1; border: 1px solid #1e293b; border-radius: 6px; padding: 7px 12px; font-size: 12px; cursor: pointer; }
+        .gl-tab.act { background: #c2410c; border-color: #fb923c; color: #fff; font-weight: 700; }
+        .gl-sim-grid { display: grid; grid-template-columns: 330px 1fr; gap: 14px; align-items: start; }
+        .gl-bloque { background: var(--bg-card); border: 1px solid #1e293b; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+        .gl-bloque .gl-etq:first-child { margin-top: 0; }
+        .gl-eq { font-size: 12px; color: #e2e8f0; }
+        .gl-estimado { margin-top: 10px; padding: 7px 9px; background: #0f172a; border-radius: 6px; color: #cbd5e1; line-height: 1.4; }
+        .gl-sw-barra { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: #111c33; border: 1px solid #1e293b; border-bottom: none; border-radius: 8px 8px 0 0; padding: 7px 10px; font-weight: 600; font-size: 12px; }
+        #sim-canvas { width: 100%; height: auto; display: block; background: #0b1324; border: 1px solid #1e293b; }
+        .gl-pbar { height: 8px; background: #1e293b; border-radius: 0 0 6px 6px; overflow: hidden; }
+        #sim-pbar { height: 100%; width: 0; background: linear-gradient(90deg, #0284c7, #22c55e); transition: width .15s; }
+        .gl-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; color: #94a3b8; }
+        .gl-stats b { color: #fff; }
+        .gl-log { background: #070d19; border: 1px solid #1e293b; border-radius: 6px; height: 130px; overflow-y: auto; padding: 6px 8px; font-family: Consolas, monospace; font-size: 11px; }
+        .gl-l { color: #94a3b8; line-height: 1.5; }
+        .gl-l span { color: #475569; margin-right: 6px; }
+        .gl-l.ok { color: #86efac; } .gl-l.warn { color: #fde68a; } .gl-l.err { color: #fca5a5; }
+        .gl-hist { max-height: 120px; overflow-y: auto; }
+        .gl-h { padding: 4px 0; border-top: 1px solid #1e293b; color: #cbd5e1; line-height: 1.4; }
+        .gl-h .ok { color: #86efac; } .gl-h .err { color: #fca5a5; } .gl-h .warn { color: #fde68a; }
+
+        /* inventario */
+        .gl-barra { display: grid; grid-template-columns: 1fr 150px 150px; gap: 8px; margin-bottom: 10px; }
+        .gl-tabla-w { overflow-x: auto; max-height: 52vh; border: 1px solid #1e293b; border-radius: 8px; }
+        .gl-tabla { width: 100%; border-collapse: collapse; }
+        .gl-tabla th { position: sticky; top: 0; background: #111c33; color: #94a3b8; text-align: left; font-size: 10px; text-transform: uppercase; padding: 7px 8px; }
+        .gl-tabla td { padding: 8px; border-top: 1px solid #1e293b; color: #e2e8f0; }
+        .gl-tabla tbody tr { cursor: pointer; }
+        .gl-tabla tbody tr:hover { background: #111c33; }
+        .gl-ficha-grid { display: grid; grid-template-columns: 210px 1fr; gap: 16px; align-items: start; }
+        .gl-codigos { text-align: center; }
+        .gl-qr { background: #fff; border-radius: 8px; padding: 6px; width: 190px; margin: 0 auto 8px; }
+        .gl-qr svg { width: 100%; height: auto; display: block; }
+        .gl-barras { background: #fff; border-radius: 6px; padding: 2px 4px; margin-bottom: 6px; }
+        .gl-barras svg { width: 100%; height: 56px; display: block; }
+        .gl-cod-grande { font-size: 18px; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+        .gl-dato { display: flex; gap: 10px; padding: 5px 0; border-bottom: 1px solid #1e293b; }
+        .gl-dato span { width: 130px; flex: none; color: #94a3b8; }
+        .gl-dato b { font-weight: 600; color: #e2e8f0; word-break: break-word; }
+        .gl-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+        .gl-form .gl-campo:nth-child(2), .gl-form .gl-campo:last-child { grid-column: 1 / -1; }
+        #scan-video { width: 100%; max-height: 300px; background: #000; border-radius: 8px; object-fit: cover; }
+
+        /* barra de herramientas del plano del LAB y avisos */
+        #lab-tools { display: none; position: absolute; left: 12px; bottom: 12px; z-index: 6; gap: 6px; flex-wrap: wrap; max-width: calc(100% - 90px); }
+        #lab-tools.on { display: flex; }
+        #lab-tools button { background: var(--bg-header); color: #f8fafc; border: 1px solid #1e293b; border-radius: 8px; padding: 9px 12px; font-size: 12px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+        #lab-tools button:hover { border-color: var(--accent); background: #0b1324; }
+        #gl-toast { position: fixed; left: 50%; bottom: 70px; transform: translateX(-50%) translateY(10px); background: var(--bg-header); color: #f8fafc; border: 1px solid var(--accent); padding: 9px 16px; border-radius: 8px; font-size: 12px; z-index: 1300; opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; max-width: 90%; text-align: center; }
+        #gl-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        #gl-ubicar-banner { display: none; position: fixed; top: 58px; left: 50%; transform: translateX(-50%); z-index: 1250; background: #b45309; color: #fff; padding: 9px 14px; border-radius: 8px; font-size: 12px; align-items: center; gap: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.4); max-width: 94%; }
+        #gl-ubicar-banner.show { display: flex; }
+        #gl-ubicar-banner button { background: #1c1917; color: #fff; border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 11px; }
+
+        @media (max-width: 820px) {
+            .gl-sim-grid, .gl-ficha-grid, .gl-form { grid-template-columns: 1fr; }
+            .gl-barra { grid-template-columns: 1fr 1fr; } .gl-barra input { grid-column: 1 / -1; }
+        }
+        html.movil .gl-sim-grid, html.movil .gl-ficha-grid, html.movil .gl-form { grid-template-columns: 1fr; }
+        html.movil .gl-barra { grid-template-columns: 1fr 1fr; }
+        html.movil .gl-barra input { grid-column: 1 / -1; }
+        html.movil .gl-overlay { padding: 8px; }
+        html.movil .gl-card { padding: 12px; }
+        html.movil .gl-btn, html.movil .gl-tab { padding: 10px 12px; min-height: 40px; }
+        html.movil #lab-tools { bottom: 60px; max-width: calc(100% - 80px); }
+        html.movil #lab-tools button { padding: 11px 12px; }
+        html.movil #gl-toast { bottom: 120px; }
+        html.movil .gl-dato span { width: 100px; }
 </style>
 </head>
 <body>
@@ -6704,6 +6809,1047 @@
 
         window.GIC_LAB = { edificioActual: () => edificioActual, fijarEdificio, conectarPlanoLAB, maquinas: Object.keys(MAQUINAS) };
     })();
+    </script>
+
+    <script>
+        // ===== LAB ARQ · SIMULADOR DE MÁQUINAS =====
+        // Simula la conexión a cada máquina, el trabajo en su "software" y la ejecución (impresión 3D, corte con plotter,
+        // corte/grabado láser). Es una SIMULACIÓN: no se comunica con equipos reales.
+        // Los nombres del software son referenciales: edita PERFILES para poner el nombre exacto que usan en el laboratorio.
+        const GIC_SIM = (function () {
+            'use strict';
+            const $ = (id) => document.getElementById(id);
+            const esc = (s) => String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            const KEY_HIST = 'uptc_gic_lab_trabajos_v1';
+
+            const PERFILES = {
+                IMPRESORA_3D: { tipo: 'fdm', etiqueta: 'IMPRESORA 3D', equipo: 'Creality Ender 5 Max', software: 'Creality Print', area: [400, 400, 400],
+                                conexiones: ['USB · puerto COM3 (115200 baudios)', 'Wi-Fi · red del laboratorio', 'Tarjeta SD'], velocidades: [10, 60, 300, 1000], velDef: 60 },
+                PLOTER_1:     { tipo: 'plotter', etiqueta: 'PLOTER 1', equipo: 'Plotter Audley 130 cm', software: 'Software de corte del plotter', area: [1300, 900],
+                                conexiones: ['USB · puerto COM4', 'Puerto serie · RS-232'], velocidades: [1, 2, 5, 10], velDef: 2 },
+                PLOTER_2:     { tipo: 'plotter', etiqueta: 'PLOTER 2', equipo: 'Plotter Audley 130 cm', software: 'Software de corte del plotter', area: [1300, 900],
+                                conexiones: ['USB · puerto COM5', 'Puerto serie · RS-232'], velocidades: [1, 2, 5, 10], velDef: 2 },
+                ROUTER:       { tipo: 'laser', etiqueta: 'ROUTER', equipo: 'Router láser MR6090B', software: 'Software de control láser', area: [900, 600],
+                                conexiones: ['USB · controlador láser', 'Ethernet · red del laboratorio'], velocidades: [1, 3, 10, 30], velDef: 3 }
+            };
+
+            const MATERIALES_FDM = { PLA: [205, 60], PETG: [235, 80], ABS: [250, 100], TPU: [220, 50] };
+            const CAMPOS = {
+                fdm: [
+                    { k: 'material', l: 'Material', t: 'sel', op: ['PLA', 'PETG', 'ABS', 'TPU'], v: 'PLA' },
+                    { k: 'capa', l: 'Altura de capa (mm)', t: 'sel', op: ['0.12', '0.16', '0.20', '0.28'], v: '0.20' },
+                    { k: 'relleno', l: 'Relleno (%)', t: 'num', min: 0, max: 100, v: 20 },
+                    { k: 'vel', l: 'Velocidad de impresión (mm/s)', t: 'num', min: 20, max: 200, v: 60 },
+                    { k: 'boquilla', l: 'Temperatura boquilla (°C)', t: 'num', min: 150, max: 300, v: 205 },
+                    { k: 'cama', l: 'Temperatura cama (°C)', t: 'num', min: 0, max: 120, v: 60 },
+                    { k: 'soportes', l: 'Soportes', t: 'sel', op: ['No', 'Sí'], v: 'No' }
+                ],
+                plotter: [
+                    { k: 'material', l: 'Material', t: 'sel', op: ['Vinilo adhesivo', 'Cartulina 180 g', 'Papel kraft', 'Cartón gris 1 mm'], v: 'Cartulina 180 g' },
+                    { k: 'fuerza', l: 'Fuerza de la cuchilla (g)', t: 'num', min: 10, max: 400, v: 80 },
+                    { k: 'vel', l: 'Velocidad de corte (cm/s)', t: 'num', min: 5, max: 100, v: 30 },
+                    { k: 'offset', l: 'Offset de cuchilla (mm)', t: 'num', min: 0, max: 1, step: 0.05, v: 0.25 },
+                    { k: 'pasadas', l: 'Pasadas', t: 'sel', op: ['1', '2', '3'], v: '1' }
+                ],
+                laser: [
+                    { k: 'material', l: 'Material', t: 'sel', op: ['MDF 3 mm', 'Acrílico 3 mm', 'Cartón micro-corrugado', 'Balsa 2 mm'], v: 'MDF 3 mm' },
+                    { k: 'potencia', l: 'Potencia (%)', t: 'num', min: 5, max: 100, v: 60 },
+                    { k: 'vel', l: 'Velocidad (mm/s)', t: 'num', min: 3, max: 300, v: 15 },
+                    { k: 'pasadas', l: 'Pasadas', t: 'sel', op: ['1', '2', '3'], v: '1' },
+                    { k: 'aire', l: 'Asistencia de aire', t: 'sel', op: ['Sí', 'No'], v: 'Sí' }
+                ]
+            };
+
+            // ---------- modelos y patrones de demostración ----------
+            const MODELOS_FDM = {
+                cubo:  { nombre: 'Cubo de calibración 40 mm', dim: [40, 40, 40], perfil: () => 1 },
+                torre: { nombre: 'Torre de maqueta 60 × 60 × 150 mm', dim: [60, 60, 150], perfil: (y) => 1 - 0.55 * y },
+                casa:  { nombre: 'Casa de maqueta 80 × 60 × 70 mm', dim: [80, 60, 70], perfil: (y) => (y < 0.65 ? 1 : Math.max(0.02, 1 - (y - 0.65) / 0.35)) },
+                vaso:  { nombre: 'Vaso decorativo 70 × 70 × 100 mm', dim: [70, 70, 100], perfil: (y) => 0.72 + 0.28 * Math.sin(y * Math.PI) }
+            };
+            const rect = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h], [x, y]];
+            const circ = (cx, cy, r, n) => { n = n || 36; const p = []; for (let i = 0; i <= n; i++) { const a = (i / n) * 2 * Math.PI; p.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); } return p; };
+            const PATRONES = {
+                fachada: { nombre: 'Fachada con ventanas (corte)', modo: 'corte', gen: (A) => {
+                    const w = Math.min(520, A[0] * 0.5), h = Math.min(360, A[1] * 0.55), x0 = (A[0] - w) / 2, y0 = (A[1] - h) / 2, pl = [rect(x0, y0, w, h)];
+                    const ww = w / 8, wh = h / 6.6;
+                    for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) pl.push(rect(x0 + (c * 2 + 0.5) * ww, y0 + h * 0.08 + r * wh * 1.7, ww, wh));
+                    pl.push(rect(x0 + w / 2 - ww * 0.4, y0 + h - wh * 1.4, ww * 0.8, wh * 1.4));
+                    return pl; } },
+                planta: { nombre: 'Planta de maqueta (corte)', modo: 'corte', gen: (A) => {
+                    const s = Math.min(A[0], A[1]) / 600, x0 = (A[0] - 480 * s) / 2, y0 = (A[1] - 360 * s) / 2, P = (x, y) => [x0 + x * s, y0 + y * s];
+                    return [[P(0, 0), P(480, 0), P(480, 200), P(300, 200), P(300, 360), P(0, 360), P(0, 0)],
+                            [P(0, 180), P(150, 180)], [P(150, 0), P(150, 120)], [P(150, 240), P(150, 360)], [P(300, 100), P(300, 200)], [P(300, 100), P(480, 100)]]; } },
+                circulos: { nombre: 'Círculos y marcas de registro (corte)', modo: 'corte', gen: (A) => {
+                    const pl = [], cx = A[0] / 2, cy = A[1] / 2;
+                    [[-150, -90], [0, -90], [150, -90], [-150, 90], [0, 90], [150, 90]].forEach((d, i) => pl.push(circ(cx + d[0], cy + d[1], 32 + (i % 3) * 8)));
+                    [[20, 20], [A[0] - 20, 20], [20, A[1] - 20], [A[0] - 20, A[1] - 20]].forEach(p => { pl.push([[p[0] - 10, p[1]], [p[0] + 10, p[1]]]); pl.push([[p[0], p[1] - 10], [p[0], p[1] + 10]]); });
+                    return pl; } },
+                grabado: { nombre: 'Placa con logotipo (grabado)', modo: 'grabado', gen: (A) => {
+                    const cx = A[0] / 2, cy = A[1] / 2, W = 200, H = 140, pl = [rect(cx - W / 2, cy - H / 2, W, H)];
+                    const paso = 4;
+                    for (let i = 0, y = cy - H / 2 + 6; y < cy + H / 2 - 4; y += paso, i++) {
+                        const dentro = (x, yy) => Math.hypot(x - cx, yy - cy) < 46;       // «logo» circular
+                        const xs = []; for (let x = cx - W / 2 + 6; x <= cx + W / 2 - 6; x += 2) if (dentro(x, y)) xs.push(x);
+                        if (xs.length) pl.push(i % 2 ? [[xs[xs.length - 1], y], [xs[0], y]] : [[xs[0], y], [xs[xs.length - 1], y]]);
+                    }
+                    return pl; } }
+            };
+            const PATRONES_POR_TIPO = { plotter: ['fachada', 'planta', 'circulos'], laser: ['planta', 'fachada', 'grabado'] };
+
+            // ---------- estado ----------
+            const estados = {};
+            let actual = 'IMPRESORA_3D', timer = null, ultimoTick = 0;
+            const ahoraTxt = () => { const d = new Date(); return [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, '0')).join(':'); };
+            function est(id) {
+                if (!estados[id]) estados[id] = { id, estado: 'desconectada', conexion: 0, log: [], job: null, vel: PERFILES[id].velDef, nozzle: 24, cama: 24, hist: [], params: null };
+                return estados[id];
+            }
+            function log(e, m, n) {
+                e.log.push({ t: ahoraTxt(), m, n: n || '' });
+                if (e.log.length > 220) e.log.shift();
+                if (e.id === actual) pintarLog();
+            }
+            const dur = (s) => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ' h ' : '') + (h || m ? m + ' min ' : '') + (h ? '' : x + ' s'); };
+            const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+            // ---------- historial ----------
+            function leerHist() { try { const a = JSON.parse(localStorage.getItem(KEY_HIST) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+            function guardarHist(r) { const a = leerHist(); a.unshift(r); try { localStorage.setItem(KEY_HIST, JSON.stringify(a.slice(0, 60))); } catch (e) {} }
+
+            // ---------- parámetros ----------
+            function leerParams(id) {
+                const P = PERFILES[id], out = {};
+                CAMPOS[P.tipo].forEach(c => { const el = $('sim-p-' + c.k); out[c.k] = el ? el.value : c.v; });
+                return out;
+            }
+            function patronesDe(id) { const P = PERFILES[id]; return P.tipo === 'fdm' ? Object.keys(MODELOS_FDM) : PATRONES_POR_TIPO[P.tipo]; }
+            function nombreModelo(id, k) { return PERFILES[id].tipo === 'fdm' ? MODELOS_FDM[k].nombre : PATRONES[k].nombre; }
+
+            // ---------- planificación del trabajo ----------
+            function segmentos(pl) {
+                const segs = []; let cx = 0, cy = 0;
+                pl.forEach(p => {
+                    const t = Math.hypot(p[0][0] - cx, p[0][1] - cy);
+                    if (t > 0.01) segs.push({ x0: cx, y0: cy, x1: p[0][0], y1: p[0][1], len: t, corte: false });
+                    for (let i = 1; i < p.length; i++) { const l = Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]); if (l > 0) segs.push({ x0: p[i - 1][0], y0: p[i - 1][1], x1: p[i][0], y1: p[i][1], len: l, corte: true }); }
+                    cx = p[p.length - 1][0]; cy = p[p.length - 1][1];
+                });
+                return segs;
+            }
+            function planificar(id, modeloKey, params, nombreArchivo) {
+                const P = PERFILES[id], job = { nombre: nombreArchivo || nombreModelo(id, modeloKey), modelo: modeloKey, params, t: 0, fase: 'preparando', faseT: 0, tipo: P.tipo };
+                if (P.tipo === 'fdm') {
+                    const m = MODELOS_FDM[modeloKey], capa = parseFloat(params.capa) || 0.2, rel = clamp(parseFloat(params.relleno) || 0, 0, 100) / 100, v = clamp(parseFloat(params.vel) || 60, 20, 200);
+                    job.capas = Math.max(1, Math.ceil(m.dim[2] / capa));
+                    const areaCapa = m.dim[0] * m.dim[1] * (0.22 + rel * 0.5) * (params.soportes === 'Sí' ? 1.12 : 1);
+                    job.tCapa = (areaCapa / 0.4) / v;
+                    job.total = job.capas * job.tCapa;
+                    const volCm3 = (m.dim[0] * m.dim[1] * m.dim[2] / 1000) * (0.2 + rel * 0.55);
+                    job.gramos = volCm3 * 1.24; job.metros = (volCm3 / (Math.PI * 0.0875 * 0.0875)) / 100;
+                    job.tObjetivo = parseFloat(params.boquilla) || 205; job.cObjetivo = parseFloat(params.cama) || 60;
+                } else {
+                    const A = P.area, pat = PATRONES[modeloKey], pl = pat.gen(A);
+                    const vel = (P.tipo === 'plotter' ? (parseFloat(params.vel) || 30) * 10 : (parseFloat(params.vel) || 15));   // mm/s
+                    const pasadas = parseInt(params.pasadas, 10) || 1;
+                    const segs = segmentos(pl); let acc = 0;
+                    segs.forEach(s => { s.tIni = acc; acc += s.len / (s.corte ? vel : vel * 4); s.tFin = acc; });
+                    job.segs = segs; job.tPasada = acc; job.pasadas = pasadas; job.total = acc * pasadas; job.vel = vel;
+                    job.largoCorte = segs.filter(s => s.corte).reduce((a, s) => a + s.len, 0) * pasadas;
+                    job.modo = pat.modo;
+                }
+                return job;
+            }
+            function posicionEn(job, t) {
+                const tp = job.tPasada, tt = tp ? (t % tp) : 0, segs = job.segs;
+                let lo = 0, hi = segs.length - 1;
+                while (lo < hi) { const mid = (lo + hi) >> 1; if (segs[mid].tFin < tt) lo = mid + 1; else hi = mid; }
+                const s = segs[lo]; if (!s) return { x: 0, y: 0, i: 0, corte: false };
+                const f = s.tFin > s.tIni ? clamp((tt - s.tIni) / (s.tFin - s.tIni), 0, 1) : 1;
+                return { x: s.x0 + (s.x1 - s.x0) * f, y: s.y0 + (s.y1 - s.y0) * f, i: lo, f, corte: s.corte, pasada: Math.floor(t / (tp || 1)) };
+            }
+
+            // ---------- acciones ----------
+            function conectar(id) {
+                const e = est(id), P = PERFILES[id];
+                if (e.estado !== 'desconectada') return;
+                const via = P.conexiones[e.conexion] || P.conexiones[0];
+                e.estado = 'conectando';
+                log(e, 'Abriendo conexión: ' + via + '…');
+                const pasos = [[500, 'Dispositivo detectado: ' + P.equipo], [1100, 'Intercambio de datos (handshake) correcto'],
+                               [1700, P.tipo === 'fdm' ? 'Firmware respondió · cama y boquilla leídas' : P.tipo === 'plotter' ? 'Plotter respondió · medio cargado, ancho 1 300 mm' : 'Controlador respondió · área de trabajo 900 × 600 mm'],
+                               [2200, 'Conectado. Cargando el perfil de ' + P.software + '…']];
+                pasos.forEach(([ms, txt]) => setTimeout(() => { if (e.estado === 'conectando') log(e, txt, 'ok'); }, ms));
+                setTimeout(() => { if (e.estado === 'conectando') { e.estado = 'lista'; log(e, '✔ Máquina lista. Selecciona un modelo y presiona «Iniciar trabajo».', 'ok'); refrescar(); } }, 2500);
+                refrescar();
+            }
+            function desconectar(id) {
+                const e = est(id);
+                if (['preparando', 'trabajando', 'pausada', 'conectando'].indexOf(e.estado) >= 0) return;
+                e.estado = 'desconectada'; e.job = null; log(e, 'Conexión cerrada.');
+                refrescar();
+            }
+            function iniciar(id, opts) {
+                const e = est(id), P = PERFILES[id];
+                if (['lista', 'completada', 'cancelada'].indexOf(e.estado) < 0) return false;
+                opts = opts || {};
+                const modeloKey = opts.modelo || ($('sim-modelo') ? $('sim-modelo').value : patronesDe(id)[0]);
+                const params = opts.params || leerParams(id);
+                e.params = params;
+                e.job = planificar(id, modeloKey, params, opts.archivo !== undefined ? opts.archivo : (($('sim-archivo-nombre') && $('sim-archivo-nombre').textContent) || ''));
+                e.job.inicio = Date.now();
+                e.estado = 'preparando';
+                log(e, '▶ Trabajo «' + e.job.nombre + '» enviado desde ' + P.software + '.');
+                if (P.tipo === 'fdm') log(e, 'Laminado (slicing) listo: ' + e.job.capas + ' capas · tiempo estimado ' + dur(e.job.total) + ' · filamento ' + e.job.gramos.toFixed(1) + ' g (' + e.job.metros.toFixed(1) + ' m).');
+                else log(e, 'Trayectoria generada: ' + (e.job.largoCorte / 1000).toFixed(2) + ' m de ' + (e.job.modo === 'grabado' ? 'grabado' : 'corte') + ' · tiempo estimado ' + dur(e.job.total) + '.');
+                if (P.tipo === 'laser') ['Tapa cerrada ✔', 'Refrigeración (flujo de agua) ✔', 'Extractor de humos encendido ✔', 'Enfoque del láser ajustado ✔'].forEach((t, i) => setTimeout(() => log(e, 'Verificación: ' + t, 'ok'), 150 * (i + 1)));
+                if (P.tipo === 'plotter') log(e, 'Verificación: medio cargado y cuchilla calibrada ✔', 'ok');
+                refrescar();
+                return true;
+            }
+            function pausar(id) { const e = est(id); if (e.estado === 'trabajando' || e.estado === 'preparando') { e.previo = e.estado; e.estado = 'pausada'; log(e, '⏸ Trabajo en pausa.'); refrescar(); } }
+            function reanudar(id) { const e = est(id); if (e.estado === 'pausada') { e.estado = e.previo || 'trabajando'; log(e, '▶ Trabajo reanudado.'); refrescar(); } }
+            function terminar(e, resultado, msg, nivel) {
+                const j = e.job;
+                log(e, msg, nivel);
+                if (j) guardarHist({ f: new Date().toISOString(), maq: e.id, nombre: j.nombre, material: (e.params && e.params.material) || '', res: resultado, dur: Math.round(j.t), prog: Math.round(progreso(e) * 100) });
+                e.estado = resultado === 'Completado' ? 'completada' : resultado === 'Cancelado' ? 'cancelada' : 'error';
+                refrescar();
+            }
+            function cancelar(id) { const e = est(id); if (['preparando', 'trabajando', 'pausada'].indexOf(e.estado) >= 0) terminar(e, 'Cancelado', '⛔ Trabajo cancelado por el usuario.', 'warn'); }
+            function fallar(id) {
+                const e = est(id), P = PERFILES[id];
+                if (['preparando', 'trabajando'].indexOf(e.estado) < 0) return;
+                const msg = P.tipo === 'fdm' ? 'ERROR: filamento agotado / atasco en la boquilla. Impresión detenida.' : P.tipo === 'plotter' ? 'ERROR: el material se atascó en el rodillo. Corte detenido.' : 'ERROR: sin flujo en la refrigeración del tubo láser. Láser apagado por seguridad.';
+                terminar(e, 'Error', msg, 'err');
+            }
+            function reiniciar(id) { const e = est(id); if (e.estado === 'error') { e.estado = 'lista'; e.job = null; log(e, '↻ Máquina reiniciada tras el error. Revisa el equipo y vuelve a intentar.', 'ok'); refrescar(); } }
+
+            function progreso(e) { const j = e.job; if (!j) return 0; if (e.estado === 'completada') return 1; return j.total ? clamp(j.t / j.total, 0, 1) : 0; }
+
+            // ---------- simulación (paso de tiempo) ----------
+            function avanzar(dt, soloId) {              // dt = segundos SIMULADOS; soloId = avanzar solo esa máquina
+                Object.keys(estados).forEach(id => {
+                    if (soloId && id !== soloId) return;
+                    const e = estados[id], j = e.job;
+                    if (!j || (e.estado !== 'preparando' && e.estado !== 'trabajando')) return;
+                    if (e.estado === 'preparando') {
+                        if (j.tipo === 'fdm') {
+                            e.nozzle = Math.min(j.tObjetivo, e.nozzle + dt * 2.2); e.cama = Math.min(j.cObjetivo, e.cama + dt * 0.6);
+                            if (e.nozzle >= j.tObjetivo && e.cama >= j.cObjetivo) {
+                                j.faseT += dt;
+                                if (!j.homing) { j.homing = true; log(e, 'Temperaturas alcanzadas · buscando origen (homing) y nivelando…'); }
+                                if (j.faseT >= 8) { e.estado = 'trabajando'; log(e, 'Imprimiendo capa 1 de ' + j.capas + '…', 'ok'); }
+                            }
+                        } else {
+                            j.faseT += dt;
+                            if (j.faseT >= 3) { e.estado = 'trabajando'; log(e, j.tipo === 'laser' ? '🔆 Láser activo: ' + (j.modo === 'grabado' ? 'grabando' : 'cortando') + '…' : '✂ Cortando…', 'ok'); }
+                        }
+                        refrescar(); return;
+                    }
+                    j.t += dt;
+                    if (j.tipo === 'fdm') {
+                        e.nozzle = j.tObjetivo + (Math.random() - 0.5) * 1.2; e.cama = j.cObjetivo + (Math.random() - 0.5) * 0.6;
+                        const capa = Math.min(j.capas, Math.floor(progreso(e) * j.capas) + 1);
+                        if (capa !== j.capaLog && capa % Math.max(1, Math.round(j.capas / 10)) === 0) { j.capaLog = capa; log(e, 'Capa ' + capa + ' / ' + j.capas + ' · ' + Math.round(progreso(e) * 100) + ' %'); }
+                    } else {
+                        const pos = posicionEn(j, j.t), marca = Math.floor(progreso(e) * 5);
+                        if (marca !== j.marca) { j.marca = marca; if (marca > 0) log(e, (j.modo === 'grabado' ? 'Grabado' : 'Corte') + ' al ' + marca * 20 + ' % · pasada ' + Math.min(j.pasadas, (pos.pasada || 0) + 1) + ' de ' + j.pasadas); }
+                    }
+                    if (j.t >= j.total) { j.t = j.total; terminar(e, 'Completado', '✔ Trabajo completado en ' + dur(j.total) + (j.tipo === 'fdm' ? ' · filamento usado ' + j.gramos.toFixed(1) + ' g' : ' · ' + (j.largoCorte / 1000).toFixed(2) + ' m recorridos') + '.', 'ok'); }
+                    if (j.tipo === 'fdm') { e.hist.push([e.nozzle, e.cama]); if (e.hist.length > 140) e.hist.shift(); }
+                });
+            }
+            function bucle() {
+                const ahora = Date.now(), real = Math.min(0.5, (ahora - ultimoTick) / 1000); ultimoTick = ahora;
+                Object.keys(estados).forEach(id => { const e = estados[id]; if (e.job) avanzar(real * e.vel, id); });   // cada máquina con su multiplicador
+                Object.keys(estados).forEach(id => {                                                                    // enfriamiento si no se imprime
+                    const e = estados[id];
+                    if (PERFILES[id].tipo === 'fdm' && ['preparando', 'trabajando', 'pausada'].indexOf(e.estado) < 0) { e.nozzle = Math.max(24, e.nozzle - real * 1.5); e.cama = Math.max(24, e.cama - real * 0.4); }
+                });
+                if (estados[actual]) dibujar();
+            }
+
+            // ---------- dibujo ----------
+            function dibujar() {
+                const cv = $('sim-canvas'); if (!cv) return;
+                const ctx = cv.getContext && cv.getContext('2d'); if (!ctx) return;
+                const w = cv.width, h = cv.height, e = est(actual), P = PERFILES[actual], j = e.job, pr = progreso(e);
+                ctx.fillStyle = '#0b1324'; ctx.fillRect(0, 0, w, h);
+                if (P.tipo === 'fdm') dibujarFDM(ctx, w, h, e, j, pr); else dibujarMesa(ctx, w, h, e, P, j, pr);
+                if (e.estado === 'desconectada' || e.estado === 'conectando') {
+                    ctx.fillStyle = 'rgba(7,13,25,.62)'; ctx.fillRect(0, 0, w, h);
+                    ctx.fillStyle = '#94a3b8'; ctx.font = '600 15px sans-serif'; ctx.textAlign = 'center';
+                    ctx.fillText(e.estado === 'conectando' ? 'Conectando…' : 'Máquina desconectada', w / 2, h / 2);
+                }
+                const ph = $('sim-pbar'); if (ph) ph.style.width = Math.round(pr * 100) + '%';
+                actualizarEstadisticas(e, P, j, pr);
+            }
+            function dibujarFDM(ctx, w, h, e, j, pr) {
+                const areaH = h * 0.72, baseY = areaH - 24, cx = w * 0.42;
+                ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1; ctx.strokeRect(cx - 170, 14, 340, baseY - 14 + 12);            // volumen de impresión
+                ctx.fillStyle = '#334155'; ctx.fillRect(cx - 180, baseY + 4, 360, 10);                                           // cama
+                const modelo = j ? MODELOS_FDM[j.modelo] : MODELOS_FDM[($('sim-modelo') && MODELOS_FDM[$('sim-modelo').value]) ? $('sim-modelo').value : 'cubo'];
+                const mx = Math.max.apply(null, modelo.dim), esc2 = 190 / mx, W = modelo.dim[0] * esc2, H = modelo.dim[2] * esc2;
+                const hecho = j ? (e.estado === 'preparando' ? 0 : pr) : 0;
+                for (let y = 0; y < H * hecho; y += 2) {
+                    const hw = (W / 2) * modelo.perfil(y / H);
+                    ctx.fillStyle = 'hsl(' + (200 + (y / H) * 60) + ',70%,' + (45 + (y % 8)) + '%)'; ctx.fillRect(cx - hw, baseY - y - 2, hw * 2, 2);
+                }
+                if (j && !modelo) return;
+                const ty = baseY - H * hecho - 16, tx = cx + Math.sin(Date.now() / 260) * Math.max(8, (W / 2) * modelo.perfil(hecho) * 0.9);
+                const activo = e.estado === 'trabajando' || e.estado === 'preparando';
+                ctx.strokeStyle = '#64748b'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx - 175, ty - 6); ctx.lineTo(cx + 175, ty - 6); ctx.stroke();     // riel
+                ctx.fillStyle = '#475569'; ctx.fillRect(tx - 14, ty - 14, 28, 12);
+                ctx.fillStyle = activo ? '#f97316' : '#94a3b8'; ctx.beginPath(); ctx.moveTo(tx - 5, ty - 2); ctx.lineTo(tx + 5, ty - 2); ctx.lineTo(tx, ty + 8); ctx.closePath(); ctx.fill();
+                // gráfica de temperaturas
+                const gy = areaH + 10, gh = h - gy - 8;
+                ctx.fillStyle = '#0f172a'; ctx.fillRect(10, gy, w - 20, gh);
+                ctx.fillStyle = '#64748b'; ctx.font = '10px sans-serif'; ctx.textAlign = 'left'; ctx.fillText('Temperaturas  — boquilla (naranja) · cama (azul)', 16, gy + 12);
+                const trazo = (idx, color, max) => { ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.beginPath(); e.hist.forEach((p, i) => { const x = 14 + (i / 140) * (w - 28), y = gy + gh - 4 - (p[idx] / max) * (gh - 22); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }); ctx.stroke(); };
+                if (e.hist.length > 1) { trazo(0, '#f97316', 260); trazo(1, '#38bdf8', 260); }
+            }
+            function dibujarMesa(ctx, w, h, e, P, j, pr) {
+                const A = P.area, s = Math.min((w - 28) / A[0], (h - 28) / A[1]), ox = (w - A[0] * s) / 2, oy = (h - A[1] * s) / 2;
+                const laser = P.tipo === 'laser';
+                ctx.fillStyle = laser ? '#1e293b' : '#e2e8f0'; ctx.fillRect(ox, oy, A[0] * s, A[1] * s);
+                ctx.strokeStyle = laser ? '#273449' : '#cbd5e1'; ctx.lineWidth = 1;
+                for (let x = 0; x <= A[0]; x += 100) { ctx.beginPath(); ctx.moveTo(ox + x * s, oy); ctx.lineTo(ox + x * s, oy + A[1] * s); ctx.stroke(); }
+                for (let y = 0; y <= A[1]; y += 100) { ctx.beginPath(); ctx.moveTo(ox, oy + y * s); ctx.lineTo(ox + A[0] * s, oy + y * s); ctx.stroke(); }
+                ctx.fillStyle = laser ? '#64748b' : '#94a3b8'; ctx.font = '10px sans-serif'; ctx.textAlign = 'left';
+                ctx.fillText(A[0] + ' × ' + A[1] + ' mm', ox + 4, oy + A[1] * s - 4);
+                if (!j) return;
+                const t = (e.estado === 'preparando') ? 0 : j.t, pos = posicionEn(j, t);
+                ctx.lineWidth = j.modo === 'grabado' ? 1 : 1.6;
+                ctx.strokeStyle = laser ? '#fb923c' : '#dc2626';
+                const pasadaActual = Math.floor(t / (j.tPasada || 1));
+                ctx.beginPath();
+                const tope = Math.min(pos.i, j.segs.length - 1);
+                for (let i = 0; i <= tope; i++) {
+                    const sg = j.segs[i]; if (!sg.corte) continue;
+                    const fin = i === tope ? (pos.f === undefined ? 1 : pos.f) : 1;
+                    ctx.moveTo(ox + sg.x0 * s, oy + sg.y0 * s); ctx.lineTo(ox + (sg.x0 + (sg.x1 - sg.x0) * fin) * s, oy + (sg.y0 + (sg.y1 - sg.y0) * fin) * s);
+                }
+                ctx.stroke();
+                if (pasadaActual >= 1 && j.pasadas > 1) { ctx.fillStyle = '#94a3b8'; ctx.fillText('Pasada ' + Math.min(j.pasadas, pasadaActual + 1) + ' / ' + j.pasadas, ox + 4, oy + 12); }
+                const hx = ox + pos.x * s, hy = oy + pos.y * s, activo = e.estado === 'trabajando';
+                ctx.strokeStyle = '#64748b'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(ox, hy); ctx.lineTo(ox + A[0] * s, hy); ctx.stroke();          // viga
+                if (laser) {
+                    const g = ctx.createRadialGradient(hx, hy, 0, hx, hy, activo ? 16 : 8); g.addColorStop(0, activo ? 'rgba(255,255,255,.95)' : 'rgba(148,163,184,.8)'); g.addColorStop(0.35, activo ? 'rgba(249,115,22,.8)' : 'rgba(100,116,139,.5)'); g.addColorStop(1, 'rgba(249,115,22,0)');
+                    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(hx, hy, activo ? 16 : 8, 0, 6.283); ctx.fill();
+                } else {
+                    ctx.fillStyle = '#334155'; ctx.fillRect(hx - 7, hy - 9, 14, 14);
+                    ctx.fillStyle = pos.corte && activo ? '#dc2626' : '#94a3b8'; ctx.beginPath(); ctx.arc(hx, hy + 5, 3, 0, 6.283); ctx.fill();
+                }
+            }
+
+            // ---------- interfaz ----------
+            const COLOR = { desconectada: '#64748b', conectando: '#f59e0b', lista: '#22c55e', preparando: '#38bdf8', trabajando: '#f97316', pausada: '#eab308', completada: '#22c55e', cancelada: '#94a3b8', error: '#ef4444' };
+            const TXT = { desconectada: 'Desconectada', conectando: 'Conectando…', lista: 'Lista', preparando: 'Preparando', trabajando: 'En trabajo', pausada: 'En pausa', completada: 'Completado', cancelada: 'Cancelado', error: 'Error' };
+
+            function asegurarModal() {
+                if ($('gl-sim-overlay')) return;
+                const ov = document.createElement('div');
+                ov.id = 'gl-sim-overlay'; ov.className = 'gl-overlay'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+                ov.innerHTML =
+                    '<div class="gl-card">' +
+                    '<div class="gl-top"><h2>🧪 Simulador de máquinas · LAB ARQ</h2><button type="button" class="gl-btn" id="sim-cerrar">✕ Cerrar</button></div>' +
+                    '<div class="gl-aviso">Simulación didáctica: no se conecta a equipos reales. Sirve para practicar el flujo de trabajo de cada máquina.</div>' +
+                    '<div class="gl-tabs" id="sim-tabs"></div>' +
+                    '<div class="gl-sim-grid">' +
+                      '<div id="sim-panel-izq"></div>' +
+                      '<div id="sim-panel-der">' +
+                        '<div class="gl-sw-barra"><span id="sim-sw-nombre"></span><span class="gl-chip" id="sim-chip"></span></div>' +
+                        '<canvas id="sim-canvas" width="560" height="360"></canvas>' +
+                        '<div class="gl-pbar"><div id="sim-pbar"></div></div>' +
+                        '<div id="sim-stats" class="gl-stats"></div>' +
+                        '<div class="gl-etq">Consola de la máquina</div><div id="sim-log" class="gl-log"></div>' +
+                        '<div class="gl-etq">Últimos trabajos <button type="button" class="gl-mini" id="sim-borrar-hist">borrar</button></div><div id="sim-hist" class="gl-hist"></div>' +
+                      '</div>' +
+                    '</div></div>';
+                document.body.appendChild(ov);
+                ov.addEventListener('click', (e) => { if (e.target === ov) cerrar(); });
+                $('sim-cerrar').addEventListener('click', cerrar);
+                $('sim-borrar-hist').addEventListener('click', () => { try { localStorage.removeItem(KEY_HIST); } catch (e) {} pintarHist(); });
+                document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && ov.classList.contains('show')) { cerrar(); e.stopPropagation(); } }, true);
+            }
+            function pintarTabs() {
+                $('sim-tabs').innerHTML = Object.keys(PERFILES).map(id => '<button type="button" class="gl-tab' + (id === actual ? ' act' : '') + '" data-m="' + id + '"><span class="gl-punto" style="background:' + COLOR[est(id).estado] + '"></span>' + esc(PERFILES[id].etiqueta) + '</button>').join('');
+                Array.from($('sim-tabs').querySelectorAll('button')).forEach(b => b.addEventListener('click', () => seleccionar(b.dataset.m)));
+            }
+            function construirPanelIzq() {
+                const id = actual, P = PERFILES[id], e = est(id), pats = patronesDe(id);
+                const campos = CAMPOS[P.tipo].map(c => {
+                    const val = (e.params && e.params[c.k] !== undefined) ? e.params[c.k] : c.v;
+                    return '<label class="gl-campo"><span>' + esc(c.l) + '</span>' + (c.t === 'sel'
+                        ? '<select class="gl-in" id="sim-p-' + c.k + '">' + c.op.map(o => '<option' + (String(o) === String(val) ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>'
+                        : '<input class="gl-in" type="number" id="sim-p-' + c.k + '" min="' + c.min + '" max="' + c.max + '" step="' + (c.step || 1) + '" value="' + esc(val) + '">') + '</label>';
+                }).join('');
+                $('sim-panel-izq').innerHTML =
+                    '<div class="gl-bloque"><div class="gl-etq">Máquina</div><div class="gl-eq"><b>' + esc(P.etiqueta) + '</b> · ' + esc(P.equipo) + '</div>' +
+                    '<label class="gl-campo"><span>Conexión</span><select class="gl-in" id="sim-conexion">' + P.conexiones.map((c, i) => '<option value="' + i + '"' + (i === e.conexion ? ' selected' : '') + '>' + esc(c) + '</option>').join('') + '</select></label>' +
+                    '<div class="gl-fila"><button type="button" class="gl-btn pri" id="sim-conectar">🔌 Conectar</button><button type="button" class="gl-btn" id="sim-desconectar">Desconectar</button></div></div>' +
+                    '<div class="gl-bloque"><div class="gl-etq">Software: ' + esc(P.software) + ' <span class="gl-ref">(referencial)</span></div>' +
+                    '<label class="gl-campo"><span>' + (P.tipo === 'fdm' ? 'Modelo 3D de demostración' : 'Diseño de demostración') + '</span><select class="gl-in" id="sim-modelo">' + pats.map(k => '<option value="' + k + '"' + (e.modeloSel === k ? ' selected' : '') + '>' + esc(nombreModelo(id, k)) + '</option>').join('') + '</select></label>' +
+                    '<div class="gl-fila"><label class="gl-btn gl-archivo">📂 Cargar archivo<input type="file" id="sim-archivo" accept=".gcode,.stl,.3mf,.dxf,.svg,.plt,.hpgl,.ai,.pdf"></label><span id="sim-archivo-nombre" class="gl-ref"></span></div>' +
+                    '<div class="gl-ref">Si cargas un archivo solo se usa su nombre; la simulación dibuja el modelo de demostración elegido.</div>' +
+                    campos + '<div id="sim-estimado" class="gl-estimado"></div></div>' +
+                    '<div class="gl-bloque"><div class="gl-etq">Control del trabajo</div><div class="gl-fila gl-envolver">' +
+                    '<button type="button" class="gl-btn pri" id="sim-iniciar">▶ Iniciar trabajo</button><button type="button" class="gl-btn" id="sim-pausar">⏸ Pausar</button>' +
+                    '<button type="button" class="gl-btn" id="sim-reanudar">⏵ Reanudar</button><button type="button" class="gl-btn peligro" id="sim-cancelar">⛔ Cancelar</button>' +
+                    '<button type="button" class="gl-btn" id="sim-fallar" title="Practica cómo reaccionar ante un error">⚠ Provocar falla</button><button type="button" class="gl-btn" id="sim-reiniciar">↻ Reiniciar</button></div>' +
+                    '<label class="gl-campo"><span>Velocidad de la simulación</span><select class="gl-in" id="sim-vel">' + P.velocidades.map(v => '<option value="' + v + '"' + (v === e.vel ? ' selected' : '') + '>' + v + '×' + (v === 1 ? ' (tiempo real)' : '') + '</option>').join('') + '</select></label></div>';
+                // eventos
+                $('sim-conexion').addEventListener('change', (ev) => { est(actual).conexion = parseInt(ev.target.value, 10) || 0; });
+                $('sim-conectar').addEventListener('click', () => conectar(actual));
+                $('sim-desconectar').addEventListener('click', () => desconectar(actual));
+                $('sim-iniciar').addEventListener('click', () => { est(actual).modeloSel = $('sim-modelo').value; iniciar(actual); });
+                $('sim-pausar').addEventListener('click', () => pausar(actual));
+                $('sim-reanudar').addEventListener('click', () => reanudar(actual));
+                $('sim-cancelar').addEventListener('click', () => cancelar(actual));
+                $('sim-fallar').addEventListener('click', () => fallar(actual));
+                $('sim-reiniciar').addEventListener('click', () => reiniciar(actual));
+                $('sim-vel').addEventListener('change', (ev) => { est(actual).vel = parseFloat(ev.target.value) || 1; });
+                $('sim-archivo').addEventListener('change', (ev) => { const f = ev.target.files && ev.target.files[0]; $('sim-archivo-nombre').textContent = f ? f.name : ''; actualizarEstimado(); });
+                $('sim-modelo').addEventListener('change', () => { est(actual).modeloSel = $('sim-modelo').value; actualizarEstimado(); });
+                CAMPOS[P.tipo].forEach(c => { const el = $('sim-p-' + c.k); if (el) el.addEventListener('change', () => { if (c.k === 'material' && P.tipo === 'fdm' && MATERIALES_FDM[el.value]) { $('sim-p-boquilla').value = MATERIALES_FDM[el.value][0]; $('sim-p-cama').value = MATERIALES_FDM[el.value][1]; } actualizarEstimado(); }); });
+                actualizarEstimado();
+            }
+            function actualizarEstimado() {
+                const el = $('sim-estimado'); if (!el) return;
+                const id = actual, P = PERFILES[id];
+                try {
+                    const j = planificar(id, $('sim-modelo').value, leerParams(id), '');
+                    el.innerHTML = P.tipo === 'fdm'
+                        ? 'Estimación del laminado: <b>' + j.capas + ' capas</b> · <b>' + dur(j.total) + '</b> · filamento <b>' + j.gramos.toFixed(1) + ' g</b>'
+                        : 'Estimación: <b>' + (j.largoCorte / 1000).toFixed(2) + ' m</b> de ' + (j.modo === 'grabado' ? 'grabado' : 'corte') + ' · <b>' + dur(j.total) + '</b>';
+                } catch (err) { el.textContent = ''; }
+            }
+            function actualizarEstadisticas(e, P, j, pr) {
+                const chip = $('sim-chip'); if (chip) { chip.textContent = TXT[e.estado]; chip.style.background = COLOR[e.estado]; }
+                const sw = $('sim-sw-nombre'); if (sw) sw.textContent = '🖥 ' + P.software + ' — ' + P.equipo;
+                const st = $('sim-stats');
+                if (st) {
+                    let h = '<span>Progreso <b>' + Math.round(pr * 100) + ' %</b></span>';
+                    if (j) h += '<span>Tiempo restante <b>' + dur((j.total - j.t)) + '</b></span>';
+                    if (P.tipo === 'fdm') {
+                        h += '<span>Boquilla <b>' + e.nozzle.toFixed(0) + '°C</b></span><span>Cama <b>' + e.cama.toFixed(0) + '°C</b></span>';
+                        if (j) h += '<span>Capa <b>' + Math.min(j.capas, Math.floor(pr * j.capas) + (pr < 1 && e.estado === 'trabajando' ? 1 : 0)) + ' / ' + j.capas + '</b></span><span>Filamento <b>' + (j.gramos * pr).toFixed(1) + ' g</b></span>';
+                    } else if (j) {
+                        h += '<span>Recorrido <b>' + ((j.largoCorte * pr) / 1000).toFixed(2) + ' / ' + (j.largoCorte / 1000).toFixed(2) + ' m</b></span>';
+                    }
+                    st.innerHTML = h;
+                }
+                const b = (id, on) => { const x = $(id); if (x) x.disabled = !on; };
+                const s = e.estado, activo = (s === 'preparando' || s === 'trabajando');
+                b('sim-conectar', s === 'desconectada'); b('sim-conexion', s === 'desconectada'); b('sim-desconectar', ['lista', 'completada', 'cancelada', 'error'].indexOf(s) >= 0);
+                b('sim-iniciar', ['lista', 'completada', 'cancelada'].indexOf(s) >= 0); b('sim-pausar', activo); b('sim-reanudar', s === 'pausada');
+                b('sim-cancelar', activo || s === 'pausada'); b('sim-fallar', activo); b('sim-reiniciar', s === 'error');
+                CAMPOS[P.tipo].forEach(c => b('sim-p-' + c.k, !activo && s !== 'pausada')); b('sim-modelo', !activo && s !== 'pausada'); b('sim-archivo', !activo && s !== 'pausada');
+            }
+            function pintarLog() {
+                const el = $('sim-log'); if (!el) return;
+                const e = est(actual);
+                el.innerHTML = e.log.map(l => '<div class="gl-l ' + l.n + '"><span>' + l.t + '</span> ' + esc(l.m) + '</div>').join('') || '<div class="gl-l"><span>—</span> Sin actividad. Conecta la máquina para empezar.</div>';
+                el.scrollTop = el.scrollHeight;
+            }
+            function pintarHist() {
+                const el = $('sim-hist'); if (!el) return;
+                const a = leerHist().filter(r => r.maq === actual).slice(0, 6);
+                el.innerHTML = a.length ? a.map(r => '<div class="gl-h"><b>' + esc(r.nombre) + '</b> · ' + esc(r.material || '') + ' · <span class="' + (r.res === 'Completado' ? 'ok' : r.res === 'Error' ? 'err' : 'warn') + '">' + esc(r.res) + '</span> · ' + dur(r.dur) + ' · ' + new Date(r.f).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }) + '</div>').join('') : '<div class="gl-h gl-ref">Aún no hay trabajos de esta máquina.</div>';
+            }
+            function refrescar() { if (!$('gl-sim-overlay')) return; pintarTabs(); const e = est(actual); actualizarEstadisticas(e, PERFILES[actual], e.job, progreso(e)); pintarHist(); }
+            function seleccionar(id) {
+                if (!PERFILES[id]) return;
+                actual = id; construirPanelIzq(); pintarTabs(); pintarLog(); pintarHist(); dibujar();
+            }
+            function abrir(id) {
+                asegurarModal();
+                $('gl-sim-overlay').classList.add('show');
+                seleccionar(PERFILES[id] ? id : actual);
+                if (!timer) { ultimoTick = Date.now(); timer = setInterval(bucle, 100); }
+            }
+            function cerrar() { const ov = $('gl-sim-overlay'); if (ov) ov.classList.remove('show'); }
+
+            document.addEventListener('DOMContentLoaded', asegurarModal);
+            return { abrir, cerrar, PERFILES, estado: (id) => est(id), conectar, desconectar, iniciar, pausar, reanudar, cancelar, fallar, reiniciar, progreso,
+                     _avanzar: (id, seg) => { est(id); avanzar(seg, id); },
+                     _planificar: planificar, _patrones: () => Object.keys(PATRONES), _modelos: () => Object.keys(MODELOS_FDM), _hist: leerHist };
+        })();
+        window.GIC_SIM = GIC_SIM;
+    </script>
+
+    <script>
+        // ===== LAB ARQ · INVENTARIO DE MOBILIARIO Y EQUIPOS (QR / código de barras) =====
+        // - Cada mueble/equipo tiene un código (LAB-MES-001). Se imprime una etiqueta con QR + código de barras.
+        // - El QR contiene un enlace  …/?mueble=LAB-MES-001 : al escanearlo con la cámara del celular se abre esta
+        //   página, va al plano del laboratorio y muestra la ficha del mueble.
+        // - La ubicación se guarda como coordenadas del plano (se marcan con un clic) y/o como el id de un polígono
+        //   del SVG («zona»); no hace falta que el SVG tenga polígonos etiquetados.
+        // - Persistencia: navegador (localStorage) + archivo «inventario_laboratorio.json» del repositorio (se lee al abrir).
+        const GIC_INV = (function () {
+            'use strict';
+            const $ = (id) => document.getElementById(id);
+            const esc = (s) => String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            const KEY = 'uptc_gic_inv_lab_v1';
+            const ARCHIVO_REPO = 'inventario_laboratorio.json';
+            const URL_PUBLICA_DEFECTO = 'https://cyul5.github.io/gemelo-digital-uptc/';
+            const TIPOS = { Mesa: 'MES', Silla: 'SIL', Banco: 'BAN', Estante: 'EST', Gabinete: 'GAB', Computador: 'PC', Equipo: 'MAQ', Herramienta: 'HER', Tablero: 'TAB', Otro: 'OTR' };
+            const ESTADOS = ['Bueno', 'Regular', 'Malo', 'Baja'];
+            const COLOR = { Bueno: '#22c55e', Regular: '#f59e0b', Malo: '#ef4444', Baja: '#94a3b8' };
+            const EVENTOS = ['Mantenimiento', 'Revisión', 'Préstamo', 'Traslado', 'Nota'];
+            const NS = 'http://www.w3.org/2000/svg';
+
+            let items = [], eliminados = [], cfg = { urlBase: '' };
+            let filtro = { q: '', tipo: '', estado: '' }, seleccionados = {};
+            let abierto = null, enEdicion = null, ubicando = null, seleccionado = null, pendienteAccion = null;
+            let camara = null, listoIniciar = null;
+
+            const norm = (s) => String(s === undefined || s === null ? '' : s).trim().toUpperCase().replace(/\s+/g, '');
+            const hoy = () => new Date().toISOString();
+            const fmtFecha = (iso) => { try { return new Date(iso).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }); } catch (e) { return iso || ''; } };
+
+            // ---------- datos ----------
+            function normalizar(it) {
+                const x = Object.assign({ id: '', nombre: '', tipo: 'Otro', estado: 'Bueno', desc: '', marca: '', serial: '', responsable: '', fecha: '', valor: '', zona: '', x: null, y: null, notas: '', creado: hoy(), historial: [] }, it || {});
+                x.id = String(x.id).trim().toUpperCase();
+                x.x = (x.x === null || x.x === '' || x.x === undefined || !Number.isFinite(Number(x.x))) ? null : Number(x.x);
+                x.y = (x.y === null || x.y === '' || x.y === undefined || !Number.isFinite(Number(x.y))) ? null : Number(x.y);
+                if (!Array.isArray(x.historial)) x.historial = [];
+                if (!TIPOS[x.tipo]) x.tipo = 'Otro';
+                if (ESTADOS.indexOf(x.estado) < 0) x.estado = 'Bueno';
+                return x;
+            }
+            function guardar() { try { localStorage.setItem(KEY, JSON.stringify({ v: 1, items, eliminados, cfg })); } catch (e) { toast('No se pudo guardar en este navegador'); } }
+            function cargarLocal() {
+                try {
+                    const d = JSON.parse(localStorage.getItem(KEY) || 'null');
+                    if (d && Array.isArray(d.items)) { items = d.items.map(normalizar); eliminados = Array.isArray(d.eliminados) ? d.eliminados : []; cfg = Object.assign(cfg, d.cfg || {}); return true; }
+                } catch (e) {}
+                return false;
+            }
+            function buscar(codigo) {
+                const n = norm(codigo); if (!n) return null;
+                return items.find(i => norm(i.id) === n) || items.find(i => i.serial && norm(i.serial) === n) || null;
+            }
+            function siguienteId(tipo) {
+                const pre = TIPOS[tipo] || 'OTR', rx = new RegExp('^LAB-' + pre + '-(\\d+)$');
+                let max = 0; items.forEach(i => { const m = rx.exec(i.id); if (m) max = Math.max(max, parseInt(m[1], 10)); });
+                return 'LAB-' + pre + '-' + String(max + 1).padStart(3, '0');
+            }
+            function sembrar() {
+                const P = (window.GIC_SIM && window.GIC_SIM.PERFILES) || {};
+                const base = [['IMPRESORA_3D', 'Impresora 3D'], ['PLOTER_1', 'Plotter de corte 1'], ['PLOTER_2', 'Plotter de corte 2'], ['ROUTER', 'Router láser']];
+                base.forEach(([zona, nombre], i) => items.push(normalizar({ id: 'LAB-MAQ-' + String(i + 1).padStart(3, '0'), nombre, tipo: 'Equipo', estado: 'Bueno', zona,
+                    marca: P[zona] ? P[zona].equipo : '', desc: 'Máquina del LAB ARQ (polígono «' + zona + '» del plano).', historial: [{ f: hoy(), t: 'Nota', n: 'Registro inicial del inventario' }] })));
+            }
+            async function iniciar() {
+                const habia = cargarLocal();
+                let repo = null;
+                try { const r = await fetch(ARCHIVO_REPO, { cache: 'no-store' }); if (r.ok) { const d = await r.json(); repo = Array.isArray(d) ? d : (d && d.items); } } catch (e) {}
+                if (Array.isArray(repo)) repo.forEach(it => { const n = normalizar(it); if (n.id && !buscar(n.id) && eliminados.indexOf(norm(n.id)) < 0) items.push(n); });
+                if (!habia && !items.length) sembrar();
+                guardar();
+            }
+
+            // ---------- enlaces y códigos ----------
+            function urlBase() {
+                if (cfg.urlBase) return cfg.urlBase.replace(/\/?$/, '/');
+                const l = window.location;
+                if (/^https?:$/.test(l.protocol) && !/^(localhost|127\.|192\.168\.|10\.)/.test(l.hostname)) return l.origin + l.pathname.replace(/[^/]*$/, '');
+                return URL_PUBLICA_DEFECTO;
+            }
+            const urlItem = (it) => urlBase() + '?mueble=' + encodeURIComponent(it.id);
+            function svgQR(texto) {
+                if (typeof qrcode !== 'function') return null;
+                try { const q = qrcode(0, 'M'); q.addData(texto); q.make(); return q.createSvgTag({ cellSize: 4, margin: 2, scalable: true }); } catch (e) { return null; }
+            }
+            function svgBarras(codigo) {
+                if (typeof JsBarcode !== 'function') return null;
+                try { const s = document.createElementNS(NS, 'svg'); JsBarcode(s, codigo, { format: 'CODE128', displayValue: true, height: 46, fontSize: 13, margin: 4 }); return s.outerHTML; } catch (e) { return null; }
+            }
+            function extraerCodigo(t) {
+                t = String(t || '').trim();
+                try { const u = new URL(t); const m = u.searchParams.get('mueble'); if (m) return m; } catch (e) {}
+                const m = t.match(/[?&#]mueble=([^&#\s]+)/i);
+                return m ? decodeURIComponent(m[1]) : t;
+            }
+
+            // ---------- utilidades de interfaz ----------
+            let toastT = null;
+            function toast(msg) {
+                let t = $('gl-toast');
+                if (!t) { t = document.createElement('div'); t.id = 'gl-toast'; document.body.appendChild(t); }
+                t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 3200);
+            }
+            function descargar(blob, nombre) {
+                const url = URL.createObjectURL(blob), a = document.createElement('a');
+                a.href = url; a.download = nombre; a.style.display = 'none'; document.body.appendChild(a); a.click();
+                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
+            }
+            function overlay(id, ancho) {
+                let ov = $(id);
+                if (ov) return ov;
+                ov = document.createElement('div'); ov.id = id; ov.className = 'gl-overlay'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+                ov.innerHTML = '<div class="gl-card' + (ancho ? ' ' + ancho : '') + '"></div>';
+                document.body.appendChild(ov);
+                ov.addEventListener('click', (e) => { if (e.target === ov) cerrarTodo(); });
+                return ov;
+            }
+            function mostrar(id, html, ancho) { const ov = overlay(id, ancho); ov.firstChild.innerHTML = html; ov.classList.add('show'); return ov; }
+            function ocultar(id) { const ov = $(id); if (ov) ov.classList.remove('show'); }
+            function cerrarTodo() { detenerCamara(); ['gl-inv-overlay', 'gl-ficha-overlay', 'gl-scan-overlay'].forEach(ocultar); abierto = null; enEdicion = null; }
+            document.addEventListener('keydown', (e) => {
+                if (e.key !== 'Escape') return;
+                if (ubicando) { cancelarUbicacion(); e.stopPropagation(); return; }
+                const vis = ['gl-ficha-overlay', 'gl-scan-overlay', 'gl-inv-overlay'].find(id => $(id) && $(id).classList.contains('show'));
+                if (vis) { if (vis === 'gl-ficha-overlay' && $('gl-inv-overlay') && $('gl-inv-overlay').dataset.volver === '1') { ocultar(vis); abierto = null; } else { ocultar(vis); if (vis === 'gl-scan-overlay') detenerCamara(); } e.stopPropagation(); }
+            }, true);
+
+            // ---------- lista ----------
+            function filtrados() {
+                const q = norm(filtro.q);
+                return items.filter(i => (!filtro.tipo || i.tipo === filtro.tipo) && (!filtro.estado || i.estado === filtro.estado) &&
+                    (!q || norm(i.id + ' ' + i.nombre + ' ' + i.marca + ' ' + i.serial + ' ' + i.responsable + ' ' + i.zona).indexOf(q) >= 0));
+            }
+            function ubicadoTxt(i) { return (i.x !== null && i.y !== null) ? '📍 en el plano' : (i.zona ? '🔷 zona ' + esc(i.zona) : '— sin ubicar'); }
+            function abrirLista() {
+                const opt = (arr, v) => '<option value="">Todos</option>' + arr.map(a => '<option' + (a === v ? ' selected' : '') + '>' + esc(a) + '</option>').join('');
+                const ov = mostrar('gl-inv-overlay',
+                    '<div class="gl-top"><h2>📦 Inventario del laboratorio <span class="gl-ref" id="inv-cuenta"></span></h2><button type="button" class="gl-btn" data-a="cerrar">✕ Cerrar</button></div>' +
+                    '<div class="gl-barra">' +
+                      '<input class="gl-in" id="inv-q" type="search" placeholder="Buscar código, nombre, serial…" value="' + esc(filtro.q) + '">' +
+                      '<select class="gl-in" id="inv-tipo">' + opt(Object.keys(TIPOS), filtro.tipo) + '</select>' +
+                      '<select class="gl-in" id="inv-estado">' + opt(ESTADOS, filtro.estado) + '</select></div>' +
+                    '<div class="gl-fila gl-envolver" style="margin-bottom:10px">' +
+                      '<button type="button" class="gl-btn pri" data-a="nuevo">➕ Nuevo</button><button type="button" class="gl-btn" data-a="escanear">📷 Escanear</button>' +
+                      '<button type="button" class="gl-btn" data-a="etiquetas-sel">🖨 Etiquetas (marcados)</button><button type="button" class="gl-btn" data-a="etiquetas-todos">🖨 Etiquetas (todos)</button>' +
+                      '<button type="button" class="gl-btn" data-a="exp-json">⬇ JSON</button><button type="button" class="gl-btn" data-a="exp-xlsx">⬇ Excel</button>' +
+                      '<label class="gl-btn gl-archivo">⬆ Importar<input type="file" id="inv-importar" accept=".json,.xlsx,.xls"></label><button type="button" class="gl-btn" data-a="config">⚙ Enlace del QR</button></div>' +
+                    '<div class="gl-tabla-w"><table class="gl-tabla"><thead><tr><th></th><th>Código</th><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Ubicación</th></tr></thead><tbody id="inv-filas"></tbody></table></div>' +
+                    '<div class="gl-ref" style="margin-top:8px">Los cambios se guardan en este navegador. Para publicarlos en la página usa «⬇ JSON» y sube el archivo <b>' + ARCHIVO_REPO + '</b> al repositorio.</div>');
+                ov.dataset.volver = '0';
+                pintarFilas();
+            }
+            function pintarFilas() {
+                const tb = $('inv-filas'); if (!tb) return;
+                const l = filtrados();
+                $('inv-cuenta').textContent = '(' + l.length + ' de ' + items.length + ')';
+                tb.innerHTML = l.map(i => '<tr data-id="' + esc(i.id) + '"><td><input type="checkbox" data-sel="' + esc(i.id) + '"' + (seleccionados[i.id] ? ' checked' : '') + '></td><td><b>' + esc(i.id) + '</b></td><td>' + esc(i.nombre) + '</td><td>' + esc(i.tipo) + '</td>' +
+                    '<td><span class="gl-punto" style="background:' + COLOR[i.estado] + '"></span>' + esc(i.estado) + '</td><td>' + ubicadoTxt(i) + '</td></tr>').join('') || '<tr><td colspan="6" class="gl-ref" style="text-align:center;padding:18px">Sin resultados.</td></tr>';
+            }
+
+            // ---------- ficha ----------
+            function abrirFicha(id) {
+                const it = buscar(id); if (!it) { toast('No existe el código ' + id); return; }
+                abierto = it.id; enEdicion = null;
+                const qr = svgQR(urlItem(it)), br = svgBarras(it.id);
+                const esMaq = !!(window.GIC_SIM && window.GIC_SIM.PERFILES[it.zona]);
+                const dato = (l, v) => v ? '<div class="gl-dato"><span>' + l + '</span><b>' + esc(v) + '</b></div>' : '';
+                const ub = (it.x !== null && it.y !== null) ? 'Marcado en el plano (' + it.x.toFixed(0) + ', ' + it.y.toFixed(0) + ')' : (it.zona ? 'Zona del plano: ' + it.zona : 'Sin ubicar en el plano');
+                mostrar('gl-ficha-overlay',
+                    '<div class="gl-top"><h2>' + esc(it.nombre) + '</h2><button type="button" class="gl-btn" data-a="cerrar-ficha">✕ Cerrar</button></div>' +
+                    '<div class="gl-ficha-grid"><div class="gl-codigos">' +
+                      '<div class="gl-qr">' + (qr || '<div class="gl-ref">No se pudo cargar la librería de QR.</div>') + '</div>' +
+                      '<div class="gl-barras">' + (br || '') + '</div>' +
+                      '<div class="gl-ref" style="word-break:break-all">' + esc(urlItem(it)) + '</div></div>' +
+                    '<div><div class="gl-cod-grande">' + esc(it.id) + ' <span class="gl-chip" style="background:' + COLOR[it.estado] + '">' + esc(it.estado) + '</span></div>' +
+                      dato('Tipo', it.tipo) + dato('Descripción', it.desc) + dato('Marca / modelo', it.marca) + dato('Serial', it.serial) + dato('Responsable', it.responsable) +
+                      dato('Fecha de adquisición', it.fecha) + dato('Valor', it.valor) + dato('Ubicación', ub) + dato('Notas', it.notas) +
+                      '<div class="gl-fila gl-envolver" style="margin-top:10px">' +
+                        '<button type="button" class="gl-btn pri" data-a="ver-plano">🗺 Ver en el plano</button><button type="button" class="gl-btn" data-a="ubicar">📍 Ubicar en el plano</button>' +
+                        '<button type="button" class="gl-btn" data-a="editar">✏ Editar</button><button type="button" class="gl-btn" data-a="etiqueta">🖨 Etiqueta</button>' +
+                        '<button type="button" class="gl-btn" data-a="copiar">🔗 Copiar enlace</button>' + (esMaq ? '<button type="button" class="gl-btn" data-a="simular">🔌 Simular conexión</button>' : '') +
+                        '<button type="button" class="gl-btn peligro" data-a="eliminar">🗑 Eliminar</button></div></div></div>' +
+                    '<div class="gl-etq" style="margin-top:14px">Historial</div>' +
+                    '<div class="gl-fila gl-envolver"><select class="gl-in" id="ev-tipo" style="max-width:150px">' + EVENTOS.map(e => '<option>' + e + '</option>').join('') + '</select>' +
+                    '<input class="gl-in" id="ev-nota" placeholder="Detalle del evento…" style="flex:1;min-width:140px"><button type="button" class="gl-btn" data-a="evento">➕ Registrar</button></div>' +
+                    '<div class="gl-hist">' + (it.historial.slice().reverse().map(h => '<div class="gl-h"><b>' + esc(h.t) + '</b> · ' + esc(fmtFecha(h.f)) + ' — ' + esc(h.n) + '</div>').join('') || '<div class="gl-h gl-ref">Sin eventos.</div>') + '</div>');
+                seleccionado = it.id; pintarMarcadores();
+            }
+            function formulario(it, nuevo) {
+                const o = (arr, v) => arr.map(a => '<option' + (a === v ? ' selected' : '') + '>' + esc(a) + '</option>').join('');
+                const f = (k, l, t, extra) => '<label class="gl-campo"><span>' + l + '</span><input class="gl-in" id="f-' + k + '" type="' + (t || 'text') + '" value="' + esc(it[k]) + '" ' + (extra || '') + '></label>';
+                const zonas = zonasDelPlano().map(z => '<option value="' + esc(z) + '">').join('');
+                mostrar('gl-ficha-overlay',
+                    '<div class="gl-top"><h2>' + (nuevo ? '➕ Nuevo mueble o equipo' : '✏ Editar ' + esc(it.id)) + '</h2><button type="button" class="gl-btn" data-a="cancelar-edicion">✕ Cancelar</button></div>' +
+                    '<div class="gl-form">' +
+                      '<label class="gl-campo"><span>Código ' + (nuevo ? '(se genera solo; puedes cambiarlo)' : '(no editable: ya está impreso en la etiqueta)') + '</span><input class="gl-in" id="f-id" value="' + esc(it.id) + '"' + (nuevo ? '' : ' disabled') + '></label>' +
+                      f('nombre', 'Nombre *') +
+                      '<label class="gl-campo"><span>Tipo</span><select class="gl-in" id="f-tipo">' + o(Object.keys(TIPOS), it.tipo) + '</select></label>' +
+                      '<label class="gl-campo"><span>Estado</span><select class="gl-in" id="f-estado">' + o(ESTADOS, it.estado) + '</select></label>' +
+                      f('desc', 'Descripción') + f('marca', 'Marca / modelo') + f('serial', 'Serial') + f('responsable', 'Responsable') + f('fecha', 'Fecha de adquisición', 'date') + f('valor', 'Valor (COP)') +
+                      '<label class="gl-campo"><span>Zona del plano (id del polígono del SVG, opcional)</span><input class="gl-in" id="f-zona" list="gl-zonas" value="' + esc(it.zona) + '"><datalist id="gl-zonas">' + zonas + '</datalist></label>' +
+                      '<label class="gl-campo"><span>Notas</span><textarea class="gl-in" id="f-notas" rows="3">' + esc(it.notas) + '</textarea></label></div>' +
+                    '<div class="gl-fila" style="margin-top:12px"><button type="button" class="gl-btn pri" data-a="guardar-ficha">💾 Guardar</button></div>');
+                enEdicion = { nuevo, id: it.id };
+            }
+            function leerFormulario() {
+                const v = (k) => ($('f-' + k) ? $('f-' + k).value.trim() : '');
+                return { id: v('id'), nombre: v('nombre'), tipo: v('tipo'), estado: v('estado'), desc: v('desc'), marca: v('marca'), serial: v('serial'), responsable: v('responsable'), fecha: v('fecha'), valor: v('valor'), zona: v('zona'), notas: v('notas') };
+            }
+            function guardarFicha() {
+                const d = leerFormulario();
+                if (!d.nombre) { toast('El nombre es obligatorio'); return; }
+                if (enEdicion.nuevo) {
+                    d.id = (d.id || siguienteId(d.tipo)).toUpperCase().replace(/\s+/g, '');
+                    if (buscar(d.id)) { toast('Ya existe el código ' + d.id); return; }
+                    const it = normalizar(Object.assign(d, { historial: [{ f: hoy(), t: 'Nota', n: 'Registrado en el inventario' }] }));
+                    items.push(it); eliminados = eliminados.filter(x => x !== norm(it.id)); guardar(); toast('Creado ' + it.id); pintarMarcadores(); abrirFicha(it.id);
+                } else {
+                    const it = buscar(enEdicion.id); if (!it) return;
+                    const cambios = []; ['nombre', 'tipo', 'estado', 'zona', 'responsable'].forEach(k => { if (String(it[k]) !== String(d[k])) cambios.push(k + ': ' + (it[k] || '—') + ' → ' + (d[k] || '—')); });
+                    delete d.id; Object.assign(it, d);
+                    if (cambios.length) it.historial.push({ f: hoy(), t: 'Revisión', n: 'Editado (' + cambios.join('; ') + ')' });
+                    guardar(); toast('Cambios guardados'); pintarMarcadores(); abrirFicha(it.id);
+                }
+                if ($('inv-filas')) pintarFilas();
+            }
+            function eliminar(id) {
+                const it = buscar(id); if (!it) return;
+                if (!window.confirm('¿Eliminar ' + it.id + ' (' + it.nombre + ')? Esta acción no se puede deshacer.')) return;
+                items = items.filter(i => i !== it); if (eliminados.indexOf(norm(it.id)) < 0) eliminados.push(norm(it.id));
+                guardar(); ocultar('gl-ficha-overlay'); pintarMarcadores(); toast('Eliminado ' + it.id); if ($('inv-filas')) pintarFilas();
+            }
+            function registrarEvento() {
+                const it = buscar(abierto); if (!it) return;
+                const n = ($('ev-nota').value || '').trim(); if (!n) { toast('Escribe el detalle del evento'); return; }
+                it.historial.push({ f: hoy(), t: $('ev-tipo').value, n }); guardar(); abrirFicha(it.id);
+            }
+
+            // ---------- etiquetas ----------
+            function imprimirEtiquetas(lista) {
+                if (!lista.length) { toast('No hay elementos para imprimir'); return; }
+                const cuerpo = lista.map(it => {
+                    const qr = svgQR(urlItem(it)) || '', br = svgBarras(it.id) || '';
+                    return '<div class="et"><div class="qr">' + qr + '</div><div class="tx"><div class="ins">UPTC · LAB ARQ</div><div class="cod">' + esc(it.id) + '</div><div class="nom">' + esc(it.nombre) + '</div><div class="sub">' + esc(it.tipo) + (it.responsable ? ' · ' + esc(it.responsable) : '') + '</div><div class="bc">' + br + '</div></div></div>';
+                }).join('');
+                const html = '<!doctype html><html><head><meta charset="utf-8"><title>Etiquetas de inventario</title><style>@page{margin:8mm}body{font-family:Arial,sans-serif;margin:0}.g{display:grid;grid-template-columns:repeat(2,1fr);gap:4mm}' +
+                    '.et{border:1px solid #000;border-radius:2mm;padding:3mm;display:flex;gap:3mm;align-items:center;break-inside:avoid;height:40mm;box-sizing:border-box}.qr{width:30mm;flex:none}.qr svg{width:100%;height:auto}.tx{flex:1;min-width:0}' +
+                    '.ins{font-size:7pt;color:#555;letter-spacing:.5px}.cod{font-weight:700;font-size:13pt}.nom{font-size:9.5pt;line-height:1.15}.sub{font-size:7.5pt;color:#444;margin:1mm 0}.bc svg{width:100%;height:13mm}</style></head><body><div class="g">' + cuerpo +
+                    '</div><script>window.onload=function(){setTimeout(function(){window.print()},350)}<\/script></body></html>';
+                const w = window.open('', '_blank');
+                if (!w) { toast('El navegador bloqueó la ventana de impresión: permite las ventanas emergentes'); return; }
+                w.document.open(); w.document.write(html); w.document.close();
+            }
+
+            // ---------- exportar / importar ----------
+            function exportarJSON() { descargar(new Blob([JSON.stringify({ version: 1, generado: hoy(), items }, null, 2)], { type: 'application/json' }), ARCHIVO_REPO); toast('Descargado ' + ARCHIVO_REPO + ': súbelo al repositorio para publicarlo'); }
+            const COLS = [['id', 'Código'], ['nombre', 'Nombre'], ['tipo', 'Tipo'], ['estado', 'Estado'], ['desc', 'Descripción'], ['marca', 'Marca / modelo'], ['serial', 'Serial'], ['responsable', 'Responsable'], ['fecha', 'Fecha de adquisición'], ['valor', 'Valor'], ['zona', 'Zona del plano'], ['x', 'X (plano)'], ['y', 'Y (plano)'], ['notas', 'Notas']];
+            function exportarXLSX() {
+                if (typeof XLSX === 'undefined') { toast('No se pudo cargar la librería de Excel'); return; }
+                const wb = XLSX.utils.book_new();
+                const fil = items.map(i => { const o = {}; COLS.forEach(([k, l]) => { o[l] = (i[k] === null || i[k] === undefined) ? '' : i[k]; }); o['Enlace QR'] = urlItem(i); return o; });
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(fil), 'Inventario');
+                const his = []; items.forEach(i => i.historial.forEach(h => his.push({ 'Código': i.id, 'Fecha': h.f, 'Evento': h.t, 'Detalle': h.n })));
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(his.length ? his : [{ 'Código': '', 'Fecha': '', 'Evento': '', 'Detalle': '' }]), 'Historial');
+                const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                descargar(new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'Inventario_LAB_ARQ_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+            }
+            function fusionar(lista) {
+                let nuevos = 0, act = 0;
+                lista.forEach(raw => {
+                    const n = normalizar(raw); if (!n.id || !n.nombre) return;
+                    const ex = buscar(n.id);
+                    if (ex) {
+                        // Solo se sobrescriben los campos que la fila trae con valor: una fila parcial no borra la ubicación ni el historial
+                        Object.keys(raw || {}).forEach(k => { if (k === 'id' || k === 'creado' || k === 'historial') return; const v = raw[k]; if (v === undefined || v === null || v === '') return; ex[k] = v; });
+                        const nn = normalizar(ex); ex.x = nn.x; ex.y = nn.y; ex.tipo = nn.tipo; ex.estado = nn.estado;
+                        if (Array.isArray(raw.historial) && raw.historial.length > ex.historial.length) ex.historial = raw.historial;
+                        act++;
+                    }
+                    else { items.push(n); nuevos++; eliminados = eliminados.filter(x => x !== norm(n.id)); }
+                });
+                guardar(); pintarMarcadores(); if ($('inv-filas')) pintarFilas();
+                return { nuevos, act };
+            }
+            function importarArchivo(file) {
+                if (!file) return;
+                const lector = new FileReader();
+                if (/\.json$/i.test(file.name)) {
+                    lector.onload = () => { try { const d = JSON.parse(lector.result), l = Array.isArray(d) ? d : d.items; const r = fusionar(l || []); toast('Importado: ' + r.nuevos + ' nuevos, ' + r.act + ' actualizados'); } catch (e) { toast('El archivo JSON no es válido'); } };
+                    lector.readAsText(file);
+                } else {
+                    if (typeof XLSX === 'undefined') { toast('No se pudo cargar la librería de Excel'); return; }
+                    lector.onload = () => {
+                        try {
+                            const wb = XLSX.read(new Uint8Array(lector.result), { type: 'array' }), hoja = wb.Sheets[wb.SheetNames[0]], filas = XLSX.utils.sheet_to_json(hoja, { defval: '' });
+                            if (!filas.length) { toast('El Excel no tiene filas para importar'); return; }
+                            const mapa = {}; COLS.forEach(([k, l]) => { mapa[norm(l)] = k; });
+                            const lista = filas.map(f => { const o = {}; Object.keys(f).forEach(c => { const k = mapa[norm(c)]; if (k) o[k] = f[c]; }); return o; });
+                            const r = fusionar(lista); toast('Importado: ' + r.nuevos + ' nuevos, ' + r.act + ' actualizados');
+                        } catch (e) { toast('No se pudo leer el Excel'); }
+                    };
+                    lector.readAsArrayBuffer(file);
+                }
+            }
+
+            // ---------- escáner ----------
+            function detenerCamara() {
+                if (camara) { camara.activa = false; try { camara.stream && camara.stream.getTracks().forEach(t => t.stop()); } catch (e) {} camara = null; }
+            }
+            function procesarCodigo(texto) {
+                const codigo = extraerCodigo(texto); if (!codigo) return false;
+                const it = buscar(codigo);
+                if (it) { cerrarTodo(); irAlMueble(it.id); return true; }
+                const r = $('scan-resultado');
+                if (r) r.innerHTML = '⚠ El código <b>' + esc(codigo) + '</b> no está registrado. <button type="button" class="gl-btn" data-a="nuevo-con-codigo" data-c="' + esc(codigo) + '">➕ Crear con este código</button>';
+                return false;
+            }
+            async function abrirScanner() {
+                const ov = mostrar('gl-scan-overlay',
+                    '<div class="gl-top"><h2>📷 Escanear código</h2><button type="button" class="gl-btn" data-a="cerrar-scan">✕ Cerrar</button></div>' +
+                    '<div class="gl-ref" style="margin-bottom:8px">Apunta la cámara al QR o al código de barras de la etiqueta. También puedes usar un lector USB/Bluetooth o escribir el código.</div>' +
+                    '<video id="scan-video" playsinline muted></video><div id="scan-estado" class="gl-ref" style="margin:6px 0"></div>' +
+                    '<div class="gl-fila"><input class="gl-in" id="scan-manual" placeholder="Código (p. ej. LAB-MES-001) y Enter" autocomplete="off"><button type="button" class="gl-btn pri" data-a="scan-buscar">Buscar</button></div>' +
+                    '<div id="scan-resultado" style="margin-top:10px;font-size:12px"></div>', 'estrecha');
+                const inp = $('scan-manual'); if (inp) setTimeout(() => inp.focus(), 50);
+                const estado = $('scan-estado');
+                if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { estado.textContent = 'Este navegador no permite usar la cámara; escribe o escanea el código con un lector.'; return; }
+                const tieneBD = ('BarcodeDetector' in window), tieneJsQR = (typeof jsQR === 'function');
+                if (!tieneBD && !tieneJsQR) { estado.textContent = 'No hay lector de códigos disponible en este navegador; usa la cámara nativa del celular (el QR abre la página) o escribe el código.'; return; }
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+                    const video = $('scan-video'); if (!video) { stream.getTracks().forEach(t => t.stop()); return; }
+                    video.srcObject = stream; await video.play().catch(() => {});
+                    camara = { stream, activa: true };
+                    estado.textContent = 'Buscando código…';
+                    const det = tieneBD ? new window.BarcodeDetector({ formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8'] }) : null;
+                    const cv = document.createElement('canvas'), cx = cv.getContext('2d');
+                    const ciclo = async () => {
+                        if (!camara || !camara.activa) return;
+                        try {
+                            if (video.readyState >= 2) {
+                                let texto = null;
+                                if (det) { const r = await det.detect(video); if (r && r.length) texto = r[0].rawValue; }
+                                else { cv.width = 480; cv.height = Math.round(480 * video.videoHeight / (video.videoWidth || 480)); cx.drawImage(video, 0, 0, cv.width, cv.height); const d = cx.getImageData(0, 0, cv.width, cv.height); const q = jsQR(d.data, d.width, d.height); if (q) texto = q.data; }
+                                if (texto && procesarCodigo(texto)) return;
+                            }
+                        } catch (e) {}
+                        setTimeout(ciclo, 250);
+                    };
+                    ciclo();
+                } catch (e) { estado.textContent = 'No se pudo abrir la cámara (' + (e && e.name ? e.name : 'permiso denegado') + '). Escribe el código o usa un lector.'; }
+            }
+
+            // ---------- plano: marcadores, ubicación y navegación ----------
+            const esPlanoLab = () => typeof edificioActual !== 'undefined' && edificioActual === 'lab' && typeof vistaActualGlobal !== 'undefined' && vistaActualGlobal === 'vista-2d';
+            function docPlano() {
+                const o = $('svg-2d-object');
+                try { const d = o && o.contentDocument; return (d && d.documentElement && d.documentElement.localName === 'svg') ? d : null; } catch (e) { return null; }
+            }
+            function escalaPin(doc) {
+                const r = doc.documentElement; let W = 0, H = 0;
+                try { const vb = r.viewBox && r.viewBox.baseVal; if (vb && vb.width) { W = vb.width; H = vb.height; } } catch (e) {}
+                if (!W) { W = parseFloat(r.getAttribute('width')) || 1000; H = parseFloat(r.getAttribute('height')) || 700; }
+                return Math.max(W, H) / 110;
+            }
+            function buscarZona(doc, id) { try { return doc.getElementById(id) || doc.querySelector('[id="' + id + '"]') || doc.querySelector('[data-name="' + id + '"]'); } catch (e) { return null; } }
+            function zonasDelPlano() {
+                const doc = docPlano(); const base = ['LAB_ARQ', 'IMPRESORA_3D', 'PLOTER_1', 'PLOTER_2', 'ROUTER'];
+                if (!doc) return base;
+                const ids = Array.from(doc.querySelectorAll('[id]')).map(e => e.id).filter(id => id && !/^(svg|g|path|rect|layer|defs|namedview|metadata|polygon|polyline|circle|ellipse|line|text|tspan|use|image|clippath|mask|linearGradient|radialGradient|stop|style|title|desc|gic)[-_]?\d*$/i.test(id) && id.length < 40);
+                return Array.from(new Set(base.concat(ids)));
+            }
+            function centroElemento(doc, el) {
+                try {
+                    const r = el.getBoundingClientRect(), svg = doc.documentElement, m = svg.getScreenCTM && svg.getScreenCTM();
+                    if (m && (r.width + r.height) > 0) { const pt = svg.createSVGPoint(); pt.x = r.left + r.width / 2; pt.y = r.top + r.height / 2; const q = pt.matrixTransform(m.inverse()); return { x: q.x, y: q.y }; }
+                    const b = el.getBBox(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+                } catch (e) { return null; }
+            }
+            function posicionItem(doc, it) {
+                if (it.x !== null && it.y !== null) return { x: it.x, y: it.y };
+                if (it.zona) { const el = buscarZona(doc, it.zona); if (el) return centroElemento(doc, el); }
+                return null;
+            }
+            function asegurarEstiloPlano(doc) {
+                if (doc.getElementById('gic-inv-estilo')) return;
+                const st = doc.createElementNS(NS, 'style'); st.setAttribute('id', 'gic-inv-estilo');
+                st.textContent = '.gic-pin{cursor:pointer}.gic-pin circle.p{stroke:#fff;transition:opacity .15s}.gic-pin:hover circle.p{opacity:.8}.gic-pin text{pointer-events:none;font-family:Arial,sans-serif;font-weight:700;fill:#fff;text-anchor:middle;dominant-baseline:central}';
+                doc.documentElement.appendChild(st);
+            }
+            function pintarMarcadores() {
+                const doc = docPlano(); if (!doc || !esPlanoLab()) return;
+                const viejo = doc.getElementById('gic-inv'); if (viejo) viejo.parentNode.removeChild(viejo);
+                asegurarEstiloPlano(doc);
+                const g = doc.createElementNS(NS, 'g'); g.setAttribute('id', 'gic-inv'); doc.documentElement.appendChild(g);
+                const r = escalaPin(doc);
+                items.forEach(it => {
+                    const p = posicionItem(doc, it); if (!p) return;
+                    const pin = doc.createElementNS(NS, 'g'); pin.setAttribute('class', 'gic-pin'); pin.setAttribute('data-id', it.id);
+                    pin.style.pointerEvents = 'all';
+                    if (it.id === seleccionado) {
+                        const an = doc.createElementNS(NS, 'circle'); an.setAttribute('cx', p.x); an.setAttribute('cy', p.y); an.setAttribute('r', r); an.setAttribute('fill', 'none'); an.setAttribute('stroke', '#f59e0b'); an.setAttribute('stroke-width', r / 4);
+                        const a1 = doc.createElementNS(NS, 'animate'); a1.setAttribute('attributeName', 'r'); a1.setAttribute('values', r + ';' + r * 2.6 + ';' + r); a1.setAttribute('dur', '1.4s'); a1.setAttribute('repeatCount', 'indefinite');
+                        const a2 = doc.createElementNS(NS, 'animate'); a2.setAttribute('attributeName', 'opacity'); a2.setAttribute('values', '1;0.1;1'); a2.setAttribute('dur', '1.4s'); a2.setAttribute('repeatCount', 'indefinite');
+                        an.appendChild(a1); an.appendChild(a2); pin.appendChild(an);
+                    }
+                    const c = doc.createElementNS(NS, 'circle'); c.setAttribute('class', 'p'); c.setAttribute('cx', p.x); c.setAttribute('cy', p.y); c.setAttribute('r', r); c.setAttribute('fill', COLOR[it.estado]); c.setAttribute('stroke-width', r / 5);
+                    const t = doc.createElementNS(NS, 'text'); t.setAttribute('x', p.x); t.setAttribute('y', p.y); t.setAttribute('font-size', r * 1.15); t.textContent = it.tipo.charAt(0);
+                    const ti = doc.createElementNS(NS, 'title'); ti.textContent = it.id + ' · ' + it.nombre + ' (' + it.estado + ')';
+                    pin.appendChild(c); pin.appendChild(t); pin.appendChild(ti);
+                    pin.addEventListener('click', (e) => { if (ubicando) return; e.stopPropagation(); abrirFicha(it.id); });
+                    g.appendChild(pin);
+                });
+                if (!doc.__gicInvClic) {
+                    doc.__gicInvClic = true;
+                    doc.addEventListener('click', (e) => {            // fase de captura: gana a los polígonos mientras se ubica
+                        if (!ubicando) return;
+                        e.preventDefault(); e.stopPropagation();
+                        try {
+                            const svg = doc.documentElement, pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+                            const q = pt.matrixTransform(svg.getScreenCTM().inverse());
+                            asignarUbicacion(q.x, q.y);
+                        } catch (err) { toast('No se pudo calcular la posición en el plano'); }
+                    }, true);
+                }
+            }
+            function asegurarPlano(fn) {
+                const doc = docPlano();
+                if (esPlanoLab() && doc && doc.getElementById('gic-inv')) { fn(); return; }
+                pendienteAccion = fn;
+                if (typeof fijarEdificio === 'function') fijarEdificio('lab');
+                if (typeof vistaActualGlobal !== 'undefined' && vistaActualGlobal !== 'vista-2d' && typeof window.irAVista2DPiso === 'function') window.irAVista2DPiso('Piso 1');
+            }
+            function irAlMueble(id) {
+                const it = buscar(id); if (!it) { toast('Código no encontrado: ' + id); return; }
+                asegurarPlano(() => { seleccionado = it.id; pintarMarcadores(); abrirFicha(it.id); });
+            }
+            function verEnPlano(id) { ocultar('gl-ficha-overlay'); ocultar('gl-inv-overlay'); seleccionado = id; asegurarPlano(() => { pintarMarcadores(); const it = buscar(id); const d = docPlano(); if (it && d && !posicionItem(d, it)) toast(id + ' aún no tiene ubicación: usa «Ubicar en el plano»'); }); }
+            function iniciarUbicacion(id) {
+                const it = buscar(id); if (!it) return;
+                ocultar('gl-ficha-overlay'); ocultar('gl-inv-overlay');
+                asegurarPlano(() => {
+                    ubicando = it.id; seleccionado = it.id; pintarMarcadores();
+                    let b = $('gl-ubicar-banner');
+                    if (!b) { b = document.createElement('div'); b.id = 'gl-ubicar-banner'; document.body.appendChild(b); b.addEventListener('click', (e) => { if (e.target.closest('button')) cancelarUbicacion(); }); }
+                    b.innerHTML = '<span>📍 Haz clic en el plano para ubicar <b>' + esc(it.id) + '</b> — ' + esc(it.nombre) + '</span><button type="button">Cancelar (Esc)</button>';
+                    b.classList.add('show');
+                });
+            }
+            function terminarUbicacion() { ubicando = null; const b = $('gl-ubicar-banner'); if (b) b.classList.remove('show'); }
+            function cancelarUbicacion() { const id = ubicando; terminarUbicacion(); if (id) abrirFicha(id); }
+            function asignarUbicacion(x, y) {
+                const it = buscar(ubicando); terminarUbicacion(); if (!it) return;
+                it.x = Math.round(x * 10) / 10; it.y = Math.round(y * 10) / 10;
+                it.historial.push({ f: hoy(), t: 'Traslado', n: 'Ubicado en el plano (' + it.x.toFixed(0) + ', ' + it.y.toFixed(0) + ')' });
+                guardar(); pintarMarcadores(); toast('Ubicación guardada para ' + it.id); abrirFicha(it.id);
+            }
+
+            // ---------- herramientas flotantes e integración con el módulo LAB existente ----------
+            function actualizarHerramientas() { const d = $('lab-tools'); if (d) d.classList.toggle('on', esPlanoLab()); }
+            function construirHerramientas() {
+                const v = $('vista-2d'); if (!v || $('lab-tools')) return;
+                const d = document.createElement('div'); d.id = 'lab-tools';
+                d.innerHTML = '<button type="button" data-a="inv">📦 Inventario</button><button type="button" data-a="sim">🧪 Simulador</button><button type="button" data-a="scan">📷 Escanear</button>';
+                v.appendChild(d);
+                d.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.a === 'inv') abrirLista(); else if (b.dataset.a === 'sim') window.GIC_SIM.abrir(); else abrirScanner(); });
+                const t = $('titulo-vista-2d'); if (t) new MutationObserver(actualizarHerramientas).observe(t, { childList: true, characterData: true, subtree: true });
+                new MutationObserver(actualizarHerramientas).observe(v, { attributes: true, attributeFilter: ['class', 'style'] });
+                actualizarHerramientas();
+            }
+            function idMaquinaDeTexto(txt) {
+                const P = (window.GIC_SIM && window.GIC_SIM.PERFILES) || {}; txt = String(txt || '').toUpperCase();
+                return Object.keys(P).find(id => txt.indexOf(P[id].etiqueta) >= 0) || null;
+            }
+            function inyectarBotonesMaquina() {
+                // Ficha técnica (modal existente)
+                const card = document.querySelector('#maquina-overlay .maquina-card');
+                if (card && !$('gl-maq-sim')) {
+                    const d = document.createElement('div'); d.id = 'gl-maq-sim'; d.style.marginTop = '10px';
+                    d.innerHTML = '<button type="button" class="gl-btn pri">🔌 Simular conexión y trabajo</button>';
+                    card.insertBefore(d, card.querySelector('div:last-child'));
+                    d.firstChild.addEventListener('click', () => { const id = idMaquinaDeTexto(($('maquina-titulo') || {}).textContent); const cerrar = $('maquina-cerrar'); if (cerrar) cerrar.click(); window.GIC_SIM.abrir(id || undefined); });
+                }
+                // Panel lateral de la máquina
+                const panel = $('panel-contenido'), tit = $('panel-derecho-titulo');
+                if (panel && tit && !$('gl-panel-sim')) {
+                    const id = idMaquinaDeTexto(tit.textContent); const ac = panel.querySelector('.gic-ed-acciones');
+                    if (id && ac) { const b = document.createElement('button'); b.type = 'button'; b.id = 'gl-panel-sim'; b.className = 'btn-edificio-accion'; b.textContent = '🔌 Simular conexión y trabajo'; b.addEventListener('click', () => window.GIC_SIM.abrir(id)); ac.appendChild(b); }
+                }
+            }
+            function alPlanoCargado() {
+                actualizarHerramientas(); pintarMarcadores();
+                if (pendienteAccion) { const f = pendienteAccion; pendienteAccion = null; setTimeout(f, 60); }
+            }
+            function enganchar() {
+                const orig = window.conectarPlanoLAB;
+                if (typeof orig === 'function' && !orig.__gicInv) {
+                    window.conectarPlanoLAB = function () { const r = orig.apply(this, arguments); try { alPlanoCargado(); } catch (e) { console.error('[GIC] inventario:', e); } return r; };
+                    window.conectarPlanoLAB.__gicInv = true;
+                }
+            }
+            function manejarEnlace() {
+                let codigo = null;
+                try { codigo = new URLSearchParams(window.location.search).get('mueble'); } catch (e) {}
+                if (!codigo) return;
+                const ov = $('welcome-overlay'); if (ov && ov.classList.contains('show') && typeof cerrarBienvenida === 'function') cerrarBienvenida();
+                if (!buscar(codigo)) { toast('El código «' + codigo + '» no está en el inventario'); return; }
+                irAlMueble(codigo);
+            }
+
+            // ---------- eventos de la interfaz ----------
+            document.addEventListener('click', (e) => {
+                const b = e.target.closest && e.target.closest('#gl-inv-overlay [data-a], #gl-ficha-overlay [data-a], #gl-scan-overlay [data-a]'); 
+                const fila = e.target.closest && e.target.closest('#inv-filas tr[data-id]');
+                if (!b && fila && !e.target.closest('input')) { abrirFicha(fila.dataset.id); $('gl-inv-overlay').dataset.volver = '1'; return; }
+                if (!b) return;
+                const a = b.dataset.a;
+                if (a === 'cerrar') cerrarTodo();
+                else if (a === 'nuevo') { const t = 'Mesa'; formulario(normalizar({ id: siguienteId(t), tipo: t }), true); }
+                else if (a === 'nuevo-con-codigo') { detenerCamara(); ocultar('gl-scan-overlay'); formulario(normalizar({ id: b.dataset.c, tipo: 'Otro' }), true); }
+                else if (a === 'escanear') abrirScanner();
+                else if (a === 'etiquetas-sel') imprimirEtiquetas(items.filter(i => seleccionados[i.id]));
+                else if (a === 'etiquetas-todos') imprimirEtiquetas(filtrados());
+                else if (a === 'exp-json') exportarJSON();
+                else if (a === 'exp-xlsx') exportarXLSX();
+                else if (a === 'config') { const v = window.prompt('Dirección pública de la página (se usa dentro del QR):', urlBase()); if (v !== null) { cfg.urlBase = v.trim(); guardar(); toast('Enlace del QR actualizado'); } }
+                else if (a === 'cerrar-ficha') { ocultar('gl-ficha-overlay'); abierto = null; if ($('inv-filas')) pintarFilas(); }
+                else if (a === 'cerrar-scan') { detenerCamara(); ocultar('gl-scan-overlay'); }
+                else if (a === 'scan-buscar') { const v = $('scan-manual'); if (v && v.value.trim()) procesarCodigo(v.value); }
+                else if (a === 'cancelar-edicion') { if (enEdicion && !enEdicion.nuevo) abrirFicha(enEdicion.id); else ocultar('gl-ficha-overlay'); enEdicion = null; }
+                else if (a === 'guardar-ficha') guardarFicha();
+                else if (a === 'editar') { const it = buscar(abierto); if (it) formulario(normalizar(it), false); }
+                else if (a === 'eliminar') eliminar(abierto);
+                else if (a === 'evento') registrarEvento();
+                else if (a === 'etiqueta') { const it = buscar(abierto); if (it) imprimirEtiquetas([it]); }
+                else if (a === 'copiar') { const it = buscar(abierto); if (it) { const u = urlItem(it); if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(() => toast('Enlace copiado'), () => window.prompt('Copia el enlace:', u)); else window.prompt('Copia el enlace:', u); } }
+                else if (a === 'ver-plano') verEnPlano(abierto);
+                else if (a === 'ubicar') iniciarUbicacion(abierto);
+                else if (a === 'simular') { const it = buscar(abierto); ocultar('gl-ficha-overlay'); ocultar('gl-inv-overlay'); if (it) window.GIC_SIM.abrir(it.zona); }
+            });
+            document.addEventListener('input', (e) => {
+                if (e.target.id === 'inv-q') { filtro.q = e.target.value; pintarFilas(); }
+            });
+            document.addEventListener('change', (e) => {
+                const t = e.target;
+                if (t.id === 'inv-tipo') { filtro.tipo = t.value; pintarFilas(); }
+                else if (t.id === 'inv-estado') { filtro.estado = t.value; pintarFilas(); }
+                else if (t.dataset && t.dataset.sel) { if (t.checked) seleccionados[t.dataset.sel] = true; else delete seleccionados[t.dataset.sel]; }
+                else if (t.id === 'inv-importar') { importarArchivo(t.files && t.files[0]); t.value = ''; }
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.target && e.target.id === 'scan-manual' && e.target.value.trim()) { e.preventDefault(); procesarCodigo(e.target.value); }
+            });
+
+            // ---------- arranque ----------
+            function arrancar() {
+                construirHerramientas(); enganchar();
+                const obs = $('panel-contenido'); if (obs) new MutationObserver(inyectarBotonesMaquina).observe(obs, { childList: true });
+                const ob2 = document.body; new MutationObserver(inyectarBotonesMaquina).observe(ob2, { childList: true });
+                inyectarBotonesMaquina();
+                listoIniciar = iniciar().then(() => {
+                    const lanzar = () => setTimeout(manejarEnlace, 350);
+                    if (document.readyState === 'complete') lanzar(); else window.addEventListener('load', lanzar);
+                });
+            }
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arrancar); else arrancar();
+
+            return { abrirLista, abrirFicha, abrirScanner, irAlMueble, buscar, items: () => items, procesarCodigo, extraerCodigo, urlItem, imprimirEtiquetas, siguienteId, pintarMarcadores,
+                     _estado: () => ({ items, eliminados, cfg, ubicando }), _listo: () => listoIniciar, _fusionar: fusionar, _iniciarUbicacion: iniciarUbicacion, _asignar: asignarUbicacion, _imprimir: imprimirEtiquetas };
+        })();
+        window.GIC_INV = GIC_INV;
     </script>
 </body>
 </html>
