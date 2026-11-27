@@ -137,3 +137,66 @@ html.gic-portal {
 @media (prefers-reduced-motion: reduce) {
   .gic-portal .nav-btn, .gic-portal .galeria-card, .gic-portal .gl-btn { transition: none; }
 }
+
+/* GIC 2.0 — navegación explícita, jerarquía y superficies */
+.gic-portal { --gic-brand-bright: #00b4d8; --gic-blue: #0369a1; --gic-blue-hover: #075985; }
+.gic-portal header { border-bottom-color: #00b4d8; }
+.gic-portal .brand { letter-spacing: .035em; font-size: 16px; }
+.gic-portal .header-left > .tag { color: #bae6fd; background: #0c3148; border-color: #24506a; }
+.gic-portal .header-right .btn-ayuda { border-radius: 8px; }
+.gic-portal .sidebar-left { gap: 10px; padding: 12px 6px; }
+.gic-portal .nav-btn { flex-direction: column; gap: 3px; width: 100%; min-width: 0; font-size: 19px; height: 53px; }
+.gic-portal .nav-btn .gic-nav-label { font-size: 10px; font-weight: 650; line-height: 1.1; white-space: nowrap; }
+.gic-portal .nav-btn.active { background: #0c4160; color: #e0f2fe; box-shadow: inset 3px 0 #00b4d8; }
+.gic-portal .nav-btn:hover { background: #164765; color: white; }
+.gic-portal .nav-btn svg { width: 20px; height: 20px; flex: none; }
+.gic-portal .content-area { min-width: 0; }
+.gic-portal #menus-mapa { gap: 8px; }
+.gic-portal #btn-lista-edificios, .gic-portal #btn-lista-capas, .gic-portal #btn-galeria, .gic-portal #btn-calor {
+  background: #101b2e; border: 1px solid #34475d; color: #f8fafc; box-shadow: 0 4px 16px #0f172a26; 
+}
+.gic-portal #btn-lista-edificios:hover, .gic-portal #btn-lista-capas:hover, .gic-portal #btn-galeria:hover { background: #172b42; }
+.gic-portal #lista-edificios li { min-height: 36px; }
+.gic-portal #lista-edificios li:hover { background: #17354d; }
+.gic-portal .sidebar-right { background: linear-gradient(155deg,#111e33,#0b1324 55%); }
+.gic-portal .panel-title { font-size: 15px; text-transform: none; letter-spacing: .02em; }
+.gic-portal .info-section-title { letter-spacing: .07em; color: #7dd3fc; }
+.gic-portal .info-label { color: #b6c4d5; }
+.gic-portal .info-group { padding: 5px 0; border-bottom: 1px solid #ffffff0d; }
+.gic-portal .welcome-card { background: linear-gradient(155deg,#13243b,#0b1324 50%); }
+.gic-portal .welcome-card h1 { font-size: clamp(20px,3vw,28px); }
+.gic-portal .welcome-step { border-color: #35475e; }
+.gic-portal .welcome-step b { color: #7dd3fc; }
+.gic-portal .welcome-card .btn-primario { min-height: 44px; }
+.gic-portal .gic-ed-foto { border-color: #35475e; border-radius: 12px; }
+.gic-portal .gic-ed-acciones .btn-edificio-accion, .gic-portal .pma-entrar { border-radius: 9px; }
+.gic-portal .gl-card { background: #0b1324; }
+.gic-portal .gl-top h2 { font-size: 19px; }
+.gic-portal .gl-bloque { background: #142137; }
+.gic-portal .gl-tabla tbody tr:nth-child(even) { background: #ffffff06; }
+.gic-portal .gl-tabla tbody tr:hover { background: #17354d; }
+.gic-portal .gl-tabla th { background: #182942; }
+.gic-portal .gl-in:focus, .gic-portal .filter-select:focus { border-color: #00b4d8; }
+.gic-portal .zoom2d-controles { border-radius: 12px; box-shadow: 0 5px 18px #0f172a26; }
+.gic-portal .galeria-card .info { line-height: 1.5; }
+.gic-solicitudes body { background: #edf2f7; }
+.gic-solicitudes body > h1 { background: linear-gradient(120deg,#070d19,#17354d); border-top-color: #00b4d8; }
+.gic-solicitudes body > .sub { background: #101e32; }
+.gic-solicitudes .card { box-shadow: 0 3px 14px #0f172a0c; }
+.gic-solicitudes .card h2 { border-left-color: #00b4d8; }
+.gic-solicitudes input:focus, .gic-solicitudes select:focus, .gic-solicitudes textarea:focus { border-color: #0369a1; }
+.gic-solicitudes .item { padding-block: 16px; }
+@media (min-width: 821px) {
+  html.gic-portal:not(.movil) .sidebar-left { width: 76px; flex: 0 0 76px; }
+  html.gic-portal:not(.movil) .nav-btn { width: 62px; }
+}
+html.gic-portal.movil .sidebar-left { padding: 0 0 env(safe-area-inset-bottom,0px); gap: 0; }
+html.gic-portal.movil .nav-btn { width: 30%; height: 46px; gap: 2px; }
+html.gic-portal.movil .nav-btn.active { box-shadow: inset 0 -3px #00b4d8; }
+html.gic-portal.movil.horiz .nav-btn { height: 36px; flex-direction: row; gap: 6px; }
+html.gic-portal.movil .nav-btn svg { width: 19px; height: 19px; }
+html.gic-portal.movil .brand { font-size: 14px; }
+html.gic-portal.movil .gl-top h2 { font-size: 17px; }
+@media (prefers-reduced-motion: reduce) {
+  .gic-portal .vista, .gic-portal .sidebar-right, .gic-portal #gic-loader { transition: none; }
+}
