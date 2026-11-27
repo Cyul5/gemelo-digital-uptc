@@ -842,6 +842,22 @@
     @keyframes gicBarra { 0% { transform: translateX(-120%); } 100% { transform: translateX(300%); } }
     @media (prefers-reduced-motion: reduce) { #gic-loader .gl-logo, #gic-loader .gl-barra i { animation: none; } }
 </style>
+<style>
+    /* Plano 2D en celular: barra compacta (Opciones / PDF / Volver) y filtros plegables */
+    #btn-opc-2d { display: none; }
+    html.movil #btn-opc-2d { display: block; order: 1; flex: 1 1 0; min-width: 0; min-height: 42px; padding: 8px 10px; border-radius: 6px; border: 1px solid #1e293b; background: var(--bg-header); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; }
+    html.movil #vista-2d #btn-opc-2d::after { content: ' ▾'; }
+    html.movil #vista-2d.filtros-abiertos #btn-opc-2d::after { content: ' ▴'; }
+    html.movil #vista-2d .btn-informe { order: 2; flex: 1 1 0; min-width: 0; padding: 8px 10px; }
+    html.movil #vista-2d .btn-regresar { order: 3; flex: 1 1 0; min-width: 0; padding: 8px 10px; }
+    html.movil #vista-2d .m-opc { order: 4; }
+    html.movil #vista-2d:not(.filtros-abiertos) .m-opc { display: none !important; }
+    html.movil #vista-2d .t-largo { display: none; }
+    html.movil #vista-2d > div:first-child > div { min-width: 0; max-width: 100%; }
+    html.movil #vista-2d > div:first-child > div:first-child > div { min-width: 0; max-width: 100%; }
+    html.movil #titulo-vista-2d { font-size: 14px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    html.movil .zoom2d-controles { display: none !important; }   /* en celular se usan los botones +/− oscuros del módulo táctil */
+</style>
 </head>
 <body>
 
@@ -962,14 +978,15 @@
                     
                     <!-- NUEVA LISTA DESPLEGABLE INDEPENDIENTE PARA PLANOS 2D -->
                     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                        <div class="edificio-selector">
+                        <button id="btn-opc-2d" type="button" onclick="document.getElementById('vista-2d').classList.toggle('filtros-abiertos')">⚙️ Opciones</button>
+                        <div class="edificio-selector m-opc">
                             <span>🏢 Edificio:</span>
                             <select id="select-edificio-2d" class="filter-select" onchange="fijarEdificio(this.value)">
                                 <option value="hunza">Aulas Hunza</option>
                                 <option value="lab">Laboratorios Ingeniería (EDILAB)</option>
                             </select>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #475569; font-weight: 600;">
+                        <div class="m-opc" style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #475569; font-weight: 600;">
                             <span>🏢 Seleccionar Planta:</span>
                             <select id="select-piso-2d" class="filter-select" style="width: 160px;" onchange="irAVista2DPiso(this.value)">
                                 <option value="Piso 1">Piso 1</option>
@@ -980,7 +997,7 @@
                             </select>
                         </div>
             <!-- MODO DE CONSULTA (ahora en la barra superior del plano 2D) -->
-            <div class="panel-filtros-container" id="panel-filtros-horario">
+            <div class="panel-filtros-container m-opc" id="panel-filtros-horario">
                 <div class="filter-group">
                     <span>📋 Consulta:</span>
                     <select id="select-modo-consulta" class="filter-select" onchange="cambiarModoConsulta()">
@@ -1010,8 +1027,8 @@
                 </div>
             </div>
                         <span id="info-archivo-2d"></span>
-                        <button id="btn-informe-pdf" class="btn-informe" type="button" onclick="abrirModalInformes()" title="Descargar un informe en PDF con la información del Excel">📄 Generar informe PDF</button>
-                        <button class="btn-regresar" style="display:inline-block; margin-bottom: 0; width: auto;" onclick="irAVista('vista-3d')">⬅ Volver al Modelo 3D</button>
+                        <button id="btn-informe-pdf" class="btn-informe" type="button" onclick="abrirModalInformes()" title="Descargar un informe en PDF con la información del Excel">📄 <span class="t-largo">Generar informe </span>PDF</button>
+                        <button class="btn-regresar" style="display:inline-block; margin-bottom: 0; width: auto;" onclick="irAVista('vista-3d')">⬅ Volver<span class="t-largo"> al Modelo</span> 3D</button>
                     </div>
                 </div>
                 <div class="container-svg-2d" id="svg-2d-wrapper">
@@ -1232,6 +1249,7 @@
             if (ind) ind.textContent = Math.round(escZoom2D * 100) + '%';
         }
         function zoom2DPorFactor(f, cx, cy) {
+            if (document.documentElement.classList.contains('movil')) return;   // en celular lo maneja el módulo táctil (GIC_MOVIL)
             const w = document.getElementById('svg-2d-wrapper');
             const rect = w ? w.getBoundingClientRect() : { left: 0, top: 0, width: 800, height: 600 };
             const px = (cx !== undefined && cx !== null ? cx : rect.left + rect.width / 2) - rect.left;
@@ -1255,6 +1273,7 @@
                 zoom2DPorFactor(e.deltaY < 0 ? 1.15 : 0.87, e.clientX, e.clientY);
             }, { passive: false });
             w.addEventListener('pointerdown', (e) => {
+                if (e.pointerType === 'touch') return;   // el toque lo maneja GIC_MOVIL
                 if (e.target && e.target.closest && e.target.closest('#zoom2d-controles')) return;
                 arrastra2D = true; movido2D = false; ultimoX2D = e.clientX; ultimoY2D = e.clientY;
                 const o = document.getElementById('svg-2d-object'); if (o) o.classList.add('arrastrando');
@@ -1296,6 +1315,7 @@
             }, { passive: false });
             let down = false, ux = 0, uy = 0, sx = 0, sy = 0, capturado = false;
             doc.addEventListener('pointerdown', (e) => {
+                if (e.pointerType === 'touch') return;   // el toque lo maneja GIC_MOVIL
                 if (e.pointerType === 'mouse' && e.button !== 0) return;
                 down = true; capturado = false; movido2D = false;
                 ux = sx = e.screenX; uy = sy = e.screenY;
