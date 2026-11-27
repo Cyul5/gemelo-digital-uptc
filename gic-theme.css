@@ -200,3 +200,17 @@ html.gic-portal.movil .gl-top h2 { font-size: 17px; }
 @media (prefers-reduced-motion: reduce) {
   .gic-portal .vista, .gic-portal .sidebar-right, .gic-portal #gic-loader { transition: none; }
 }
+
+/* Consistent outline icons; preserve semantic status and map geometry. */
+.gic-ui-icon { display:inline-block; width:1.15em; height:1.15em; vertical-align:-.19em; flex:none; color:inherit; pointer-events:none; }
+.gic-portal :is(.btn-ayuda,.btn-nivel,.btn-edificio-accion,.pma-entrar,.gl-btn,.btn-primario,.btn-excel,.galeria-cerrar) .gic-ui-icon { margin-inline-end:.22em; }
+.gic-portal :is(.gl-top h2,#btn-lista-edificios,#btn-lista-capas) .gic-ui-icon { color:#7dd3fc; margin-inline-end:.35em; }
+.gic-portal :is(#map-controls,.zoom2d-controles,#plan-zoom-ctl) button { font-variant-numeric:tabular-nums; font-weight:650; }
+.gic-portal :is(.btn-ayuda,.gl-btn,.btn-nivel,.btn-edificio-accion,.pma-entrar,.btn-calib,.galeria-cerrar,#lab-tools button) { transition:background-color .15s,border-color .15s,color .15s; }
+.gic-portal :is(.gl-btn,.btn-nivel,.btn-edificio-accion,.btn-calib):focus-visible { outline:2px solid #7dd3fc; outline-offset:2px; }
+.gic-portal #ifc-canvas-container canvas { display:block; max-width:100%; touch-action:none; }
+.gic-portal #ifc-status { font-variant-numeric:tabular-nums; line-height:1.5; }
+.gic-portal .loading-spinner { border-color:#64748b; border-top-color:#00b4d8; }
+@media (prefers-reduced-motion:reduce) {
+ .gic-portal :is(.btn-ayuda,.gl-btn,.btn-nivel,.btn-edificio-accion,.pma-entrar,.btn-calib,.galeria-cerrar,#lab-tools button) { transition:none; }
+}
