@@ -7841,26 +7841,7 @@
                     if (id && ac) { const b = document.createElement('button'); b.type = 'button'; b.id = 'gl-panel-sim'; b.className = 'btn-edificio-accion'; b.textContent = '🔌 Simular conexión y trabajo'; b.addEventListener('click', () => window.GIC_SIM.abrir(id)); ac.appendChild(b); }
                 }
             }
-            // Inventario / Simulador / Escanear viven en el panel lateral del laboratorio, junto a «Solicitar turno»
-            function inyectarHerramientasPanel() {
-                const panel = $('panel-contenido');
-                if (!panel || $('gl-panel-tools')) return;
-                const esLab = (typeof edificioActual !== 'undefined' && edificioActual === 'lab') || /PLANOS_LABORATORIOS_ARQ/.test(panel.textContent || '');
-                if (!esLab) return;
-                const enlace = panel.querySelector('.gic-ed-acciones a[href="solicitudes.html"]');
-                if (!enlace) return;
-                const d = document.createElement('div'); d.id = 'gl-panel-tools';
-                d.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
-                d.innerHTML = '<button type="button" class="btn-edificio-accion" data-t="inv">📦 Inventario</button>' +
-                              '<button type="button" class="btn-edificio-accion" data-t="sim">🧪 Simulador</button>' +
-                              '<button type="button" class="btn-edificio-accion" data-t="scan">📷 Escanear</button>';
-                enlace.parentNode.insertBefore(d, enlace);
-                d.addEventListener('click', (e) => {
-                    const b = e.target.closest('button'); if (!b) return;
-                    if (b.dataset.t === 'inv') abrirLista(); else if (b.dataset.t === 'sim') window.GIC_SIM.abrir(); else abrirScanner();
-                });
-            }
-            function alCambiarPanel() { inyectarBotonesMaquina(); inyectarHerramientasPanel(); }
+            function alCambiarPanel() { inyectarBotonesMaquina(); }
             function alPlanoCargado() {
                 actualizarHerramientas(); pintarMarcadores();
                 if (pendienteAccion) { const f = pendienteAccion; pendienteAccion = null; setTimeout(f, 60); }
@@ -7873,8 +7854,16 @@
                 }
             }
             function manejarEnlace() {
-                let codigo = null;
-                try { codigo = new URLSearchParams(window.location.search).get('mueble'); } catch (e) {}
+                let codigo = null, herramienta = null;
+                try { const q = new URLSearchParams(window.location.search); codigo = q.get('mueble'); herramienta = q.get('herramienta'); } catch (e) {}
+                if (herramienta && !codigo) {
+                    // Enlace desde el gestor de solicitudes: abre Inventario / Simulador / Escanear
+                    const ov0 = $('welcome-overlay'); if (ov0 && ov0.classList.contains('show') && typeof cerrarBienvenida === 'function') cerrarBienvenida();
+                    if (herramienta === 'inventario') abrirLista();
+                    else if (herramienta === 'simulador') window.GIC_SIM.abrir();
+                    else if (herramienta === 'escanear') abrirScanner();
+                    return;
+                }
                 if (!codigo) return;
                 const ov = $('welcome-overlay'); if (ov && ov.classList.contains('show') && typeof cerrarBienvenida === 'function') cerrarBienvenida();
                 if (!buscar(codigo)) { toast('El código «' + codigo + '» no está en el inventario'); return; }
