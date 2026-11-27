@@ -34,6 +34,13 @@
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   @media(max-width:640px){.grid2{grid-template-columns:1fr}}
   a{color:#0284c7}
+  /* Visor de herramientas del laboratorio (Inventario / Simulador / Escanear) sin salir de esta página */
+  #herr-overlay{display:none;position:fixed;inset:0;z-index:1000;background:#0b1324;flex-direction:column}
+  #herr-overlay .herr-barra{display:flex;align-items:center;gap:12px;padding:8px 12px;background:#070d19;border-bottom:1px solid #1e293b;color:#f8fafc;font-weight:700;font-size:14px}
+  #herr-overlay iframe{flex:1 1 auto;width:100%;border:0;background:#0b1324}
+  /* Aviso de cierre de sesión por inactividad */
+  #aviso-sesion{display:none;position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:2000;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 24px);padding:12px 16px;border-radius:12px;background:#0f172a;color:#f8fafc;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  #aviso-sesion button{background:#00b4d8;color:#04202a}
 </style>
 </head>
 <body>
@@ -41,8 +48,8 @@
 <p class="sub">Solicita un turno, sube tu archivo y sigue el estado. El gestor de cada máquina lo aprueba y lo gestiona (mantenimiento e inventario). Fase 1: sin chat, solo estados.</p>
 
 <div class="card">
-  <h2>Acceso</h2>
-  <div class="fila-btn" style="margin-bottom:12px">
+  <h2 id="acceso-titulo">Acceso</h2>
+  <div class="fila-btn" id="roles-row" style="margin-bottom:12px">
     <button id="tab-solicitante" onclick="fijarRolAcceso('solicitante')" style="flex:1">👤 Ingresar como solicitante</button>
     <button id="tab-gestor" class="sec" onclick="fijarRolAcceso('gestor')" style="flex:1">🛠️ Ingresar como gestor</button>
   </div>
@@ -104,9 +111,9 @@
     <div class="fila-btn" style="margin:0">
       <button class="sec" onclick="mostrarSeccionGestor('sec-maint','sec-inv')">🔧 Mantenimiento</button>
       <button class="sec" onclick="mostrarSeccionGestor('sec-inv','sec-maint')">📦 Consumo</button>
-      <a href="index.html?herramienta=inventario" style="text-decoration:none"><button type="button" class="sec">📦 Inventario</button></a>
-      <a href="index.html?herramienta=simulador" style="text-decoration:none"><button type="button" class="sec">🧪 Simulador</button></a>
-      <a href="index.html?herramienta=escanear" style="text-decoration:none"><button type="button" class="sec">📷 Escanear</button></a>
+      <button type="button" class="sec" onclick="abrirHerramienta('inventario')">📦 Inventario</button>
+      <button type="button" class="sec" onclick="abrirHerramienta('simulador')">🧪 Simulador</button>
+      <button type="button" class="sec" onclick="abrirHerramienta('escanear')">📷 Escanear</button>
     </div>
   </div>
   <h3 style="font-size:14px;margin:14px 0 6px">Bandeja de solicitudes</h3>
@@ -143,6 +150,14 @@
 
 <p class="ayuda" style="text-align:center"><a href="index.html">← Volver al Gemelo Digital (mapa general)</a></p>
 
+<div id="herr-overlay" role="dialog" aria-modal="true" aria-label="Herramienta del laboratorio">
+  <div class="herr-barra">
+    <button type="button" class="sec" onclick="cerrarHerramienta()">← Volver a solicitudes</button>
+    <span id="herr-titulo"></span>
+  </div>
+  <iframe id="herr-frame" title="Herramienta del laboratorio" allow="camera; fullscreen"></iframe>
+</div>
+
 <script>
 // Conectado a tu proyecto Supabase "maquinas-lab-arq"
 const SUPABASE_URL = 'https://uewmxjqtnfsxwwwebxkt.supabase.co';
@@ -153,6 +168,83 @@ let yo = null, miRol = 'usuario', maquinas = [];
 // Simulación: código único para crear/entrar como gestor (en producción sería una tabla/código en servidor).
 const CODIGO_GESTOR = 'LAB2026';
 let rolAcceso = 'solicitante';
+
+// ---------- Control de tiempo de sesión (cierre automático por inactividad) ----------
+const SESION_INACTIVIDAD_MIN = 15;   // minutos sin actividad antes de cerrar la sesión
+const SESION_AVISO_SEG = 60;         // segundos de aviso antes del cierre
+const CLAVE_ACTIVIDAD = 'gic_sol_ultima_actividad';
+let ultimaActividad = Date.now(), ultimoGuardado = 0, avisoVisible = false, vigilante = null;
+function marcarActividad(forzar) {
+  if (avisoVisible && !forzar) return;          // con el aviso abierto solo cuenta «Seguir conectado»
+  const t = Date.now(); ultimaActividad = t;
+  if (forzar || t - ultimoGuardado > 5000) { ultimoGuardado = t; try { localStorage.setItem(CLAVE_ACTIVIDAD, String(t)); } catch (e) {} }
+}
+['pointerdown', 'mousemove', 'keydown', 'touchstart', 'wheel', 'scroll'].forEach(ev => document.addEventListener(ev, () => marcarActividad(), { passive: true, capture: true }));
+function mostrarAviso(seg) {
+  let a = $('aviso-sesion');
+  if (!a) {
+    a = document.createElement('div'); a.id = 'aviso-sesion'; a.setAttribute('role', 'alert');
+    a.innerHTML = '<span id="aviso-sesion-txt"></span><button type="button" onclick="seguirConectado()">Seguir conectado</button>';
+    document.body.appendChild(a);
+  }
+  a.style.display = 'flex'; avisoVisible = true;
+  $('aviso-sesion-txt').textContent = '⏳ Tu sesión se cerrará en ' + seg + ' s por inactividad.';
+}
+function ocultarAviso() { const a = $('aviso-sesion'); if (a) a.style.display = 'none'; avisoVisible = false; }
+function seguirConectado() { ocultarAviso(); marcarActividad(true); }
+function vigilar() {
+  if (!yo) return;
+  let g = 0; try { g = +localStorage.getItem(CLAVE_ACTIVIDAD) || 0; } catch (e) {}
+  if (g > ultimaActividad && !avisoVisible) ultimaActividad = g;     // actividad en otra pestaña
+  const restante = SESION_INACTIVIDAD_MIN * 60000 - (Date.now() - ultimaActividad);
+  if (restante <= 0) cerrarPorInactividad();
+  else if (restante <= SESION_AVISO_SEG * 1000) mostrarAviso(Math.ceil(restante / 1000));
+  else if (avisoVisible) ocultarAviso();
+}
+function iniciarVigilante() { if (vigilante) return; marcarActividad(true); vigilante = setInterval(vigilar, 1000); }
+function detenerVigilante() { if (vigilante) { clearInterval(vigilante); vigilante = null; } ocultarAviso(); }
+async function cerrarPorInactividad() {
+  detenerVigilante(); cerrarHerramienta();
+  try { await sb.auth.signOut(); } catch (e) {}
+  try { localStorage.removeItem(CLAVE_ACTIVIDAD); } catch (e) {}
+  await sesion();
+  $('auth-msg').className = 'msg err';
+  $('auth-msg').textContent = 'Tu sesión se cerró por inactividad (' + SESION_INACTIVIDAD_MIN + ' min). Vuelve a ingresar.';
+}
+async function arranqueControlado() {
+  // Si la página se abre con una sesión guardada y ya pasó el tiempo de inactividad, se cierra
+  try {
+    const g = +localStorage.getItem(CLAVE_ACTIVIDAD) || 0;
+    const { data } = await sb.auth.getSession();
+    if (data && data.session && g && Date.now() - g > SESION_INACTIVIDAD_MIN * 60000) {
+      await sb.auth.signOut(); try { localStorage.removeItem(CLAVE_ACTIVIDAD); } catch (e) {}
+      $('auth-msg').className = 'msg err';
+      $('auth-msg').textContent = 'Tu sesión se cerró por inactividad. Vuelve a ingresar.';
+    }
+  } catch (e) {}
+  sesion();
+}
+
+// ---------- Herramientas del laboratorio dentro de esta página ----------
+const HERRAMIENTAS = { inventario: '📦 Inventario', simulador: '🧪 Simulador', escanear: '📷 Escanear' };
+function abrirHerramienta(h) {
+  $('herr-titulo').textContent = HERRAMIENTAS[h] || '';
+  $('herr-frame').src = 'index.html?herramienta=' + encodeURIComponent(h) + '&embebido=1';
+  $('herr-overlay').style.display = 'flex'; document.body.style.overflow = 'hidden';
+  marcarActividad(true);
+}
+function cerrarHerramienta() {
+  const f = $('herr-frame'), o = $('herr-overlay'); if (!f || !o) return;
+  if (o.style.display !== 'none' && o.style.display !== '') f.src = 'about:blank';   // también apaga la cámara
+  o.style.display = 'none'; document.body.style.overflow = '';
+}
+window.addEventListener('message', (e) => {
+  if (e.origin !== location.origin) return;
+  const d = e.data || {};
+  if (d.gic === 'herramienta-cerrada') cerrarHerramienta();
+  else if (d.gic === 'actividad') marcarActividad();
+});
+
 function fijarRolAcceso(r) {
   rolAcceso = r;
   const esG = r === 'gestor';
@@ -210,6 +302,9 @@ async function sesion(){
   const dentro = !!yo;
   $('auth-out').style.display = dentro ? 'none' : 'block';
   $('auth-in').style.display = dentro ? 'block' : 'none';
+  $('roles-row').style.display = dentro ? 'none' : 'flex';   // ya ingresó: solo queda «Cerrar sesión»
+  $('acceso-titulo').textContent = dentro ? 'Sesión activa' : 'Acceso';
+  if (dentro) iniciarVigilante(); else { detenerVigilante(); cerrarHerramienta(); }
   if (!dentro) {
     yo = null; miRol = 'usuario';
     $('form-card').style.display = 'none';
@@ -262,7 +357,7 @@ async function registro(){
   if (data && data.session) { $('auth-msg').className = 'msg ok'; $('auth-msg').textContent = '✔ Cuenta creada. Entrando…'; await sesion(); }
   else { $('auth-msg').className = 'msg ok'; $('auth-msg').textContent = 'Cuenta creada. Revisa tu correo para confirmar y vuelve a entrar.'; }
 }
-async function salir(){ await sb.auth.signOut(); sesion(); }
+async function salir(){ await sb.auth.signOut(); try { localStorage.removeItem(CLAVE_ACTIVIDAD); } catch (e) {} sesion(); }
 
 async function crearSolicitud(){
   const m = maquinas.find(x => x.id === $('maquina').value);
@@ -351,7 +446,7 @@ async function listarInventario(){
   ).join('') || '<p class="ayuda">Sin registros.</p>');
 }
 sb.auth.onAuthStateChange(() => sesion());
-sesion();
+arranqueControlado();
 </script>
 </body>
 </html>
