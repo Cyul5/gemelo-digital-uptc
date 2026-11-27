@@ -1164,46 +1164,20 @@
     <!-- CARTEL DE BIENVENIDA -->
     <div id="welcome-overlay" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
         <div class="welcome-card">
-            <h1 id="welcome-title">👋 Bienvenido a <span>UPTC GIC</span></h1>
-            <p class="welcome-lead">
-                El <strong>Gestor de Información del Campus</strong> te permite explorar la sede desde el plano general
-                hasta cada aula de un edificio, y consultar su inventario, mobiliario y horarios de uso, en 4 pasos.
-            </p>
-
+            <div class="gic-welcome-brand"><img src="LOGO_ISOTIPO.png" alt="" decoding="async"><span>UPTC GIC <small>GEMELO DIGITAL DEL CAMPUS</small></span></div>
+            <h1 id="welcome-title">Explora el campus <span>en otra dimensión.</span></h1>
+            <p class="welcome-lead">Consulta edificios, modelos tridimensionales, planos, inventarios y horarios desde un único entorno interactivo.</p>
+            <div class="gic-welcome-section">GUÍA DE EXPLORACIÓN <span>4 pasos</span></div>
             <div class="welcome-steps">
-                <div class="welcome-step">
-                    <b>🌐 1. Plano general</b>
-                    Arrastra con el mouse para moverte y usa la <kbd>rueda</kbd> o los botones <kbd>+</kbd> <kbd>−</kbd> para hacer zoom.
-                    Abre la lista <strong>🏛️ Edificios del campus</strong> (arriba a la izquierda) y haz clic en uno para acercarte a él.
-                </div>
-                <div class="welcome-step">
-                    <b>🏢 2. Modelo 3D</b>
-                    Haz <strong>clic</strong> sobre el edificio <strong>Hunza (30)</strong> para ver su información (el panel queda fijo) y <strong>doble clic</strong> para entrar a su modelo 3D.
-                    Gira con clic izquierdo, desplaza con clic derecho y acerca con la <kbd>rueda</kbd>.
-                </div>
-                <div class="welcome-step">
-                    <b>🧱 3. Elegir un piso</b>
-                    En el 3D, haz clic sobre un piso del edificio para abrir su plano, o usa el panel derecho
-                    (<em>Niveles</em>) para aislar un piso o volver a ver el edificio completo.
-                </div>
-                <div class="welcome-step">
-                    <b>📐 4. Plano 2D y datos</b>
-                    Haz clic en un aula del plano para ver su ficha. Con el selector <em>Consulta</em> cambias entre
-                    inventario, mobiliario y horarios (día y franja) para ver qué aulas están libres u ocupadas.
-                </div>
+                <article class="welcome-step"><div class="gic-step-head"><span class="gic-step-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15"/></svg></span><span class="gic-step-number">01</span></div><b>Plano general</b><strong class="gic-step-caption">Explora el campus</strong><p>Arrastra para recorrer el mapa. Usa la rueda o los controles de zoom. En Edificios del campus, selecciona un edificio para localizarlo.</p></article>
+                <article class="welcome-step"><div class="gic-step-head"><span class="gic-step-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/></svg></span><span class="gic-step-number">02</span></div><b>Modelo 3D</b><strong class="gic-step-caption">Conoce el edificio</strong><p>Selecciona Hunza (30) para ver su información. Haz doble clic para abrir el modelo. Gira, desplaza y acerca la vista con el mouse.</p></article>
+                <article class="welcome-step"><div class="gic-step-head"><span class="gic-step-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 8 9-5 9 5-9 5zM3 12l9 5 9-5M3 16l9 5 9-5"/></svg></span><span class="gic-step-number">03</span></div><b>Niveles</b><strong class="gic-step-caption">Explora cada piso</strong><p>Selecciona un piso en el modelo o utiliza el panel Niveles para aislarlo. También puedes volver al edificio completo.</p></article>
+                <article class="welcome-step"><div class="gic-step-head"><span class="gic-step-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 10h11v11M14 10h7M8 3v7"/></svg></span><span class="gic-step-number">04</span></div><b>Planos y datos</b><strong class="gic-step-caption">Consulta los espacios</strong><p>Selecciona un aula para abrir su ficha. Cambia la consulta entre inventario, mobiliario y horarios de ocupación.</p></article>
             </div>
-
-            <div class="welcome-nav">
-                <strong>Barra izquierda:</strong> 🌐 Plano general &nbsp;·&nbsp; 🏢 Modelo 3D &nbsp;·&nbsp; 📐 Plano 2D<br>
-                <strong>Botones azules:</strong> «⬅ Volver al Modelo 3D» y «🗺️ Volver al Mapa General» te devuelven un paso atrás.<br>
-                <strong>❓ Ayuda</strong> (arriba a la derecha) vuelve a mostrar esta guía.<br>
-                <strong>🖼️ Galería</strong> (esquina superior derecha del Modelo 3D) muestra todas las fotos del levantamiento.<br>
-                <strong>📱 En celular:</strong> arrastra con un dedo para moverte y pellizca con dos para acercar (mapa, modelo 3D y planos). Usa la barra de abajo para cambiar de vista y desliza hacia arriba el panel «Datos» para ver niveles, filtros y fichas.
-            </div>
-
+            <details class="welcome-nav"><summary>Controles y recomendaciones de navegación</summary><p>Usa el menú lateral (inferior en celular) para cambiar entre Mapa, Modelo 3D y Planos. Los botones Volver permiten regresar a la vista anterior. Abre Ayuda para consultar esta guía y Galería para ver las fotos del levantamiento.</p><p>En celular, arrastra con un dedo y pellizca con dos para acercar. Desliza hacia arriba el panel Datos para consultar niveles, filtros y fichas.</p></details>
             <div class="welcome-footer">
                 <label><input type="checkbox" id="welcome-no-mostrar"> No volver a mostrar al entrar</label>
-                <button class="btn-primario" onclick="cerrarBienvenida()">Comenzar</button>
+                <button class="btn-primario" onclick="cerrarBienvenida()">Explorar campus <span aria-hidden="true">→</span></button>
             </div>
         </div>
     </div>
