@@ -1276,35 +1276,56 @@
             w.addEventListener('dblclick', (e) => { zoom2DPorFactor(1.5, e.clientX, e.clientY); });
         }
         function conectarZoom2DAlSvg(doc) {
-            // Los eventos de la rueda/arrastre ocurren DENTRO del <object> (documento SVG aparte):
-            // hay que engancharlos en el contentDocument, no solo en el wrapper del HTML.
+            // Los eventos de la rueda/arrastre ocurren DENTRO del <object> (documento SVG aparte).
+            // OJO: allí clientX/clientY están en coordenadas locales del SVG, que se MUEVEN junto con el plano
+            // al hacer paneo/zoom (por eso se trababa). Para el arrastre se usa screenX/screenY (fijas en pantalla)
+            // y para el zoom se convierte la posición local a coordenadas de pantalla del HTML principal.
             if (!doc || !doc.documentElement || doc.__zoom2D) return;
             doc.__zoom2D = true;
+            const raiz = doc.documentElement;
+            try { raiz.style.touchAction = 'none'; } catch (e) {}
+            const aPantalla = (e) => {
+                const w = document.getElementById('svg-2d-wrapper');
+                const r = w ? w.getBoundingClientRect() : { left: 0, top: 0 };
+                return { x: r.left + xZoom2D + e.clientX * escZoom2D, y: r.top + yZoom2D + e.clientY * escZoom2D };
+            };
             doc.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                zoom2DPorFactor(e.deltaY < 0 ? 1.15 : 0.87, e.clientX, e.clientY);
+                const p = aPantalla(e);
+                zoom2DPorFactor(e.deltaY < 0 ? 1.15 : 0.87, p.x, p.y);
             }, { passive: false });
-            let arrastrando = false, ux = 0, uy = 0;
-            doc.addEventListener('pointerdown', (e) => { arrastrando = true; movido2D = false; ux = e.clientX; uy = e.clientY; });
+            let down = false, ux = 0, uy = 0, sx = 0, sy = 0, capturado = false;
+            doc.addEventListener('pointerdown', (e) => {
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
+                down = true; capturado = false; movido2D = false;
+                ux = sx = e.screenX; uy = sy = e.screenY;
+            });
             doc.addEventListener('pointermove', (e) => {
-                if (!arrastrando) return;
-                const dx = e.clientX - ux, dy = e.clientY - uy;
-                if (Math.abs(dx) + Math.abs(dy) > 2) movido2D = true;
-                xZoom2D += dx; yZoom2D += dy; ux = e.clientX; uy = e.clientY;
+                if (!down) return;
+                if (!movido2D) {
+                    // umbral: un simple clic sobre un aula/máquina no debe contarse como arrastre
+                    if (Math.abs(e.screenX - sx) + Math.abs(e.screenY - sy) <= 4) return;
+                    movido2D = true;
+                    const o = document.getElementById('svg-2d-object'); if (o) o.classList.add('arrastrando');
+                    // se captura el puntero solo al empezar a arrastrar (si se hiciera antes, el clic no llegaría al polígono)
+                    try { raiz.setPointerCapture(e.pointerId); capturado = true; } catch (err) {}
+                    ux = e.screenX; uy = e.screenY;
+                    return;
+                }
+                xZoom2D += e.screenX - ux; yZoom2D += e.screenY - uy;
+                ux = e.screenX; uy = e.screenY;
                 aplicarZoom2D();
             });
-            const finS = () => { arrastrando = false; setTimeout(() => { movido2D = false; }, 0); };
-            doc.addEventListener('pointerup', finS);
-            doc.addEventListener('pointercancel', finS);
-            // Fallback mouse (en algunos navegadores el puntero no llega al SVG embebido)
-            doc.addEventListener('mousedown', (e) => { if (!arrastrando) { arrastrando = true; movido2D = false; ux = e.clientX; uy = e.clientY; } });
-            doc.addEventListener('mousemove', (e) => {
-                if (!arrastrando) return;
-                xZoom2D += e.clientX - ux; yZoom2D += e.clientY - uy; ux = e.clientX; uy = e.clientY; aplicarZoom2D();
-            });
-            doc.addEventListener('mouseup', finS);
+            const fin = (e) => {
+                down = false;
+                if (capturado) { try { raiz.releasePointerCapture(e.pointerId); } catch (err) {} capturado = false; }
+                const o = document.getElementById('svg-2d-object'); if (o) o.classList.remove('arrastrando');
+                setTimeout(() => { movido2D = false; }, 0);
+            };
+            doc.addEventListener('pointerup', fin);
+            doc.addEventListener('pointercancel', fin);
             doc.addEventListener('click', (e) => { if (movido2D) { e.stopPropagation(); e.preventDefault(); movido2D = false; } }, true);
-            doc.addEventListener('dblclick', (e) => { zoom2DPorFactor(1.5, e.clientX, e.clientY); });
+            doc.addEventListener('dblclick', (e) => { const p = aPantalla(e); zoom2DPorFactor(1.5, p.x, p.y); });
         }
         window.zoom2DPorFactor = zoom2DPorFactor;
         window.resetZoom2D = resetZoom2D;
@@ -7820,6 +7841,26 @@
                     if (id && ac) { const b = document.createElement('button'); b.type = 'button'; b.id = 'gl-panel-sim'; b.className = 'btn-edificio-accion'; b.textContent = '🔌 Simular conexión y trabajo'; b.addEventListener('click', () => window.GIC_SIM.abrir(id)); ac.appendChild(b); }
                 }
             }
+            // Inventario / Simulador / Escanear viven en el panel lateral del laboratorio, junto a «Solicitar turno»
+            function inyectarHerramientasPanel() {
+                const panel = $('panel-contenido');
+                if (!panel || $('gl-panel-tools')) return;
+                const esLab = (typeof edificioActual !== 'undefined' && edificioActual === 'lab') || /PLANOS_LABORATORIOS_ARQ/.test(panel.textContent || '');
+                if (!esLab) return;
+                const enlace = panel.querySelector('.gic-ed-acciones a[href="solicitudes.html"]');
+                if (!enlace) return;
+                const d = document.createElement('div'); d.id = 'gl-panel-tools';
+                d.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
+                d.innerHTML = '<button type="button" class="btn-edificio-accion" data-t="inv">📦 Inventario</button>' +
+                              '<button type="button" class="btn-edificio-accion" data-t="sim">🧪 Simulador</button>' +
+                              '<button type="button" class="btn-edificio-accion" data-t="scan">📷 Escanear</button>';
+                enlace.parentNode.insertBefore(d, enlace);
+                d.addEventListener('click', (e) => {
+                    const b = e.target.closest('button'); if (!b) return;
+                    if (b.dataset.t === 'inv') abrirLista(); else if (b.dataset.t === 'sim') window.GIC_SIM.abrir(); else abrirScanner();
+                });
+            }
+            function alCambiarPanel() { inyectarBotonesMaquina(); inyectarHerramientasPanel(); }
             function alPlanoCargado() {
                 actualizarHerramientas(); pintarMarcadores();
                 if (pendienteAccion) { const f = pendienteAccion; pendienteAccion = null; setTimeout(f, 60); }
@@ -7886,10 +7927,10 @@
 
             // ---------- arranque ----------
             function arrancar() {
-                construirHerramientas(); enganchar();
-                const obs = $('panel-contenido'); if (obs) new MutationObserver(inyectarBotonesMaquina).observe(obs, { childList: true });
-                const ob2 = document.body; new MutationObserver(inyectarBotonesMaquina).observe(ob2, { childList: true });
-                inyectarBotonesMaquina();
+                enganchar();
+                const obs = $('panel-contenido'); if (obs) new MutationObserver(alCambiarPanel).observe(obs, { childList: true });
+                const ob2 = document.body; new MutationObserver(alCambiarPanel).observe(ob2, { childList: true });
+                alCambiarPanel();
                 listoIniciar = iniciar().then(() => {
                     const lanzar = () => setTimeout(manejarEnlace, 350);
                     if (document.readyState === 'complete') lanzar(); else window.addEventListener('load', lanzar);
