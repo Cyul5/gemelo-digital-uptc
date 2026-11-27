@@ -856,6 +856,9 @@
     html.movil #vista-2d > div:first-child > div { min-width: 0; max-width: 100%; }
     html.movil #vista-2d > div:first-child > div:first-child > div { min-width: 0; max-width: 100%; }
     html.movil #titulo-vista-2d { font-size: 14px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* Modo embebido (herramientas dentro de solicitudes.html): solo se ven las ventanas de la herramienta */
+    html.embebido header, html.embebido .app-body, html.embebido #welcome-overlay { visibility: hidden !important; }
+    html.embebido body { background: #0b1324; }
     html.movil .zoom2d-controles { display: none !important; }   /* en celular se usan los botones +/− oscuros del módulo táctil */
 </style>
 </head>
@@ -869,6 +872,12 @@
     </div>
     <script>
         (function () {
+            // Dentro del visor de solicitudes (?embebido=1) no se muestra la pantalla de carga
+            if (/[?&]embebido=1/.test(location.search)) {
+                document.documentElement.classList.add('embebido');
+                var l0 = document.getElementById('gic-loader'); if (l0 && l0.parentNode) l0.parentNode.removeChild(l0);
+                return;
+            }
             var inicio = Date.now(), MIN = 1800, MAX = 9000, cerrado = false;
             function cerrar() {
                 if (cerrado) return; cerrado = true;
@@ -7951,6 +7960,28 @@
                      _estado: () => ({ items, eliminados, cfg, ubicando }), _listo: () => listoIniciar, _fusionar: fusionar, _iniciarUbicacion: iniciarUbicacion, _asignar: asignarUbicacion, _imprimir: imprimirEtiquetas };
         })();
         window.GIC_INV = GIC_INV;
+    </script>
+    <script>
+    // Modo embebido: avisa a solicitudes.html cuando se cierra la herramienta y cuando el usuario está activo
+    (function () {
+        if (!/[?&]embebido=1/.test(location.search) || window.parent === window) return;
+        var ids = ['gl-inv-overlay', 'gl-ficha-overlay', 'gl-scan-overlay', 'gl-sim-overlay'];
+        var visto = false, t = null;
+        function abierto() { return ids.some(function (id) { var o = document.getElementById(id); return o && o.classList.contains('show'); }); }
+        function enviar(m) { try { window.parent.postMessage(m, location.origin); } catch (e) {} }
+        function revisar() {
+            if (abierto()) { visto = true; clearTimeout(t); t = null; return; }
+            if (!visto) return;
+            var b = document.getElementById('gl-ubicar-banner'); if (b && b.classList.contains('show')) return;
+            clearTimeout(t);
+            t = setTimeout(function () { if (!abierto()) enviar({ gic: 'herramienta-cerrada' }); }, 600);
+        }
+        new MutationObserver(revisar).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+        var ult = 0;
+        ['pointerdown', 'keydown', 'touchstart'].forEach(function (ev) {
+            document.addEventListener(ev, function () { var n = Date.now(); if (n - ult > 10000) { ult = n; enviar({ gic: 'actividad' }); } }, { passive: true, capture: true });
+        });
+    })();
     </script>
 </body>
 </html>
