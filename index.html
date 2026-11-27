@@ -812,13 +812,64 @@
         html.movil #gl-toast { bottom: 120px; }
         html.movil .gl-dato span { width: 100px; }
 </style>
+<!-- LOGO: favicon + pantalla de carga + isotipo en el encabezado -->
+<link rel="icon" type="image/png" href="LOGO_ISOTIPO.png">
+<style>
+    /* Isotipo junto al nombre */
+    .brand { display: inline-flex; align-items: center; gap: 8px; }
+    .brand-logo { height: 30px; width: auto; display: block; object-fit: contain; }
+    html.movil .brand-logo { height: 26px; }
+    html.movil.horiz .brand-logo { height: 24px; }
+
+    /* Pantalla de carga */
+    #gic-loader {
+        position: fixed; inset: 0; z-index: 5000;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 18px; padding: 24px; text-align: center;
+        background: radial-gradient(circle at 50% 40%, #ffffff 0%, #eef6fb 60%, #dcecf5 100%);
+        transition: opacity .6s ease, visibility .6s ease;
+    }
+    #gic-loader.oculto { opacity: 0; visibility: hidden; pointer-events: none; }
+    #gic-loader .gl-logo {
+        width: min(340px, 70vw); height: auto; display: block;
+        animation: gicLatido 2.2s ease-in-out infinite;
+    }
+    #gic-loader .gl-barra { width: min(220px, 55vw); height: 4px; border-radius: 4px; background: rgba(2,132,199,.15); overflow: hidden; }
+    #gic-loader .gl-barra i { display: block; height: 100%; width: 40%; border-radius: 4px; background: #00b4d8; animation: gicBarra 1.3s ease-in-out infinite; }
+    #gic-loader .gl-creditos { font-size: 13px; color: #475569; letter-spacing: .3px; }
+    #gic-loader .gl-creditos b { color: #0b1324; font-weight: 600; }
+    @keyframes gicLatido { 0%,100% { transform: scale(1); opacity: .92; } 50% { transform: scale(1.04); opacity: 1; } }
+    @keyframes gicBarra { 0% { transform: translateX(-120%); } 100% { transform: translateX(300%); } }
+    @media (prefers-reduced-motion: reduce) { #gic-loader .gl-logo, #gic-loader .gl-barra i { animation: none; } }
+</style>
 </head>
 <body>
+
+    <!-- PANTALLA DE CARGA -->
+    <div id="gic-loader" role="status" aria-live="polite" aria-label="Cargando UPTC GIC">
+        <img class="gl-logo" src="LOGO_COMPLETO.png" alt="UPTC GIC" onerror="this.style.display='none'">
+        <div class="gl-barra"><i></i></div>
+        <div class="gl-creditos">Por: <b>Cristin Pinzon</b> y <b>Yeimy Rodriguez</b></div>
+    </div>
+    <script>
+        (function () {
+            var inicio = Date.now(), MIN = 1800, MAX = 9000, cerrado = false;
+            function cerrar() {
+                if (cerrado) return; cerrado = true;
+                var l = document.getElementById('gic-loader'); if (!l) return;
+                l.classList.add('oculto');
+                setTimeout(function () { if (l.parentNode) l.parentNode.removeChild(l); }, 800);
+            }
+            function intentar() { setTimeout(cerrar, Math.max(0, MIN - (Date.now() - inicio))); }
+            if (document.readyState === 'complete') intentar(); else window.addEventListener('load', intentar);
+            setTimeout(cerrar, MAX); // respaldo: nunca queda pegado
+        })();
+    </script>
 
     <!-- HEADER TOP -->
     <header>
         <div class="header-left">
-            <span class="brand">UPTC GIC</span>
+            <span class="brand"><img class="brand-logo" src="LOGO_ISOTIPO.png" alt="" onerror="this.style.display='none'">UPTC GIC</span>
             <span class="tag">Gestor de Información del Campus</span>
             <span class="sub-title" id="breadcrumb">Sede Central (Plano General)</span>
         </div>
