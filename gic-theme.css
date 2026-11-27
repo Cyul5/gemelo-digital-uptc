@@ -214,3 +214,37 @@ html.gic-portal.movil .gl-top h2 { font-size: 17px; }
 @media (prefers-reduced-motion:reduce) {
  .gic-portal :is(.btn-ayuda,.gl-btn,.btn-nivel,.btn-edificio-accion,.pma-entrar,.btn-calib,.galeria-cerrar,#lab-tools button) { transition:none; }
 }
+
+/* Welcome: branded onboarding, consistent iconography and readable hierarchy */
+.gic-portal .welcome-card { width:min(840px,100%); padding:clamp(18px,3.5vw,32px); background:#0b1324; border:1px solid #334155; border-top:3px solid #00b4d8; }
+.gic-welcome-brand { display:flex; align-items:center; gap:11px; margin-bottom:18px; color:#f8fafc; font-size:15px; font-weight:800; letter-spacing:.04em; }
+.gic-welcome-brand img { width:38px; height:38px; object-fit:contain; }
+.gic-welcome-brand small { display:block; color:#94a3b8; font-size:9px; letter-spacing:.1em; font-weight:650; margin-top:3px; }
+.gic-portal .welcome-card h1 { font-size:clamp(23px,3.2vw,34px); line-height:1.15; letter-spacing:-.035em; margin-bottom:10px; }
+.gic-portal .welcome-lead { font-size:14px; max-width:65ch; color:#cbd5e1; margin-bottom:22px; }
+.gic-welcome-section { display:flex; justify-content:space-between; color:#94a3b8; font-size:10px; font-weight:750; letter-spacing:.11em; margin-bottom:10px; }
+.gic-welcome-section span { letter-spacing:0; color:#7dd3fc; }
+.gic-portal .welcome-steps { gap:12px; margin-bottom:16px; }
+.gic-portal .welcome-step { padding:15px; background:#111e33; border:1px solid #334155; border-radius:12px; }
+.gic-step-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.gic-step-icon { display:grid; place-items:center; width:38px; height:38px; border:1px solid #24506a; border-radius:10px; background:#123650; color:#7dd3fc; }
+.gic-step-icon svg { width:22px; height:22px; }
+.gic-step-number { font-size:13px; font-weight:700; color:#94a3b8; font-variant-numeric:tabular-nums; }
+.gic-portal .welcome-step b { font-size:15px; color:#f8fafc; margin-bottom:2px; }
+.gic-step-caption { display:block; color:#7dd3fc; font-size:11px; margin-bottom:6px; }
+.gic-portal .welcome-step p { line-height:1.55; color:#cbd5e1; font-size:12px; }
+.gic-portal .welcome-nav { border:1px solid #334155; background:#111c33; padding:11px 14px; }
+.gic-portal .welcome-nav summary { cursor:pointer; color:#e2e8f0; font-weight:650; }
+.gic-portal .welcome-nav p { margin-top:9px; color:#cbd5e1; }
+.gic-portal .welcome-footer { padding-top:8px; }
+.gic-portal .welcome-footer input { accent-color:#0284c7; width:16px; height:16px; }
+.gic-portal .welcome-footer .btn-primario { display:inline-flex; align-items:center; gap:18px; padding:12px 20px; }
+.gic-portal #vista-2d > div:first-child { border-bottom:1px solid #dbe4ee; padding-bottom:10px; }
+.gic-portal #titulo-vista-2d { color:#075985!important; font-weight:750; letter-spacing:-.015em; }
+.gic-portal #selector-edificio-3d-wrap { border-color:#334155!important; border-radius:12px!important; box-shadow:0 4px 16px #0f172a26; }
+.gic-portal .lab-3d-caja { border-radius:14px; border-color:#334155; }
+@media(max-width:640px) {
+ .gic-portal .welcome-card { padding:18px 15px; }
+ .gic-portal .welcome-footer .btn-primario { width:100%; justify-content:space-between; }
+ .gic-portal .welcome-step { padding:12px; }
+}
