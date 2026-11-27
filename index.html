@@ -901,7 +901,7 @@
         </div>
 
         <div class="header-right">
-            <button class="btn-ayuda" onclick="abrirBienvenida()" title="Ver la guía de uso">❓ Ayuda</button>
+            <button class="btn-ayuda" onclick="abrirBienvenida()" title="Ver la guía de uso"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 1 1 4 3c-1 .5-1 1-1 2m0 3h.01"/></svg> Ayuda</button>
             <div class="excel-status" id="excel-status-tag">
                 <span class="dot" style="background:#eab308;"></span> Leyendo Excel...
             </div>
@@ -927,7 +927,7 @@
                 <div id="menus-mapa">
                 <div id="panel-edificios">
                     <button id="btn-lista-edificios" type="button">
-                        <span>🏛️ Edificios del campus <span id="contador-edificios" style="color:#94a3b8;font-weight:400;"></span></span>
+                        <span><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 8 9-5 9 5M4 9h16M6 10v8m6-8v8m6-8v8M3 21h18"/></svg> Edificios del campus <span id="contador-edificios" style="color:#94a3b8;font-weight:400;"></span></span>
                         <span class="flecha">▾</span>
                     </button>
                     <div id="lista-edificios-box">
@@ -938,7 +938,7 @@
                 </div>
                 <div id="panel-capas">
                     <button id="btn-lista-capas" type="button">
-                        <span>🗂️ Capas del mapa <span id="contador-capas" style="color:#94a3b8;font-weight:400;"></span></span>
+                        <span><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h7l2 2h9v11H3zM5 7V4h12l2 3"/></svg> Capas del mapa <span id="contador-capas" style="color:#94a3b8;font-weight:400;"></span></span>
                         <span class="flecha">▾</span>
                     </button>
                     <div id="selector-mapas" role="group" aria-label="Capas del mapa">
@@ -973,7 +973,7 @@
                         </select>
                     </label>
                 </div>
-                <button id="btn-galeria" type="button" onclick="abrirGaleria()" title="Ver todas las fotos del levantamiento">🖼️ Galería</button>
+                <button id="btn-galeria" type="button" onclick="abrirGaleria()" title="Ver todas las fotos del levantamiento"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 5-5 4 4 3-3 6 6"/></svg> Galería</button>
             </div>
 
             <!-- VISTA 3: PLANTA 2D DINÁMICA -->
@@ -988,16 +988,16 @@
                     
                     <!-- NUEVA LISTA DESPLEGABLE INDEPENDIENTE PARA PLANOS 2D -->
                     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                        <button id="btn-opc-2d" type="button" onclick="document.getElementById('vista-2d').classList.toggle('filtros-abiertos')">⚙️ Opciones</button>
+                        <button id="btn-opc-2d" type="button" onclick="document.getElementById('vista-2d').classList.toggle('filtros-abiertos')"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M19 5l-2 2M7 17l-2 2"/></svg> Opciones</button>
                         <div class="edificio-selector m-opc">
-                            <span>🏢 Edificio:</span>
+                            <span><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h1m4 0h1M9 11h1m4 0h1M9 15h1m4 0h1M11 21v-3h2v3"/></svg> Edificio:</span>
                             <select id="select-edificio-2d" class="filter-select" onchange="fijarEdificio(this.value)">
                                 <option value="hunza">Aulas Hunza</option>
                                 <option value="lab">Laboratorios Ingeniería (EDILAB)</option>
                             </select>
                         </div>
                         <div class="m-opc" style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #475569; font-weight: 600;">
-                            <span>🏢 Seleccionar Planta:</span>
+                            <span><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h1m4 0h1M9 11h1m4 0h1M9 15h1m4 0h1M11 21v-3h2v3"/></svg> Seleccionar Planta:</span>
                             <select id="select-piso-2d" class="filter-select" style="width: 160px;" onchange="irAVista2DPiso(this.value)">
                                 <option value="Piso 1">Piso 1</option>
                                 <option value="Piso 2">Piso 2</option>
@@ -1060,7 +1060,7 @@
             <!-- ACCIONES DEL PANEL EN EL MAPA GENERAL (solo visibles en esa vista) -->
             <div id="panel-mapa-acciones">
                 <div class="pma-fila">
-                    <button type="button" class="pma-entrar" onclick="GIC_PANEL_EDIFICIO.entrar()" title="Entrar al modelo 3D del edificio">🏢 Entrar al modelo 3D</button>
+                    <button type="button" class="pma-entrar" onclick="GIC_PANEL_EDIFICIO.entrar()" title="Entrar al modelo 3D del edificio"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h1m4 0h1M9 11h1m4 0h1M9 15h1m4 0h1M11 21v-3h2v3"/></svg> Entrar al modelo 3D</button>
                     <button type="button" class="pma-cerrar" onclick="GIC_PANEL_EDIFICIO.cerrar()" title="Cerrar el panel (Esc)" aria-label="Cerrar el panel">✕</button>
                 </div>
                 <p class="pma-ayuda">Clic en el edificio: ver información · Doble clic: entrar al modelo 3D</p>
@@ -1106,8 +1106,8 @@
             <div id="informe-vista-previa"></div>
             <div class="informe-acciones">
                 <button type="button" class="sec" onclick="cerrarModalInformes()">Cancelar</button>
-                <button type="button" class="btn-primario" id="informe-btn-generar" onclick="generarInformePDF()">⬇ Descargar PDF</button>
-                <button type="button" class="btn-excel" id="informe-btn-excel" onclick="generarInformeExcel()" title="Descargar el mismo informe en formato Excel (.xlsx)">⬇ Descargar Excel</button>
+                <button type="button" class="btn-primario" id="informe-btn-generar" onclick="generarInformePDF()"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg> Descargar PDF</button>
+                <button type="button" class="btn-excel" id="informe-btn-excel" onclick="generarInformeExcel()" title="Descargar el mismo informe en formato Excel (.xlsx)"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg> Descargar Excel</button>
             </div>
         </div>
     </div>
@@ -1117,7 +1117,7 @@
     <!-- GALERÍA DE FOTOS -->
     <div id="galeria-overlay" role="dialog" aria-modal="true" aria-label="Galería de fotos">
         <div class="galeria-top">
-            <h2>🖼️ Galería del levantamiento</h2>
+            <h2><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 5-5 4 4 3-3 6 6"/></svg> Galería del levantamiento</h2>
             <select id="galeria-filtro-origen" onchange="renderizarGaleria()">
                 <option value="">Todas las hojas</option>
                 <option value="Inventario Espacios">Patologías Registradas</option>
@@ -1135,7 +1135,7 @@
         <div id="galeria-grid"></div>
     </div>
     <div id="galeria-visor">
-        <button class="visor-btn" id="visor-cerrar" onclick="cerrarVisorFoto()">✕</button>
+        <button class="visor-btn" id="visor-cerrar" onclick="cerrarVisorFoto()"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
         <button class="visor-btn" id="visor-prev" onclick="navegarVisorFoto(-1)">‹</button>
         <button class="visor-btn" id="visor-next" onclick="navegarVisorFoto(1)">›</button>
         <img id="visor-img" alt="">
@@ -1155,7 +1155,7 @@
         <div class="ficha-card">
             <div class="ficha-cab">
                 <h2 id="ficha-titulo">🩺 Ficha patológica</h2>
-                <button type="button" class="ficha-cerrar" onclick="cerrarFichaPatologica()" title="Cerrar (también con la tecla Esc)">✕ Cerrar</button>
+                <button type="button" class="ficha-cerrar" onclick="cerrarFichaPatologica()" title="Cerrar (también con la tecla Esc)"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 6 12 12M18 6 6 18"/></svg> Cerrar</button>
             </div>
             <div id="ficha-cuerpo"></div>
         </div>
@@ -4785,6 +4785,7 @@
         let gltfLoader = null;
         let is3DInitialized = false;
         let yaCargado = false;
+        let modeloEnCarga = false;
         let animFrameId = null;
         let modeloGlobal = null;
         let planoInferior = null, planoSuperior = null;
@@ -4885,8 +4886,8 @@
             camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 3000);
 
             renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-            renderer.setSize(width, height);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, document.documentElement.classList.contains("movil") ? 1.5 : 2));
+            renderer.setSize(width, height);
             renderer.outputColorSpace = THREE.SRGBColorSpace;
             renderer.localClippingEnabled = true;
 
@@ -4997,15 +4998,22 @@
             });
 
             function animate() {
+                animFrameId = null;
+                if (document.hidden || !document.getElementById("vista-3d")?.classList.contains("activa")) return;
                 animFrameId = requestAnimationFrame(animate);
                 clock.getDelta();
-                if (document.hidden || !document.getElementById("vista-3d")?.classList.contains("activa")) return;
                 controls.update();
                 renderer.render(scene, camera);
             }
 
-            if (animFrameId) cancelAnimationFrame(animFrameId);
-            animate();
+            function sincronizarRender() {
+                const visible = !document.hidden && document.getElementById('vista-3d').classList.contains('activa');
+                if (visible && animFrameId === null) animFrameId = requestAnimationFrame(animate);
+                else if (!visible && animFrameId !== null) { cancelAnimationFrame(animFrameId); animFrameId = null; }
+            }
+            new MutationObserver(sincronizarRender).observe(document.getElementById('vista-3d'), {attributes:true, attributeFilter:['class']});
+            document.addEventListener('visibilitychange', sincronizarRender);
+            sincronizarRender();
 
             gltfLoader = new GLTFLoader();
             const dracoLoader = new DRACOLoader();
@@ -5144,8 +5152,9 @@
         }
 
         function cargarModeloGLBReal() {
-            if (yaCargado) return;
+            if (yaCargado || modeloEnCarga) return;
             if (!init3DViewer()) return;
+            modeloEnCarga = true;
 
             const statusEl = document.getElementById('ifc-status');
             const layersEl = document.getElementById('ifc-layers-list');
@@ -5260,6 +5269,7 @@
 
                     statusEl.innerText = '🟢 Modelo 3D Cargado';
                     yaCargado = true;
+                    modeloEnCarga = false;
                 },
                 (xhr) => {
                     if (xhr.lengthComputable && xhr.total > 0) {
@@ -5268,6 +5278,7 @@
                     }
                 },
                 (error) => {
+                    modeloEnCarga = false;
                     console.error('❌ Error al cargar GLB:', error);
                     statusEl.innerText = '❌ Error al cargar archivo GLB';
                 }
@@ -6275,7 +6286,7 @@
                     (it.cod === 62 ?
                         '<div class="gic-ed-acciones">' +
                         '<button type="button" class="btn-edificio-accion" onclick="fijarEdificio(\'lab\'); irAVista2DPiso(pisoActual2D);">📐 Entrar al plano 2D (PLANOS_LABORATORIOS_ARQ.svg)</button>' +
-                        '<button type="button" class="btn-edificio-accion sec" onclick="fijarEdificio(\'lab\'); irAVista(\'vista-3d\');">🏢 Modelo 3D (próximamente)</button>' +
+                        '<button type="button" class="btn-edificio-accion sec" onclick="fijarEdificio(\'lab\'); irAVista(\'vista-3d\');"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h1m4 0h1M9 11h1m4 0h1M9 15h1m4 0h1M11 21v-3h2v3"/></svg> Modelo 3D (próximamente)</button>' +
                         '<a class="btn-edificio-accion" style="text-align:center;text-decoration:none" href="solicitudes.html" target="_blank" rel="noopener">📝 Solicitar turno / subir archivo</a>' +
                         '<div style="font-size:11px;color:#94a3b8;line-height:1.4;">En el plano 2D: clic en <b>LAB ARQ</b> y luego en <b>IMPRESORA 3D / PLOTER 1 / PLOTER 2 / ROUTER</b> para abrir su ficha técnica.</div>' +
                         '</div>' : '');
@@ -6820,7 +6831,7 @@
                 '<a id="maquina-link" class="ficha-link" href="#" target="_blank" rel="noopener noreferrer">📄 Abrir ficha técnica (PDF)</a>' +
                 '<span class="url-txt" id="maquina-url"></span>' +
                 '<div id="maquina-aviso" style="display:none;font-size:11.5px;color:#b45309;margin-top:10px;line-height:1.45;"></div>' +
-                '<div><button type="button" class="maquina-cerrar" id="maquina-cerrar">✕ Cerrar</button></div>' +
+                '<div><button type="button" class="maquina-cerrar" id="maquina-cerrar"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 6 12 12M18 6 6 18"/></svg> Cerrar</button></div>' +
                 '</div>';
             document.body.appendChild(ov);
             ov.addEventListener('click', (e) => { if (e.target === ov) cerrarFichaMaquina(); });
@@ -7256,7 +7267,7 @@
                 ov.id = 'gl-sim-overlay'; ov.className = 'gl-overlay'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
                 ov.innerHTML =
                     '<div class="gl-card">' +
-                    '<div class="gl-top"><h2>🧪 Simulador de máquinas · LAB ARQ</h2><button type="button" class="gl-btn" id="sim-cerrar">✕ Cerrar</button></div>' +
+                    '<div class="gl-top"><h2>🧪 Simulador de máquinas · LAB ARQ</h2><button type="button" class="gl-btn" id="sim-cerrar"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 6 12 12M18 6 6 18"/></svg> Cerrar</button></div>' +
                     '<div class="gl-aviso">Simulación didáctica: no se conecta a equipos reales. Sirve para practicar el flujo de trabajo de cada máquina.</div>' +
                     '<div class="gl-tabs" id="sim-tabs"></div>' +
                     '<div class="gl-sim-grid">' +
@@ -7291,7 +7302,7 @@
                 $('sim-panel-izq').innerHTML =
                     '<div class="gl-bloque"><div class="gl-etq">Máquina</div><div class="gl-eq"><b>' + esc(P.etiqueta) + '</b> · ' + esc(P.equipo) + '</div>' +
                     '<label class="gl-campo"><span>Conexión</span><select class="gl-in" id="sim-conexion">' + P.conexiones.map((c, i) => '<option value="' + i + '"' + (i === e.conexion ? ' selected' : '') + '>' + esc(c) + '</option>').join('') + '</select></label>' +
-                    '<div class="gl-fila"><button type="button" class="gl-btn pri" id="sim-conectar">🔌 Conectar</button><button type="button" class="gl-btn" id="sim-desconectar">Desconectar</button></div></div>' +
+                    '<div class="gl-fila"><button type="button" class="gl-btn pri" id="sim-conectar"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-12 0zm6 9v4"/></svg> Conectar</button><button type="button" class="gl-btn" id="sim-desconectar">Desconectar</button></div></div>' +
                     '<div class="gl-bloque"><div class="gl-etq">Software: ' + esc(P.software) + ' <span class="gl-ref">(referencial)</span></div>' +
                     '<label class="gl-campo"><span>' + (P.tipo === 'fdm' ? 'Modelo 3D de demostración' : 'Diseño de demostración') + '</span><select class="gl-in" id="sim-modelo">' + pats.map(k => '<option value="' + k + '"' + (e.modeloSel === k ? ' selected' : '') + '>' + esc(nombreModelo(id, k)) + '</option>').join('') + '</select></label>' +
                     '<div class="gl-fila"><label class="gl-btn gl-archivo">📂 Cargar archivo<input type="file" id="sim-archivo" accept=".gcode,.stl,.3mf,.dxf,.svg,.plt,.hpgl,.ai,.pdf"></label><span id="sim-archivo-nombre" class="gl-ref"></span></div>' +
@@ -7519,15 +7530,15 @@
             function abrirLista() {
                 const opt = (arr, v) => '<option value="">Todos</option>' + arr.map(a => '<option' + (a === v ? ' selected' : '') + '>' + esc(a) + '</option>').join('');
                 const ov = mostrar('gl-inv-overlay',
-                    '<div class="gl-top"><h2>📦 Inventario del laboratorio <span class="gl-ref" id="inv-cuenta"></span></h2><button type="button" class="gl-btn" data-a="cerrar">✕ Cerrar</button></div>' +
+                    '<div class="gl-top"><h2><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4v10l-9 4-9-4zM3 7l9 5 9-5m-9 5v9M7 5l10 5"/></svg> Inventario del laboratorio <span class="gl-ref" id="inv-cuenta"></span></h2><button type="button" class="gl-btn" data-a="cerrar"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 6 12 12M18 6 6 18"/></svg> Cerrar</button></div>' +
                     '<div class="gl-barra">' +
                       '<input class="gl-in" id="inv-q" type="search" placeholder="Buscar código, nombre, serial…" value="' + esc(filtro.q) + '">' +
                       '<select class="gl-in" id="inv-tipo">' + opt(Object.keys(TIPOS), filtro.tipo) + '</select>' +
                       '<select class="gl-in" id="inv-estado">' + opt(ESTADOS, filtro.estado) + '</select></div>' +
                     '<div class="gl-fila gl-envolver" style="margin-bottom:10px">' +
-                      '<button type="button" class="gl-btn pri" data-a="nuevo">➕ Nuevo</button><button type="button" class="gl-btn" data-a="escanear">📷 Escanear</button>' +
+                      '<button type="button" class="gl-btn pri" data-a="nuevo"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> Nuevo</button><button type="button" class="gl-btn" data-a="escanear"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="4"/><path d="m8 6 2-3h4l2 3"/></svg> Escanear</button>' +
                       '<button type="button" class="gl-btn" data-a="etiquetas-sel">🖨 Etiquetas (marcados)</button><button type="button" class="gl-btn" data-a="etiquetas-todos">🖨 Etiquetas (todos)</button>' +
-                      '<button type="button" class="gl-btn" data-a="exp-json">⬇ JSON</button><button type="button" class="gl-btn" data-a="exp-xlsx">⬇ Excel</button>' +
+                      '<button type="button" class="gl-btn" data-a="exp-json"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg> JSON</button><button type="button" class="gl-btn" data-a="exp-xlsx"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg> Excel</button>' +
                       '<label class="gl-btn gl-archivo">⬆ Importar<input type="file" id="inv-importar" accept=".json,.xlsx,.xls"></label><button type="button" class="gl-btn" data-a="config">⚙ Enlace del QR</button></div>' +
                     '<div class="gl-tabla-w"><table class="gl-tabla"><thead><tr><th></th><th>Código</th><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Ubicación</th></tr></thead><tbody id="inv-filas"></tbody></table></div>' +
                     '<div class="gl-ref" style="margin-top:8px">Los cambios se guardan en este navegador. Para publicarlos en la página usa «⬇ JSON» y sube el archivo <b>' + ARCHIVO_REPO + '</b> al repositorio.</div>');
@@ -7551,7 +7562,7 @@
                 const dato = (l, v) => v ? '<div class="gl-dato"><span>' + l + '</span><b>' + esc(v) + '</b></div>' : '';
                 const ub = (it.x !== null && it.y !== null) ? 'Marcado en el plano (' + it.x.toFixed(0) + ', ' + it.y.toFixed(0) + ')' : (it.zona ? 'Zona del plano: ' + it.zona : 'Sin ubicar en el plano');
                 mostrar('gl-ficha-overlay',
-                    '<div class="gl-top"><h2>' + esc(it.nombre) + '</h2><button type="button" class="gl-btn" data-a="cerrar-ficha">✕ Cerrar</button></div>' +
+                    '<div class="gl-top"><h2>' + esc(it.nombre) + '</h2><button type="button" class="gl-btn" data-a="cerrar-ficha"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 6 12 12M18 6 6 18"/></svg> Cerrar</button></div>' +
                     '<div class="gl-ficha-grid"><div class="gl-codigos">' +
                       '<div class="gl-qr">' + (qr || '<div class="gl-ref">No se pudo cargar la librería de QR.</div>') + '</div>' +
                       '<div class="gl-barras">' + (br || '') + '</div>' +
@@ -7562,11 +7573,11 @@
                       '<div class="gl-fila gl-envolver" style="margin-top:10px">' +
                         '<button type="button" class="gl-btn pri" data-a="ver-plano">🗺 Ver en el plano</button><button type="button" class="gl-btn" data-a="ubicar">📍 Ubicar en el plano</button>' +
                         '<button type="button" class="gl-btn" data-a="editar">✏ Editar</button><button type="button" class="gl-btn" data-a="etiqueta">🖨 Etiqueta</button>' +
-                        '<button type="button" class="gl-btn" data-a="copiar">🔗 Copiar enlace</button>' + (esMaq ? '<button type="button" class="gl-btn" data-a="simular">🔌 Simular conexión</button>' : '') +
+                        '<button type="button" class="gl-btn" data-a="copiar">🔗 Copiar enlace</button>' + (esMaq ? '<button type="button" class="gl-btn" data-a="simular"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-12 0zm6 9v4"/></svg> Simular conexión</button>' : '') +
                         '<button type="button" class="gl-btn peligro" data-a="eliminar">🗑 Eliminar</button></div></div></div>' +
                     '<div class="gl-etq" style="margin-top:14px">Historial</div>' +
                     '<div class="gl-fila gl-envolver"><select class="gl-in" id="ev-tipo" style="max-width:150px">' + EVENTOS.map(e => '<option>' + e + '</option>').join('') + '</select>' +
-                    '<input class="gl-in" id="ev-nota" placeholder="Detalle del evento…" style="flex:1;min-width:140px"><button type="button" class="gl-btn" data-a="evento">➕ Registrar</button></div>' +
+                    '<input class="gl-in" id="ev-nota" placeholder="Detalle del evento…" style="flex:1;min-width:140px"><button type="button" class="gl-btn" data-a="evento"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> Registrar</button></div>' +
                     '<div class="gl-hist">' + (it.historial.slice().reverse().map(h => '<div class="gl-h"><b>' + esc(h.t) + '</b> · ' + esc(fmtFecha(h.f)) + ' — ' + esc(h.n) + '</div>').join('') || '<div class="gl-h gl-ref">Sin eventos.</div>') + '</div>');
                 seleccionado = it.id; pintarMarcadores();
             }
@@ -7575,7 +7586,7 @@
                 const f = (k, l, t, extra) => '<label class="gl-campo"><span>' + l + '</span><input class="gl-in" id="f-' + k + '" type="' + (t || 'text') + '" value="' + esc(it[k]) + '" ' + (extra || '') + '></label>';
                 const zonas = zonasDelPlano().map(z => '<option value="' + esc(z) + '">').join('');
                 mostrar('gl-ficha-overlay',
-                    '<div class="gl-top"><h2>' + (nuevo ? '➕ Nuevo mueble o equipo' : '✏ Editar ' + esc(it.id)) + '</h2><button type="button" class="gl-btn" data-a="cancelar-edicion">✕ Cancelar</button></div>' +
+                    '<div class="gl-top"><h2>' + (nuevo ? '➕ Nuevo mueble o equipo' : '✏ Editar ' + esc(it.id)) + '</h2><button type="button" class="gl-btn" data-a="cancelar-edicion"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 6 12 12M18 6 6 18"/></svg> Cancelar</button></div>' +
                     '<div class="gl-form">' +
                       '<label class="gl-campo"><span>Código ' + (nuevo ? '(se genera solo; puedes cambiarlo)' : '(no editable: ya está impreso en la etiqueta)') + '</span><input class="gl-in" id="f-id" value="' + esc(it.id) + '"' + (nuevo ? '' : ' disabled') + '></label>' +
                       f('nombre', 'Nombre *') +
@@ -7696,12 +7707,12 @@
                 const it = buscar(codigo);
                 if (it) { cerrarTodo(); irAlMueble(it.id); return true; }
                 const r = $('scan-resultado');
-                if (r) r.innerHTML = '⚠ El código <b>' + esc(codigo) + '</b> no está registrado. <button type="button" class="gl-btn" data-a="nuevo-con-codigo" data-c="' + esc(codigo) + '">➕ Crear con este código</button>';
+                if (r) r.innerHTML = '⚠ El código <b>' + esc(codigo) + '</b> no está registrado. <button type="button" class="gl-btn" data-a="nuevo-con-codigo" data-c="' + esc(codigo) + '"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> Crear con este código</button>';
                 return false;
             }
             async function abrirScanner() {
                 const ov = mostrar('gl-scan-overlay',
-                    '<div class="gl-top"><h2>📷 Escanear código</h2><button type="button" class="gl-btn" data-a="cerrar-scan">✕ Cerrar</button></div>' +
+                    '<div class="gl-top"><h2><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="4"/><path d="m8 6 2-3h4l2 3"/></svg> Escanear código</h2><button type="button" class="gl-btn" data-a="cerrar-scan"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 6 12 12M18 6 6 18"/></svg> Cerrar</button></div>' +
                     '<div class="gl-ref" style="margin-bottom:8px">Apunta la cámara al QR o al código de barras de la etiqueta. También puedes usar un lector USB/Bluetooth o escribir el código.</div>' +
                     '<video id="scan-video" playsinline muted></video><div id="scan-estado" class="gl-ref" style="margin:6px 0"></div>' +
                     '<div class="gl-fila"><input class="gl-in" id="scan-manual" placeholder="Código (p. ej. LAB-MES-001) y Enter" autocomplete="off"><button type="button" class="gl-btn pri" data-a="scan-buscar">Buscar</button></div>' +
@@ -7845,7 +7856,7 @@
             function construirHerramientas() {
                 const v = $('vista-2d'); if (!v || $('lab-tools')) return;
                 const d = document.createElement('div'); d.id = 'lab-tools';
-                d.innerHTML = '<button type="button" data-a="inv">📦 Inventario</button><button type="button" data-a="sim">🧪 Simulador</button><button type="button" data-a="scan">📷 Escanear</button>';
+                d.innerHTML = '<button type="button" data-a="inv"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4v10l-9 4-9-4zM3 7l9 5 9-5m-9 5v9M7 5l10 5"/></svg> Inventario</button><button type="button" data-a="sim">🧪 Simulador</button><button type="button" data-a="scan"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="4"/><path d="m8 6 2-3h4l2 3"/></svg> Escanear</button>';
                 v.appendChild(d);
                 d.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.a === 'inv') abrirLista(); else if (b.dataset.a === 'sim') window.GIC_SIM.abrir(); else abrirScanner(); });
                 const t = $('titulo-vista-2d'); if (t) new MutationObserver(actualizarHerramientas).observe(t, { childList: true, characterData: true, subtree: true });
@@ -7861,7 +7872,7 @@
                 const card = document.querySelector('#maquina-overlay .maquina-card');
                 if (card && !$('gl-maq-sim')) {
                     const d = document.createElement('div'); d.id = 'gl-maq-sim'; d.style.marginTop = '10px';
-                    d.innerHTML = '<button type="button" class="gl-btn pri">🔌 Simular conexión y trabajo</button>';
+                    d.innerHTML = '<button type="button" class="gl-btn pri"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-12 0zm6 9v4"/></svg> Simular conexión y trabajo</button>';
                     card.insertBefore(d, card.querySelector('div:last-child'));
                     d.firstChild.addEventListener('click', () => { const id = idMaquinaDeTexto(($('maquina-titulo') || {}).textContent); const cerrar = $('maquina-cerrar'); if (cerrar) cerrar.click(); window.GIC_SIM.abrir(id || undefined); });
                 }
