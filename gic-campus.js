@@ -25,7 +25,7 @@
     const body=open('Buscar en el campus');const inp=make('input','gic-campus-input');inp.placeholder='Edificio, código de aula o uso…';inp.setAttribute('aria-label','Buscar');body.append(inp);
     const results=make('div','gic-campus-results');body.append(results);
     function render(){const q=normalize(inp.value);results.replaceChildren();
-      const list=[...EDIFICIOS_CAMPUS.map(ed=>({title:ed.nombre,meta:'Edificio '+ed.cod+(ed.svgId?'':' · Sin geometría vinculada'),fn:()=>goBuilding(ed)})),...inventory().map(x=>({title:String(x.codigo),meta:[x.piso,x.uso||x.categoria].filter(Boolean).join(' · '),fn:()=>goSpace(x.codigo,x.piso)})),{title:'Galería del levantamiento',meta:'Evidencia fotográfica',fn:()=>{dialog.close();abrirGaleria();}}];
+      const list=[...EDIFICIOS_CAMPUS.map(ed=>({title:ed.nombre,meta:'Edificio '+ed.cod+(ed.svgId?'':' · Sin geometría vinculada'),fn:()=>goBuilding(ed)})),...inventory().map(x=>({title:String(x.codigo),meta:[x.piso,x.uso||x.categoria].filter(Boolean).join(' · '),fn:()=>goSpace(x.codigo,x.piso)})),{title:'Galería del levantamiento',meta:'Evidencia fotográfica',fn:()=>{dialog.close();abrirGaleria();}},{title:'Mantenimiento de equipos',meta:'EDILAB · Acceso autorizado',fn:()=>{location.href='solicitudes.html';}}];
       const matching=list.filter(x=>normalize(x.title+' '+x.meta).includes(q));
       matching.slice(0,40).forEach(x=>{const b=make('button','gic-campus-result');b.type='button';b.append(make('strong','',x.title),make('small','',x.meta),make('span','gic-result-arrow','›'));b.onclick=x.fn;results.append(b);});
       if(!matching.length)results.append(make('p','gic-campus-empty','No se encontraron resultados.'));
@@ -40,6 +40,8 @@
     const counts=new Map();rows.forEach(x=>{const k=String(x.piso||'Sin piso');counts.set(k,(counts.get(k)||0)+1);});
     if(counts.size){body.append(make('h3','','Espacios registrados por piso'));const max=Math.max(...counts.values());for(const [k,v] of [...counts].sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true}))){const el=make('div','gic-campus-bar');el.append(make('span','',k),make('strong','',String(v)));const bar=make('i');bar.style.width=(v/max*100)+'%';el.append(bar);body.append(el);}}
     const b=make('button','gic-campus-result','Explorar mapa del campus →');b.onclick=()=>{dialog.close();irAVista('vista-mapa');};body.append(b);
+    const mantenimiento=make('a','gic-campus-result','Mantenimiento y solicitudes EDILAB →');mantenimiento.href='solicitudes.html';body.append(mantenimiento);
+    body.append(make('p','gic-campus-empty','Sensores IoT y rutas accesibles: sin fuentes verificadas disponibles.'));
   }
   $('gic-open-search').onclick=search;$('gic-open-dashboard').onclick=dashboard;
   document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();search();}});
