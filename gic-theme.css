@@ -324,3 +324,50 @@ html.gic-portal.movil .gic-viewer-caption strong {font-size:12px}
  .gic-portal .galeria-card .info{padding:8px;font-size:11px}
 }
 @media(prefers-reduced-motion:reduce){.gic-portal .galeria-card{transition:none}}
+
+/* Plan workspace: same visual language as the 3D viewer and gallery */
+.gic-portal #vista-2d{background:#eef3f8;padding:16px;gap:0}
+.gic-portal #vista-2d .gic-plan-toolbar{background:#fff;border:1px solid #dce5ef;border-radius:12px;padding:14px;margin-bottom:12px!important;box-shadow:0 2px 8px #0f172a08}
+.gic-plan-kicker{display:flex;align-items:center;gap:6px;color:#52677c;font-size:10px;font-weight:750;letter-spacing:.09em;margin-bottom:5px}
+.gic-plan-kicker .gic-ui-icon{color:#0369a1;width:16px;height:16px}
+.gic-portal #titulo-vista-2d{font-size:22px!important;line-height:1.25;color:#0f2740!important}
+.gic-portal #titulo-vista-2d+p{font-size:12px!important;line-height:1.5;margin-top:4px;color:#52677c!important}
+.gic-portal #vista-2d .gic-plan-actions{gap:8px!important}
+.gic-portal #vista-2d .gic-plan-actions .filter-select{background:#f8fafc;color:#172b42;border:1px solid #b8c8d9;border-radius:8px;min-height:36px;padding:7px 9px}
+.gic-portal #vista-2d .gic-plan-actions .filter-select:focus-visible{outline-color:#0284c7}
+.gic-portal #vista-2d .gic-plan-actions span>.gic-ui-icon{color:#0369a1}
+.gic-portal #vista-2d #panel-filtros-horario{background:transparent;border:0;box-shadow:none}
+.gic-portal #vista-2d .filter-group{color:#334155}
+.gic-portal #vista-2d .btn-informe,.gic-portal #vista-2d .btn-regresar,.gic-portal #btn-opc-2d{border:1px solid transparent;border-radius:9px;min-height:38px;font-weight:650;line-height:1.3}
+.gic-portal #vista-2d .btn-informe{background:#0369a1;color:#fff}
+.gic-portal #vista-2d .btn-informe:hover{background:#075985}
+.gic-portal #vista-2d .btn-regresar{background:#e9f2fa;color:#075985;border-color:#c4d9ea}
+.gic-portal #vista-2d .btn-regresar:hover{background:#dbeafe}
+.gic-portal #vista-2d .container-svg-2d{background:#fff;border:1px solid #d4dfeb;border-radius:12px;min-height:0;box-shadow:0 2px 8px #0f172a0a}
+.gic-portal .zoom2d-controles{background:#0b1324;border:1px solid #334155;padding:6px;gap:5px}
+.gic-portal .zoom2d-controles button,.gic-portal #plan-zoom-ctl button{background:#15243a;color:#e2e8f0;border:1px solid #34465c;display:grid;place-items:center;border-radius:8px}
+.gic-portal .zoom2d-controles button:hover,.gic-portal #plan-zoom-ctl button:hover{background:#0c4160;border-color:#38bdf8;color:#fff}
+.gic-portal .zoom2d-controles button .gic-ui-icon,.gic-portal #plan-zoom-ctl button .gic-ui-icon{width:20px;height:20px}
+.gic-portal .zoom2d-indicador{color:#cbd5e1;font-size:11px}
+.gic-portal .app-body:has(#vista-2d.activa) #panel-derecho-titulo .gic-ui-icon{width:20px;height:20px;color:#7dd3fc}
+.gic-portal .app-body:has(#vista-2d.activa) .info-group{padding:10px 12px;background:#142137;border:1px solid #293a50;border-radius:9px;margin-bottom:8px}
+.gic-portal .app-body:has(#vista-2d.activa) .info-label{font-size:10px;letter-spacing:.045em;color:#a8b9cc}
+.gic-portal .app-body:has(#vista-2d.activa) .info-val{font-size:14px}
+.gic-portal .gic-plan-tip{margin-top:14px}
+.gic-portal .informe-card{border-radius:14px;border-top-color:#00b4d8}
+.gic-portal .informe-card h2{color:#0f2740;font-size:19px}
+html.gic-portal.movil #vista-2d{padding:8px 8px 54px!important}
+html.gic-portal.movil #vista-2d .gic-plan-toolbar{padding:9px 10px;gap:7px!important;margin-bottom:8px!important}
+html.gic-portal.movil .gic-plan-kicker{font-size:9px;margin-bottom:3px}
+html.gic-portal.movil #titulo-vista-2d{font-size:16px!important}
+html.gic-portal.movil #btn-opc-2d{background:#0b1324;color:#e2e8f0;border-color:#334155}
+html.gic-portal.movil #vista-2d.filtros-abiertos #btn-opc-2d{background:#0c4160;border-color:#0284c7;color:#bae6fd}
+html.gic-portal.movil #vista-2d .gic-plan-actions{gap:6px!important}
+html.gic-portal.movil #vista-2d .gic-plan-actions>button{min-height:44px;font-size:12px;padding:7px 5px}
+html.gic-portal.movil #plan-zoom-ctl{gap:5px;right:12px}
+html.gic-portal.movil #plan-zoom-ctl button{box-shadow:0 2px 6px #0f172a20}
+html.gic-portal.movil #sheet-handle{background:#0b1324;border:0;border-bottom:1px solid #26394e;color:#e2e8f0;width:100%;font:inherit;cursor:pointer}
+html.gic-portal.movil #sheet-handle .txt{display:flex;align-items:center;justify-content:center;gap:7px}
+html.gic-portal.movil #sheet-handle .txt::before{content:"";width:7px;height:7px;border-left:1.5px solid #7dd3fc;border-top:1.5px solid #7dd3fc;transform:rotate(45deg)}
+html.gic-portal.movil #sheet-handle[aria-expanded="true"] .txt::before{transform:rotate(225deg)}
+html.gic-portal.movil.horiz #vista-2d{padding-bottom:46px!important}
