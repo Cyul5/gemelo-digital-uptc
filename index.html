@@ -4826,6 +4826,7 @@
         // Banda translúcida que marca el rango de alturas del piso bajo el cursor
         function mostrarBandaPiso(idx) {
             if (!scene) return;
+            renderPendiente = true;
             if (!bandaPiso) {
                 bandaPiso = new THREE.Mesh(
                     new THREE.BoxGeometry(1, 1, 1),
@@ -4847,6 +4848,7 @@
         }
 
         let pisosMeshes = [[], [], [], [], []];
+        let mallasPicking3D = [];
         let pisoHoveredActual = -1;
 
         const clock = new THREE.Clock();
@@ -4879,35 +4881,29 @@
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
+            controls.dampingFactor = 0.085;
             controls.enableZoom = false;
-            controls.rotateSpeed = 0.4;
-            controls.panSpeed = 0.4;
+            controls.rotateSpeed = 0.65;
+            controls.panSpeed = 0.7;
             controls.minDistance = 2.0;
             controls.maxDistance = 1000.0;
 
+            // Smooth exponential zoom: wheel and touch share the same target.
+            let zoomObjetivo = null;
+            const zoomOffset = new THREE.Vector3();
+            const reducirMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            function solicitarZoom(factor) {
+                const actual = camera.position.distanceTo(controls.target);
+                zoomObjetivo = THREE.MathUtils.clamp((zoomObjetivo ?? actual) * factor, controls.minDistance, controls.maxDistance);
+                renderPendiente = true;
+            }
+            window.GIC_ZOOM_3D = solicitarZoom;
             renderer.domElement.addEventListener('wheel', (event) => {
                 event.preventDefault();
                 event.stopPropagation();
-
-                const direction = new THREE.Vector3();
-                camera.getWorldDirection(direction);
-
-                const dir = Math.sign(event.deltaY);
-                const dist = camera.position.distanceTo(controls.target);
-                const step = Math.max(0.5, dist * 0.05);
-
-                if (dir > 0) {
-                    if (dist < controls.maxDistance) {
-                        camera.position.addScaledVector(direction, -step);
-                        renderPendiente = true;
-                    }
-                } else {
-                    if (dist > controls.minDistance) {
-                        camera.position.addScaledVector(direction, step);
-                        renderPendiente = true;
-                    }
-                }
+                const unidad = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? container.clientHeight : 1;
+                const delta = THREE.MathUtils.clamp(event.deltaY * unidad, -240, 240);
+                solicitarZoom(Math.exp(delta * 0.0018));
             }, { passive: false });
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
@@ -4940,7 +4936,7 @@
                 mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
                 mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
                 raycaster.setFromCamera(mouse, camera);
-                const hits = raycaster.intersectObject(modeloGlobal, true);
+                const hits = raycaster.intersectObjects(mallasPicking3D, false);
                 for (const hit of hits) {
                     if (!hit.object || hit.object.visible === false) continue;
                     const pt = hit.point;
@@ -4951,7 +4947,10 @@
                 return null;
             }
 
+            let ultimoPicking = 0;
             container.addEventListener('pointermove', (e) => {
+                if (e.pointerType === 'touch' || e.buttons || performance.now() - ultimoPicking < 100) return;
+                ultimoPicking = performance.now();
                 const res = pisoBajoCursor(e.clientX, e.clientY);
                 const nuevo = res ? res.idx : -1;
                 container.style.cursor = res ? 'pointer' : 'default';
@@ -4966,6 +4965,7 @@
             });
 
             container.addEventListener('pointerup', (e) => {
+                if (e.button !== 0 || !e.isPrimary) return;
                 const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
                 if (dist > 5) return;
                 const res = pisoBajoCursor(e.clientX, e.clientY);
@@ -4988,7 +4988,19 @@
                 animFrameId = null;
                 if (document.hidden || !document.getElementById("vista-3d")?.classList.contains("activa")) return;
                 animFrameId = requestAnimationFrame(animate);
-                clock.getDelta();
+                const dt = Math.min(clock.getDelta(), 0.05);
+                controls.dampingFactor = 1 - Math.pow(1 - 0.085, dt * 60);
+                if (zoomObjetivo !== null) {
+                    zoomOffset.copy(camera.position).sub(controls.target);
+                    const actual = zoomOffset.length();
+                    if (actual > 0) {
+                        const siguiente = reducirMovimiento ? zoomObjetivo : THREE.MathUtils.lerp(actual, zoomObjetivo, 1 - Math.exp(-14 * dt));
+                        const terminado = Math.abs(siguiente - zoomObjetivo) < Math.max(0.001, zoomObjetivo * 0.0005);
+                        camera.position.copy(controls.target).add(zoomOffset.setLength(terminado ? zoomObjetivo : siguiente));
+                        if (terminado) zoomObjetivo = null;
+                        renderPendiente = true;
+                    }
+                }
                 const cambio = controls.update();
                 if (cambio || renderPendiente) {
                     renderer.render(scene, camera);
@@ -5192,8 +5204,10 @@
 
                     pisosMeshes = [[], [], [], [], []];
 
+                    mallasPicking3D = [];
                     modeloGlobal.traverse((child) => {
                         if (child.isMesh) {
+                            mallasPicking3D.push(child);
                             if (Array.isArray(child.material)) child.material = child.material.map(prepararMaterial);
                             else if (child.material) child.material = prepararMaterial(child.material);
 
@@ -5790,9 +5804,7 @@
                     if (dedos.size === 2) {
                         const d = separacion();
                         if (dPrev > 0 && d > 0) {
-                            const desde = camera.position.clone().sub(controls.target);
-                            const largo = Math.min(controls.maxDistance, Math.max(controls.minDistance, desde.length() * (dPrev / d)));
-                            camera.position.copy(controls.target).add(desde.setLength(largo));
+                            if (window.GIC_ZOOM_3D) window.GIC_ZOOM_3D(dPrev / d);
                         }
                         dPrev = d;
                     }
