@@ -1940,6 +1940,12 @@
                 aulaSeleccionadaActual = null;
                 mostrarResumenPlanta2D();
                 if (!esLab2d) setTimeout(actualizarEstadoAulas2D, 150);
+            } else if (idVista === 'vista-gic-home' || idVista === 'vista-gic-reports') {
+                if(sidebarDerecha) sidebarDerecha.classList.remove('visible');
+                if(btnVolver) btnVolver.style.display = 'none';
+                if(seccionCortes) seccionCortes.style.display = 'none';
+                if(panelFiltros) panelFiltros.style.display = 'none';
+                if(breadcrumb) breadcrumb.innerText = idVista === 'vista-gic-home' ? 'Inicio / Gestión del campus' : 'Análisis / Centro de reportes';
             } else {
                 if(sidebarDerecha) sidebarDerecha.classList.remove('visible');
                 if(btnVolver) btnVolver.style.display = 'none';
@@ -8216,5 +8222,6 @@
     </script>
     <script src="gic-campus.js"></script>
 <script>if('serviceWorker' in navigator && window.isSecureContext) window.addEventListener('load',()=>navigator.serviceWorker.register('gic-sw.js').catch(e=>console.warn('[GIC] Cache no disponible',e)));</script>
+    <script src="gic-workspace.js"></script>
 </body>
 </html>
