@@ -864,6 +864,7 @@
     <link rel="stylesheet" href="gic-theme.css">
     <link rel="stylesheet" href="gic-workspace.css">
     <link rel="stylesheet" href="gic-controls.css">
+    <link rel="stylesheet" href="gic-plan-workstation.css">
 </head>
 <body>
 
@@ -1271,7 +1272,7 @@
             }, { passive: false });
             w.addEventListener('pointerdown', (e) => {
                 if (e.pointerType === 'touch') return;   // el toque lo maneja GIC_MOVIL
-                if (e.target && e.target.closest && e.target.closest('#zoom2d-controles')) return;
+                if (e.target && e.target.closest && e.target.closest('#zoom2d-controles,[data-gic-ui]')) return;
                 arrastra2D = true; movido2D = false; ultimoX2D = e.clientX; ultimoY2D = e.clientY;
                 const o = document.getElementById('svg-2d-object'); if (o) o.classList.add('arrastrando');
                 try { w.setPointerCapture(e.pointerId); } catch (err) {}
@@ -2710,6 +2711,7 @@
             } else {
                 mostrarResumenPlanta2D();
             }
+            window.dispatchEvent(new Event('gic:plan-painted'));
         }
 
         function mostrarResumenPlanta2D() {
@@ -4673,6 +4675,7 @@
                 if (!w) return;
                 const g = crearGestos({
                     el: w,
+                    ignorar: '[data-gic-ui],#zoom2d-controles',
                     estado: () => ({ s: plano.s, x: plano.x, y: plano.y }),
                     pan: (dx, dy) => { plano.x += dx; plano.y += dy; aplicarPlano(); },
                     zoom: zoomPlano
@@ -4690,7 +4693,8 @@
                 };
                 conectarObjeto();
                 // El plano se reemplaza al cambiar de piso
-                new MutationObserver(conectarObjeto).observe(w, { childList: true });
+                let ultimoObjetoPlano=$('svg-2d-object');
+                new MutationObserver(()=>{const o=$('svg-2d-object');if(o!==ultimoObjetoPlano){ultimoObjetoPlano=o;conectarObjeto();}}).observe(w,{childList:true});
 
                 const vista = $('vista-2d');
                 if (vista && !$('plan-zoom-ctl')) {
@@ -8235,5 +8239,6 @@
     <script src="gic-campus.js"></script>
 <script>if('serviceWorker' in navigator && window.isSecureContext) window.addEventListener('load',()=>navigator.serviceWorker.register('gic-sw.js').catch(e=>console.warn('[GIC] Cache no disponible',e)));</script>
     <script src="gic-workspace.js"></script>
+    <script src="gic-plan-workstation.js"></script>
 </body>
 </html>
