@@ -1,5 +1,26 @@
 const fs = require('node:fs');
 const { execFileSync } = require('node:child_process');
+// Static syntax smoke test for page scripts, without executing application code.
+const vm = require('node:vm');
+const os = require('node:os');
+const path = require('node:path');
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(),'gic-check-'));
+try {
+  let count=0;
+  for(const page of ['index.html','solicitudes.html']) {
+    const html=fs.readFileSync(page,'utf8');
+    for(const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
+      if(/\bsrc\s*=|importmap|application\/json/i.test(m[1])) continue;
+      if(/type\s*=\s*["']module["']/i.test(m[1])) {
+        const p=path.join(tmp,'module-'+count+'.mjs'); fs.writeFileSync(p,m[2]); execFileSync(process.execPath,['--check',p],{stdio:'inherit'});
+      } else new vm.Script(m[2],{filename:page+':script-'+count});
+      count++;
+    }
+  }
+  new vm.Script(fs.readFileSync('gic-campus.js','utf8'),{filename:'gic-campus.js'});
+  console.log('GIC syntax validation: '+(count+1)+' scripts passed.');
+} finally {fs.rmSync(tmp,{recursive:true,force:true});}
+
 const original = 'EDIFICIO_AULAS_M3D.glb', optimized = 'EDIFICIO_AULAS_WEB.glb';
 function inspect(path) {
   const b=fs.readFileSync(path);
