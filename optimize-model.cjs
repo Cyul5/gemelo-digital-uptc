@@ -28,6 +28,8 @@ function inspect(path) {
   if(b.length<20 || b.readUInt32LE(0)!==0x46546c67 || b.readUInt32LE(4)!==2 || b.readUInt32LE(8)!==b.length || b.readUInt32LE(16)!==0x4e4f534a) throw Error('Invalid GLB: '+path);
   const j=JSON.parse(b.subarray(20,20+b.readUInt32LE(12)).toString('utf8'));
   const primitives=(j.meshes||[]).flatMap(m=>m.primitives||[]);
+  const references=new Map();for(const node of j.nodes||[]){if(Number.isInteger(node.mesh))references.set(node.mesh,(references.get(node.mesh)||0)+1);}
+  console.log('GIC mesh references:',JSON.stringify({meshNodes:[...references.values()].reduce((a,b)=>a+b,0),uniqueReferencedMeshes:references.size,repeatedMeshGroups:[...references.values()].filter(n=>n>1).length,maxRepeats:Math.max(0,...references.values())}));
   return {bytes:b.length,nodes:(j.nodes||[]).length,meshes:(j.meshes||[]).length,primitives:primitives.length,materials:(j.materials||[]).length,images:(j.images||[]).length,draco:primitives.filter(p=>p.extensions?.KHR_draco_mesh_compression).length,extensions:j.extensionsRequired||[]};
 }
 const before=inspect(original);
