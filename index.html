@@ -863,6 +863,7 @@
 </style>
     <link rel="stylesheet" href="gic-theme.css">
     <link rel="stylesheet" href="gic-workspace.css">
+    <link rel="stylesheet" href="gic-controls.css">
 </head>
 <body>
 
@@ -1935,7 +1936,7 @@
                     } else if (!selectPiso2D.querySelector('option[value="Piso 5 / Cubierta"]')) {
                         selectPiso2D.innerHTML = '<option value="Piso 1">Piso 1</option><option value="Piso 2">Piso 2</option><option value="Piso 3">Piso 3</option><option value="Piso 4">Piso 4</option><option value="Piso 5 / Cubierta">Piso 5 / Cubierta</option>';
                     }
-                    selectPiso2D.value = "Piso 1";
+                    selectPiso2D.value = esLab2d ? "Piso 1" : pisoActual2D;
                 }
 
                 aulaSeleccionadaActual = null;
