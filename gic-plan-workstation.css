@@ -1,0 +1,91 @@
+
+/* GIC plan workstation: more canvas, compact contextual controls. */
+.gic-portal #vista-2d .gic-plan-toolbar{flex-shrink:0;margin-bottom:8px!important;overflow:visible}
+.gic-portal #vista-2d .gic-plan-context-line{border-radius:11px 11px 0 0;padding:5px 10px}
+.gic-portal #vista-2d .gic-plan-toolbar>div:nth-child(2){padding:7px 11px 4px}
+.gic-portal #vista-2d .gic-plan-kicker{display:none}
+.gic-portal #titulo-vista-2d{font-size:20px!important}
+.gic-portal #titulo-vista-2d+p{display:none}
+.gic-portal #vista-2d .gic-plan-controls{padding:4px 10px 7px;gap:6px!important}
+.gic-portal #vista-2d .gic-plan-command-label,.gic-portal #vista-2d #info-archivo-2d{display:none!important}
+.gic-portal #vista-2d .gic-plan-controls>.btn-informe{margin-left:auto}
+.gic-portal #vista-2d .gic-plan-legend{padding:5px 10px;border-radius:0 0 11px 11px}
+.gic-portal #vista-2d .gic-plan-legend .gic-plan-key{font-size:10px}
+.gic-portal .gic-pw-layerbar{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.gic-pw-layerbar[hidden],.gic-pw-layer-legend[hidden],.gic-pw-tools-body[hidden],.gic-pw-quick[hidden],.gic-pw-summary[hidden],.gic-pw-mini[hidden]{display:none!important}
+.gic-pw-layerbar>svg{width:15px;height:15px;color:#075985}
+.gic-pw-layerbar select,.gic-pw-layerbar .gic-pw-select{min-height:28px!important;font-size:11px}
+.gic-pw-layer-legend{display:flex;gap:4px;flex-wrap:wrap}
+.gic-pw-thematic .gic-plan-keys{display:none}
+.gic-pw-tools,.gic-pw-panel-toggle,.gic-pw-quick,.gic-pw-status,.gic-pw-mini{position:absolute;z-index:45}
+.gic-pw-tools{top:38px;left:9px;display:grid;gap:5px;max-width:190px}
+.gic-pw-button{display:flex;align-items:center;gap:7px;padding:7px 9px;min-height:32px;background:#14283d;color:#e0f2fe;border:1px solid #36526b;border-radius:7px;font:600 11px system-ui;cursor:pointer;text-align:left}
+.gic-pw-button svg{width:17px;height:17px;flex:none}
+.gic-pw-button:hover,.gic-pw-button[aria-pressed=true]{background:#0c4160;border-color:#38bdf8}
+.gic-pw-tools-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:7px;background:#0b1324;border:1px solid #36526b;border-radius:9px;box-shadow:0 4px 15px #0f172a30}
+.gic-pw-tools-body .gic-pw-button{flex-direction:column;text-align:center;justify-content:center;min-height:49px;font-size:10px}
+.gic-pw-panel-toggle{right:9px;top:9px}
+.gic-pw-quick{right:9px;top:48px;width:min(180px,45%);padding:10px;background:#0b1324;color:#e2e8f0;border:1px solid #36526b;border-radius:10px;box-shadow:0 4px 15px #0f172a30}
+.gic-pw-quick-head{display:flex;justify-content:space-between;align-items:center;gap:5px}
+.gic-pw-quick-head strong{color:#7dd3fc;font-size:15px}
+.gic-pw-quick-head .gic-pw-button{padding:4px;min-height:24px;font-size:9px}
+.gic-pw-quick p{font-size:12px;margin:6px 0}
+.gic-pw-quick small{display:block;color:#a8b9cc;font-size:10px;margin-bottom:7px}
+.gic-pw-quick>.gic-pw-button{width:100%;margin-top:4px}
+.gic-pw-status{left:9px;bottom:9px;max-width:min(330px,48%);background:#102840ee;color:#e0f2fe;font:11px/1.4 system-ui;padding:5px 8px;border-radius:5px;pointer-events:none}
+.gic-pw-status:empty{display:none}
+.gic-pw-mini{bottom:46px;left:9px;width:115px;height:82px;background:#fff;border:1px solid #b8cddd;border-radius:7px;overflow:hidden;box-shadow:0 2px 10px #0f172a20;pointer-events:none}
+.gic-pw-mini img{width:100%;height:100%;object-fit:contain;opacity:.7}
+.gic-pw-mini-box{position:absolute;box-sizing:border-box;background:#0284c71f;border:1.5px solid #0284c7}
+.gic-pw-mini>span{position:absolute;bottom:0;left:0;right:0;background:#102840e8;color:#fff;font-size:9px;padding:2px 4px}
+.gic-pw-summary{margin-top:12px;color:#cbd5e1}
+.gic-pw-summary h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#a9c7df;margin:14px 0 8px}
+.gic-pw-counts{display:flex;align-items:center;gap:12px;padding:10px;background:#14283d;border:1px solid #304158;border-radius:9px}
+.gic-pw-meter{width:76px;height:76px;flex:none;border-radius:50%;background:conic-gradient(#38bdf8 var(--pct,0%),#304158 0);display:grid;place-items:center;position:relative}
+.gic-pw-meter::before{content:"";position:absolute;inset:7px;background:#14283d;border-radius:50%}
+.gic-pw-meter strong{position:relative;font-size:16px;color:#e0f2fe}
+.gic-pw-meter-text{display:grid;gap:4px;font-size:12px}
+.gic-pw-meter-text small{font-size:10px;color:#a8b9cc;line-height:1.4}
+.gic-pw-summary-controls{display:grid;gap:7px}
+.gic-pw-search{width:100%;min-height:36px;background:#14283d;color:#e2e8f0;border:1px solid #36526b;padding:8px 10px}
+.gic-pw-search::placeholder{color:#a8b9cc!important}
+.gic-pw-results{display:grid;gap:4px;max-height:205px;overflow:auto;scrollbar-width:thin}
+.gic-pw-results .gic-pw-button{width:100%;font-size:11px;min-height:32px}
+.gic-pw-results p{font-size:11px;color:#a8b9cc}
+.gic-pw-summary-mode #panel-contenido{display:none}
+.gic-pw-resize{display:none}
+html.gic-pw-active:not(.movil) #sidebar-derecha{width:var(--gic-pw-panel-width,340px);flex:0 0 var(--gic-pw-panel-width,340px);position:relative}
+html.gic-pw-active:not(.movil) #sidebar-derecha .gic-pw-resize{display:block;position:sticky;top:0;left:0;width:100%;height:7px;margin:-8px 0 7px;cursor:ew-resize;border-bottom:2px dotted #36526b;touch-action:none}
+html.gic-pw-active.gic-pw-panel-hidden #sidebar-derecha{display:none!important}
+.gic-pw-compare{width:min(1100px,94vw);max-height:90dvh;overflow:auto;background:#0b1324;color:#e2e8f0;border:1px solid #36526b;border-radius:12px;padding:16px;margin:auto}
+.gic-pw-compare::backdrop{background:#070d19c9}
+.gic-pw-compare-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.gic-pw-compare-head h2{font-size:18px}
+.gic-pw-compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gic-pw-compare-grid section{display:grid;gap:7px;min-width:0}
+.gic-pw-compare-grid img{width:100%;height:min(55vh,500px);object-fit:contain;background:white;border-radius:7px}
+.gic-pw-compare select{min-height:36px;background:#14283d;color:#e2e8f0;border:1px solid #36526b;padding:7px}
+.gic-pw-compare>p{font-size:11px;color:#a8b9cc;margin-top:10px}
+.gic-pw-native{position:absolute!important;width:1px!important;height:1px!important;min-height:0!important;opacity:0!important;pointer-events:none!important;clip-path:inset(50%);padding:0!important}
+.gic-pw-select{display:flex;align-items:center;justify-content:space-between;gap:7px;min-height:34px;padding:7px 9px;background:#f8fafc;border:1px solid #b8cddd;color:#172b42;border-radius:8px;font:inherit;text-align:left;cursor:pointer;min-width:105px;max-width:100%}
+.gic-pw-select span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gic-pw-select svg{width:15px;height:15px;flex:none;transform:rotate(90deg);color:#0284c7}
+.gic-pw-select[aria-expanded=true]{border-color:#0284c7;box-shadow:0 0 0 2px #0284c720}
+.gic-pw-select[aria-expanded=true] svg{transform:rotate(-90deg)}
+.gic-pw-options{position:fixed;z-index:2147483646;background:#fff;color:#172b42;border:1px solid #b8cddd;border-radius:9px;padding:4px;max-height:min(290px,45vh);overflow:auto;box-shadow:0 8px 25px #0f172a38}
+.gic-pw-option{display:flex;align-items:center;justify-content:space-between;gap:5px;width:100%;min-height:34px;background:none;color:inherit;border:0;text-align:left;font:12px system-ui;padding:8px;cursor:pointer}
+.gic-pw-option[aria-selected=true],.gic-pw-option:hover,.gic-pw-option:focus-visible{background:#e0f2fe;color:#075985}
+.gic-pw-option svg{width:15px;height:15px;flex:none}
+#galeria-overlay .gic-pw-select,.gic-portal[data-gic-theme=dark] .gic-workspace .gic-pw-select{background:#14283d;color:#e2e8f0;border-color:#36526b}
+.gic-portal #vista-2d .gic-plan-controls .gic-pw-select{font-size:12px;max-width:245px}
+@media(prefers-reduced-motion:no-preference){.gic-pw-options,.gic-pw-tools-body,.gic-pw-quick{animation:gic-ui-enter 150ms ease-out both}.gic-pw-select svg{transition:transform .15s}.gic-pw-meter{animation:gic-ui-fade .2s ease-out both}}
+html.gic-portal.movil #vista-2d .gic-plan-toolbar>div:nth-child(2){padding:4px 8px}
+html.gic-portal.movil #vista-2d .gic-plan-controls{padding:3px 8px 5px}
+html.gic-portal.movil #vista-2d .gic-plan-legend{padding:4px 7px}
+html.gic-portal.movil .gic-pw-tools{top:32px;left:5px;max-width:155px}
+html.gic-portal.movil .gic-pw-tools-body .gic-pw-button{min-height:43px;padding:4px}
+html.gic-portal.movil .gic-pw-panel-toggle{top:5px;right:5px}
+html.gic-portal.movil .gic-pw-panel-toggle span{display:none}
+html.gic-portal.movil .gic-pw-quick{top:42px;right:5px}
+html.gic-portal.movil .gic-pw-mini{width:85px;height:63px;bottom:46px}
+@media(max-width:560px){.gic-pw-compare-grid{grid-template-columns:1fr}.gic-pw-compare-grid img{height:34vh}.gic-pw-layerbar{width:100%}.gic-pw-status{font-size:10px}}
