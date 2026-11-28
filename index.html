@@ -4955,12 +4955,20 @@
                 for(let i=0;i<5;i++){
                     const r=rangoPiso(i);const bajo=Math.max(r.base,alturaMinModel),alto=Math.min(r.techo,alturaMaxModel);
                     if(alto<=bajo)continue;
-                    const copia=modeloGlobal.clone(true), offset=i*separacion;
-                    copia.position.y+=offset;
+                    const copia=new THREE.Group(), offset=i*separacion;
+                    copia.position.y=offset;
                     const planes=[new THREE.Plane(new THREE.Vector3(0,1,0),-bajo-offset),new THREE.Plane(new THREE.Vector3(0,-1,0),alto+offset)];
-                    const cache=new Map();
-                    const material=m=>{if(!cache.has(m)){const n=m.clone();n.clippingPlanes=planes;cache.set(m,n);}return cache.get(m);};
-                    copia.traverse(o=>{if(o.isMesh){o.material=Array.isArray(o.material)?o.material.map(material):material(o.material);}});
+                    const cache=new Map(), box=new THREE.Box3();
+                    const material=m=>{if(!m)return m;if(!cache.has(m)){const n=m.clone();n.clippingPlanes=planes;cache.set(m,n);}return cache.get(m);};
+                    modeloGlobal.updateMatrixWorld(true);
+                    for(const o of mallasPicking3D){
+                        if(!o.geometry || o.isSkinnedMesh || o.isInstancedMesh)continue;
+                        if(!o.geometry.boundingBox)o.geometry.computeBoundingBox();
+                        box.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld);
+                        if(box.max.y<bajo || box.min.y>alto)continue;
+                        const mesh=new THREE.Mesh(o.geometry,Array.isArray(o.material)?o.material.map(material):material(o.material));
+                        mesh.matrixAutoUpdate=false;mesh.matrix.copy(o.matrixWorld);copia.add(mesh);
+                    }
                     grupo.add(copia);
                 }
                 explosion=grupo;modeloGlobal.visible=false;scene.add(grupo);estadoExtra('explode',true);
