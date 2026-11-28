@@ -961,9 +961,15 @@
             <div id="vista-3d" class="vista">
                 <div id="ifc-canvas-container"></div>
 <div id="gic-3d-tools" class="gic-3d-tools" hidden aria-label="Herramientas del visor 3D">
-<div class="gic-view-presets" role="group" aria-label="Orientación del modelo"><div class="gic-nav-cube" aria-label="Cubo de orientación"><button type="button" data-view="top" class="cube-top" title="Vista superior">SUP</button><button type="button" data-view="front" class="cube-front" title="Vista frontal">FRENTE</button><button type="button" data-view="right" class="cube-right" title="Vista derecha">DER</button></div><button type="button" data-view="iso" title="Isométrica">ISO</button><button type="button" data-view="front" title="Frontal">Frente</button><button type="button" data-view="back" title="Posterior">Atrás</button><button type="button" data-view="left" title="Izquierda">Izq.</button><button type="button" data-view="right" title="Derecha">Der.</button><button type="button" data-view="top" title="Superior">Superior</button></div>
+<button type="button" id="gic-tools-toggle" aria-expanded="false" aria-controls="gic-tools-content"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/></svg><span>Visor 3D <small>Herramientas</small></span><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+<div id="gic-tools-content" hidden><div class="gic-tools-label">Visualización</div>
 <div class="gic-tool-row"><button type="button" data-tool="fit" title="Centrar modelo" aria-label="Centrar modelo"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button><button type="button" data-tool="grid" aria-pressed="true" title="Cuadrícula" aria-label="Cuadrícula"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg></button><button type="button" data-tool="cut" aria-pressed="false" title="Corte vertical" aria-label="Corte vertical"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l16 16M4 20 20 4"/><circle cx="5" cy="5" r="2"/><circle cx="5" cy="19" r="2"/></svg></button><button type="button" data-tool="capture" title="Capturar imagen" aria-label="Capturar imagen"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="4"/><path d="m8 6 2-3h4l2 3"/></svg></button><button type="button" data-tool="full" title="Pantalla completa" aria-label="Pantalla completa"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button><label title="Calidad gráfica"><select id="gic-quality" aria-label="Calidad gráfica"><option value="auto">Auto</option><option value="low">Fluidez</option><option value="medium">Equilibrio</option><option value="high">Calidad</option></select></label></div>
 <div class="gic-tool-row gic-extended-row"><button type="button" data-extra="explode" aria-pressed="false" title="Separar plantas">Separar pisos</button><button type="button" data-extra="measure" aria-pressed="false" title="Medir entre dos puntos">Medir</button><button type="button" data-extra="walk" aria-pressed="false" title="Inspección libre experimental">Recorrido</button></div><div id="gic-extended-status" role="status" aria-live="polite" hidden></div><label id="gic-cut-row" hidden>Posición del corte <input type="range" id="gic-cut-slider" min="0" max="100" value="50" aria-label="Posición del corte vertical"></label>
+</div>
+</div>
+<div id="gic-orientation" hidden aria-label="Orientación del modelo">
+  <div class="gic-cube-scene"><div id="gic-cube-rotor" class="gic-cube-rotor"><button type="button" class="gic-cube-face face-front" data-view="front" title="Vista frente" aria-label="Vista frente" tabindex="-1">Frente</button><button type="button" class="gic-cube-face face-back" data-view="back" title="Vista atrás" aria-label="Vista atrás" tabindex="-1">Atrás</button><button type="button" class="gic-cube-face face-left" data-view="left" title="Vista izquierda" aria-label="Vista izquierda" tabindex="-1">Izquierda</button><button type="button" class="gic-cube-face face-right" data-view="right" title="Vista derecha" aria-label="Vista derecha" tabindex="-1">Derecha</button><button type="button" class="gic-cube-face face-top" data-view="top" title="Vista superior" aria-label="Vista superior" tabindex="-1">Superior</button><button type="button" class="gic-cube-face face-bottom" data-view="bottom" title="Vista inferior" aria-label="Vista inferior" tabindex="-1">Inferior</button></div></div>
+  <div class="gic-cube-actions"><button type="button" data-view="iso" title="Vista isométrica">ISO</button><select id="gic-view-select" aria-label="Seleccionar orientación"><option value="">Vistas</option><option value="iso">Isométrica</option><option value="front">Frontal</option><option value="back">Posterior</option><option value="left">Izquierda</option><option value="right">Derecha</option><option value="top">Superior</option><option value="bottom">Inferior</option></select></div>
 </div>
                 <div class="gic-viewer-caption"><span class="gic-viewer-caption-icon"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/></svg></span><div><strong>Visor 3D</strong><small>Exploración del edificio</small></div></div>
                 <div id="lab-3d-sin-modelo">
@@ -4940,9 +4946,23 @@
             window.GIC_CORTE_VERTICAL = corteVertical;
             let direccionObjetivo = null, distanciaVista = null, capturaPendiente = false;
             let perfil = 'auto', escalaActual = renderer.getPixelRatio(), muestraFPS = 0, cuadrosFPS = 0;
-            const orientaciones = {iso:[1,.75,1],front:[0,0,1],back:[0,0,-1],left:[-1,0,0],right:[1,0,0],top:[0,1,.001]};
+            const orientaciones = {iso:[1,.75,1],front:[0,0,1],back:[0,0,-1],left:[-1,0,0],right:[1,0,0],top:[0,1,.001],bottom:[0,-1,.001]};
             const giroActual = new THREE.Quaternion(), giroObjetivo = new THREE.Quaternion(), eje = new THREE.Vector3(0,0,1), direccion = new THREE.Vector3();
             const tools = document.getElementById('gic-3d-tools');
+            const toolsToggle=document.getElementById('gic-tools-toggle'), toolsContent=document.getElementById('gic-tools-content');
+            const orientation=document.getElementById('gic-orientation'), rotor=document.getElementById('gic-cube-rotor'), viewSelect=document.getElementById('gic-view-select');
+            const cubeQ=new THREE.Quaternion(), cubeMatrix=new THREE.Matrix4();
+            function actualizarCubo(){
+                const m=cubeMatrix.makeRotationFromQuaternion(cubeQ.copy(camera.quaternion).invert()).elements;
+                // Map Three.js Y-up to CSS Y-down, keeping X and Z.
+                const signos=[1,-1,1,1];
+                const css=Array.from(m,(v,i)=>Number((v*signos[i%4]*signos[Math.floor(i/4)]).toFixed(6)));
+                rotor.style.transform='matrix3d('+css.join(',')+')';
+            }
+            toolsToggle.addEventListener('click',()=>{const abrir=toolsContent.hidden;toolsContent.hidden=!abrir;toolsToggle.setAttribute('aria-expanded',String(abrir));});
+            orientation.addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b&&modeloGlobal)orientar(b.dataset.view,false);});
+            viewSelect.addEventListener('change',()=>{if(viewSelect.value&&modeloGlobal)orientar(viewSelect.value,false);viewSelect.value='';});
+
             const extraStatus = document.getElementById('gic-extended-status');
             let explosion = null, modoMedir = false, puntosMedida = [], marcasMedida = null, recorrido = false;
             const teclasRecorrido = new Set();
@@ -5133,6 +5153,7 @@
                 }
                 const cambio = controls.update();
                 if (cambio || renderPendiente || capturaPendiente) {
+                    actualizarCubo();
                     renderer.render(scene, camera);
                     if(capturaPendiente){capturaPendiente=false;renderer.domElement.toBlob(blob=>{if(!blob)return;const u=URL.createObjectURL(blob), a=document.createElement('a');a.href=u;a.download='UPTC-GIC-3D.png';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);},'image/png');}
                     renderPendiente = false;
@@ -5411,6 +5432,7 @@
                     yaCargado = true;
                     modeloEnCarga = false;
                     document.getElementById('gic-3d-tools').hidden=false;
+                    document.getElementById('gic-orientation').hidden=false;
                 },
                 (xhr) => {
                     if (xhr.lengthComputable && xhr.total > 0) {
