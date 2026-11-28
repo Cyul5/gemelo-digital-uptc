@@ -1118,20 +1118,19 @@
     <!-- GALERÍA DE FOTOS -->
     <div id="galeria-overlay" role="dialog" aria-modal="true" aria-label="Galería de fotos">
         <div class="galeria-top">
-            <h2><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 5-5 4 4 3-3 6 6"/></svg> Galería del levantamiento</h2>
-            <select id="galeria-filtro-origen" onchange="renderizarGaleria()">
+            <div class="gic-gallery-heading"><div><p class="gic-gallery-kicker">UPTC GIC / DOCUMENTACIÓN</p><h2><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 5-5 4 4 3-3 6 6"/></svg> Galería del levantamiento</h2><p class="gic-gallery-sub">Evidencias fotográficas del levantamiento arquitectónico</p></div><button type="button" class="galeria-cerrar" onclick="cerrarGaleria()" aria-label="Cerrar galería">Cerrar <span aria-hidden="true">×</span></button></div><div class="gic-gallery-filters">
+            <label class="gic-gallery-field"><span>Tipo de evidencia</span><select id="galeria-filtro-origen" onchange="renderizarGaleria()">
                 <option value="">Todas las hojas</option>
                 <option value="Inventario Espacios">Patologías Registradas</option>
                 <option value="Mobiliario y Equipo">Mobiliario y Equipo</option>
-            </select>
-            <select id="galeria-filtro-piso" onchange="renderizarGaleria()">
+            </select></label>
+            <label class="gic-gallery-field"><span>Nivel</span><select id="galeria-filtro-piso" onchange="renderizarGaleria()">
                 <option value="">Todos los pisos</option>
                 <option value="1">Piso 1</option><option value="2">Piso 2</option><option value="3">Piso 3</option>
                 <option value="4">Piso 4</option><option value="5">Piso 5</option>
-            </select>
-            <input id="galeria-buscar" type="text" placeholder="Buscar código o referencia..." oninput="renderizarGaleria()" autocomplete="off">
-            <span id="galeria-contador"></span>
-            <button class="galeria-cerrar" onclick="cerrarGaleria()">Cerrar ✕</button>
+            </select></label>
+            <label class="gic-gallery-field gic-gallery-search"><span>Buscar evidencia</span><input id="galeria-buscar" type="text" placeholder="Buscar código o referencia..." oninput="programarFiltroGaleria()" autocomplete="off"></label>
+            <button type="button" class="gic-gallery-reset" onclick="limpiarFiltrosGaleria()">Limpiar filtros</button></div><div class="gic-gallery-results"><span id="galeria-contador" role="status" aria-live="polite"></span><span>Selecciona una foto para ampliarla</span></div>
         </div>
         <div id="galeria-grid"></div>
     </div>
@@ -2211,7 +2210,7 @@
             return new Blob([await entrada.async('blob')], { type: f.mime || 'image/jpeg' });
         }
         async function crearMiniatura(blob) {
-            const L = 400;
+            const L = ES_MOVIL_FOTOS ? 256 : 384;
             const cv = document.createElement('canvas'); cv.width = L; cv.height = L;
             const cx = cv.getContext('2d'); cx.fillStyle = '#0f172a'; cx.fillRect(0, 0, L, L);
             let fuente = null, w = 0, h = 0, liberar = () => {};
@@ -2226,8 +2225,8 @@
             const lado = Math.min(w, h), sx = (w - lado) / 2, sy = (h - lado) / 2;
             cx.drawImage(fuente, sx, sy, lado, lado, 0, 0, L, L);
             liberar();
-            const b = await new Promise(ok => cv.toBlob(ok, 'image/jpeg', 0.82));
-            return b ? URL.createObjectURL(b) : cv.toDataURL('image/jpeg', 0.82);
+            const b = await new Promise(ok => cv.toBlob(ok, 'image/jpeg', 0.76));
+            return b ? URL.createObjectURL(b) : cv.toDataURL('image/jpeg', 0.76);
         }
         function miniaturaDeFoto(f, img) {
             if (!f.zip) return Promise.resolve(f.src);
@@ -2336,10 +2335,15 @@
         }
 
         function cerrarGaleria() {
+            clearTimeout(filtroGaleriaTimer);
+            if (observadorMini) observadorMini.disconnect();
             cerrarVisorFoto();
             document.getElementById('galeria-overlay').classList.remove('show');
         }
 
+        let filtroGaleriaTimer;
+        function programarFiltroGaleria() { clearTimeout(filtroGaleriaTimer); filtroGaleriaTimer = setTimeout(renderizarGaleria, 160); }
+        function limpiarFiltrosGaleria() { clearTimeout(filtroGaleriaTimer); ['galeria-filtro-origen','galeria-filtro-piso','galeria-buscar'].forEach(id => document.getElementById(id).value = ''); renderizarGaleria(); }
         function renderizarGaleria() {
             const grid = document.getElementById('galeria-grid');
             const cont = document.getElementById('galeria-contador');
@@ -2365,7 +2369,7 @@
             if (observadorMini) observadorMini.disconnect();
             observadorMini = ('IntersectionObserver' in window) ? new IntersectionObserver((entradas) => {
                 entradas.forEach(en => { if (en.isIntersecting) { observadorMini.unobserve(en.target); if (en.target.__poner) en.target.__poner(); } });
-            }, { root: grid, rootMargin: '700px 0px' }) : null;
+            }, { root: grid, rootMargin: '240px 0px' }) : null;
 
             if (!galeriaFotos.length) {
                 grid.innerHTML = '<div class="galeria-msg">No se encontraron fotos en las hojas «Inventario Espacios» ni «Mobiliario y Equipo».<br>Las imágenes deben estar insertadas en el Excel (flotantes o «en celda») dentro de la columna «Foto».</div>';
@@ -2376,11 +2380,13 @@
                 return;
             }
 
+            const tarjetas = document.createDocumentFragment();
             galeriaVisible.forEach((f, i) => {
-                const card = document.createElement('div');
-                card.className = 'galeria-card';
+                const card = document.createElement('button');
+                card.type = 'button'; card.className = 'galeria-card';
+                card.setAttribute('aria-label', 'Ampliar foto ' + f.codigo + (f.piso ? ', piso ' + f.piso : ''));
                 const img = document.createElement('img');
-                img.decoding = 'async'; img.alt = f.codigo; cargarMiniaturaPerezosa(img, f);
+                img.decoding = 'async'; img.alt = f.codigo; img.width = 384; img.height = 384; cargarMiniaturaPerezosa(img, f);
                 const info = document.createElement('div');
                 info.className = 'info';
                 const b = document.createElement('b'); b.textContent = f.codigo;
@@ -2393,8 +2399,9 @@
                 info.appendChild(tag);
                 card.appendChild(img); card.appendChild(info);
                 card.addEventListener('click', () => abrirVisorFoto(i));
-                grid.appendChild(card);
+                tarjetas.appendChild(card);
             });
+            grid.appendChild(tarjetas);
         }
 
         function abrirVisorFoto(i) {
