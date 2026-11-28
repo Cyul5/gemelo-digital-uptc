@@ -900,7 +900,7 @@
             <span class="sub-title" id="breadcrumb">Sede Central (Plano General)</span>
         </div>
 
-        <div class="header-right">
+        <div class="header-right"><button type="button" id="gic-open-search" class="btn-ayuda" title="Buscar en el campus (Ctrl+K)"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg> <span>Buscar</span></button><button type="button" id="gic-open-dashboard" class="btn-ayuda" title="Resumen del campus"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v11h-6v-7H9v7H3z"/></svg> <span>Resumen</span></button>
             <button class="btn-ayuda" onclick="abrirBienvenida()" title="Ver la guía de uso"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 1 1 4 3c-1 .5-1 1-1 2m0 3h.01"/></svg> Ayuda</button>
             <div class="excel-status" id="excel-status-tag">
                 <span class="dot" style="background:#eab308;"></span> Leyendo Excel...
@@ -960,6 +960,11 @@
             <!-- VISTA 2: MODELO 3D -->
             <div id="vista-3d" class="vista">
                 <div id="ifc-canvas-container"></div>
+<div id="gic-3d-tools" class="gic-3d-tools" hidden aria-label="Herramientas del visor 3D">
+<div class="gic-view-presets" role="group" aria-label="Orientación del modelo"><button type="button" data-view="iso" title="Isométrica">ISO</button><button type="button" data-view="front" title="Frontal">Frente</button><button type="button" data-view="back" title="Posterior">Atrás</button><button type="button" data-view="left" title="Izquierda">Izq.</button><button type="button" data-view="right" title="Derecha">Der.</button><button type="button" data-view="top" title="Superior">Superior</button></div>
+<div class="gic-tool-row"><button type="button" data-tool="fit" title="Centrar modelo" aria-label="Centrar modelo"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button><button type="button" data-tool="grid" aria-pressed="true" title="Cuadrícula" aria-label="Cuadrícula"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg></button><button type="button" data-tool="cut" aria-pressed="false" title="Corte vertical" aria-label="Corte vertical"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l16 16M4 20 20 4"/><circle cx="5" cy="5" r="2"/><circle cx="5" cy="19" r="2"/></svg></button><button type="button" data-tool="capture" title="Capturar imagen" aria-label="Capturar imagen"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="4"/><path d="m8 6 2-3h4l2 3"/></svg></button><button type="button" data-tool="full" title="Pantalla completa" aria-label="Pantalla completa"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button><label title="Calidad gráfica"><select id="gic-quality" aria-label="Calidad gráfica"><option value="auto">Auto</option><option value="low">Fluidez</option><option value="medium">Equilibrio</option><option value="high">Calidad</option></select></label></div>
+<label id="gic-cut-row" hidden>Posición del corte <input type="range" id="gic-cut-slider" min="0" max="100" value="50" aria-label="Posición del corte vertical"></label>
+</div>
                 <div class="gic-viewer-caption"><span class="gic-viewer-caption-icon"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/></svg></span><div><strong>Visor 3D</strong><small>Exploración del edificio</small></div></div>
                 <div id="lab-3d-sin-modelo">
                     <div class="lab-3d-caja">
@@ -4893,6 +4898,7 @@
             const zoomOffset = new THREE.Vector3();
             const reducirMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             function solicitarZoom(factor) {
+                direccionObjetivo = null;
                 const actual = camera.position.distanceTo(controls.target);
                 zoomObjetivo = THREE.MathUtils.clamp((zoomObjetivo ?? actual) * factor, controls.minDistance, controls.maxDistance);
                 renderPendiente = true;
@@ -4901,6 +4907,7 @@
             renderer.domElement.addEventListener('wheel', (event) => {
                 event.preventDefault();
                 event.stopPropagation();
+                direccionObjetivo = null;
                 const unidad = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? container.clientHeight : 1;
                 const delta = THREE.MathUtils.clamp(event.deltaY * unidad, -240, 240);
                 solicitarZoom(Math.exp(delta * 0.0018));
@@ -4916,6 +4923,27 @@
             const gridHelper = new THREE.GridHelper(300, 60, 0x00b4d8, 0xcbd5e1);
             gridHelper.position.y = -0.01;
             scene.add(gridHelper);
+            const corteVertical = new THREE.Plane(new THREE.Vector3(1,0,0), 1e6);
+            window.GIC_CORTE_VERTICAL = corteVertical;
+            let direccionObjetivo = null, distanciaVista = null, capturaPendiente = false;
+            let perfil = 'auto', escalaActual = renderer.getPixelRatio(), muestraFPS = 0, cuadrosFPS = 0;
+            const orientaciones = {iso:[1,.75,1],front:[0,0,1],back:[0,0,-1],left:[-1,0,0],right:[1,0,0],top:[0,1,.001]};
+            const giroActual = new THREE.Quaternion(), giroObjetivo = new THREE.Quaternion(), eje = new THREE.Vector3(0,0,1), direccion = new THREE.Vector3();
+            const tools = document.getElementById('gic-3d-tools');
+            function orientar(v, centrar) {
+                if (!bboxModelo) return;
+                if (centrar) controls.target.copy(bboxModelo.getCenter(new THREE.Vector3()));
+                direccionObjetivo = new THREE.Vector3(...orientaciones[v]).normalize();
+                const max = bboxModelo.getSize(new THREE.Vector3()).length();
+                distanciaVista = centrar ? THREE.MathUtils.clamp(max * 1.35,controls.minDistance,controls.maxDistance) : camera.position.distanceTo(controls.target);
+                zoomObjetivo = null; renderPendiente = true;
+            }
+            controls.addEventListener('start', () => { direccionObjetivo = null; });
+            function calidad(p) { perfil=p; escalaActual=Math.min(window.devicePixelRatio || 1, p==='low'?1:p==='medium'?1.35:p==='high'?2:(document.documentElement.classList.contains('movil')?1.25:1.6)); renderer.setPixelRatio(escalaActual); renderPendiente=true; }
+            tools.addEventListener('click', e => { const b=e.target.closest('button'); if(!b || !modeloGlobal)return; if(b.dataset.view){orientar(b.dataset.view,false);return;} switch(b.dataset.tool){case 'fit':orientar('iso',true);break;case 'grid':gridHelper.visible=!gridHelper.visible;b.setAttribute('aria-pressed',String(gridHelper.visible));break;case 'cut':{const activo=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',String(activo));document.getElementById('gic-cut-row').hidden=!activo;corteVertical.constant=activo ? -(bboxModelo.min.x+bboxModelo.max.x)/2 : 1e6;document.getElementById('gic-cut-slider').value=50;break;}case 'capture':capturaPendiente=true;break;case 'full':{const v=document.getElementById('vista-3d');if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{});else v.requestFullscreen?.().catch(()=>{});break;}}renderPendiente=true; });
+            document.getElementById('gic-quality').addEventListener('change', e=>calidad(e.target.value));
+            document.getElementById('gic-cut-slider').addEventListener('input',e=>{if(bboxModelo){corteVertical.constant=-THREE.MathUtils.lerp(bboxModelo.min.x,bboxModelo.max.x,Number(e.target.value)/100);renderPendiente=true;}});
+            calidad('auto');
 
             planoInferior = new THREE.Plane(new THREE.Vector3(0, 1, 0), -1000);
             planoSuperior = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1000);
@@ -4942,6 +4970,7 @@
                     const pt = hit.point;
                     if (planoInferior && planoInferior.distanceToPoint(pt) < -0.01) continue;
                     if (planoSuperior && planoSuperior.distanceToPoint(pt) < -0.01) continue;
+                    if (corteVertical.distanceToPoint(pt) < -0.01) continue;
                     return { idx: indicePisoPorAltura(pt.y), y: pt.y - alturaMinModel };
                 }
                 return null;
@@ -5001,10 +5030,22 @@
                         renderPendiente = true;
                     }
                 }
+                if(direccionObjetivo){
+                    direccion.copy(camera.position).sub(controls.target);
+                    const distancia=direccion.length(); direccion.normalize();
+                    giroActual.setFromUnitVectors(eje,direccion); giroObjetivo.setFromUnitVectors(eje,direccionObjetivo);
+                    const t=reducirMovimiento?1:1-Math.exp(-12*dt);
+                    giroActual.slerp(giroObjetivo,t); direccion.copy(eje).applyQuaternion(giroActual);
+                    const d=THREE.MathUtils.lerp(distancia,distanciaVista,t);
+                    if(direccion.angleTo(direccionObjetivo)<.003 && Math.abs(d-distanciaVista)<.02){direccion.copy(direccionObjetivo);camera.position.copy(controls.target).addScaledVector(direccion,distanciaVista);direccionObjetivo=null;}else camera.position.copy(controls.target).addScaledVector(direccion,d);
+                    renderPendiente=true;
+                }
                 const cambio = controls.update();
-                if (cambio || renderPendiente) {
+                if (cambio || renderPendiente || capturaPendiente) {
                     renderer.render(scene, camera);
+                    if(capturaPendiente){capturaPendiente=false;renderer.domElement.toBlob(blob=>{if(!blob)return;const u=URL.createObjectURL(blob), a=document.createElement('a');a.href=u;a.download='UPTC-GIC-3D.png';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);},'image/png');}
                     renderPendiente = false;
+                    if(perfil==='auto' && cambio && dt>0){muestraFPS+=dt;cuadrosFPS++;if(muestraFPS>=2){const fps=cuadrosFPS/muestraFPS;const techo=Math.min(window.devicePixelRatio||1,document.documentElement.classList.contains('movil')?1.25:1.6);const siguiente=fps<38?Math.max(.75,escalaActual-.15):fps>56?Math.min(techo,escalaActual+.1):escalaActual;if(Math.abs(siguiente-escalaActual)>.04){escalaActual=siguiente;renderer.setPixelRatio(escalaActual);renderPendiente=true;}muestraFPS=cuadrosFPS=0;}}
                 }
             }
 
@@ -5187,7 +5228,7 @@
 
                     planoInferior.constant = -(alturaMinModel - 50);
                     planoSuperior.constant = alturaMaxModel + 100;
-                    const arrayPlanosCorte = [planoInferior, planoSuperior];
+                    const arrayPlanosCorte = [planoInferior, planoSuperior, window.GIC_CORTE_VERTICAL].filter(Boolean);
                     const materialesPreparados = new WeakMap();
                     function prepararMaterial(mat) {
                         if (!mat) return mat;
@@ -5276,6 +5317,7 @@
                     statusEl.innerHTML = '<span class="gic-model-ready" role="status"><span class="gic-model-dot"></span> Modelo listo</span>';
                     yaCargado = true;
                     modeloEnCarga = false;
+                    document.getElementById('gic-3d-tools').hidden=false;
                 },
                 (xhr) => {
                     if (xhr.lengthComputable && xhr.total > 0) {
