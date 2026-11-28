@@ -4760,6 +4760,7 @@
         let is3DInitialized = false;
         let yaCargado = false;
         let modeloEnCarga = false;
+        let renderPendiente = true;
         let animFrameId = null;
         let modeloGlobal = null;
         let planoInferior = null, planoSuperior = null;
@@ -4890,10 +4891,12 @@
                 if (dir > 0) {
                     if (dist < controls.maxDistance) {
                         camera.position.addScaledVector(direction, -step);
+                        renderPendiente = true;
                     }
                 } else {
                     if (dist > controls.minDistance) {
                         camera.position.addScaledVector(direction, step);
+                        renderPendiente = true;
                     }
                 }
             }, { passive: false });
@@ -4968,6 +4971,7 @@
                     camera.aspect = container.clientWidth / container.clientHeight;
                     camera.updateProjectionMatrix();
                     renderer.setSize(container.clientWidth, container.clientHeight);
+                    renderPendiente = true;
                 }
             });
 
@@ -4976,13 +4980,16 @@
                 if (document.hidden || !document.getElementById("vista-3d")?.classList.contains("activa")) return;
                 animFrameId = requestAnimationFrame(animate);
                 clock.getDelta();
-                controls.update();
-                renderer.render(scene, camera);
+                const cambio = controls.update();
+                if (cambio || renderPendiente) {
+                    renderer.render(scene, camera);
+                    renderPendiente = false;
+                }
             }
 
             function sincronizarRender() {
                 const visible = !document.hidden && document.getElementById('vista-3d').classList.contains('activa');
-                if (visible && animFrameId === null) animFrameId = requestAnimationFrame(animate);
+                if (visible && animFrameId === null) { renderPendiente = true; animFrameId = requestAnimationFrame(animate); }
                 else if (!visible && animFrameId !== null) { cancelAnimationFrame(animFrameId); animFrameId = null; }
             }
             new MutationObserver(sincronizarRender).observe(document.getElementById('vista-3d'), {attributes:true, attributeFilter:['class']});
@@ -5123,6 +5130,7 @@
             if (!planoInferior || !planoSuperior) return;
             planoInferior.constant = -alturaInferior;
             planoSuperior.constant = alturaSuperior;
+            renderPendiente = true;
         }
 
         function cargarModeloGLBReal() {
@@ -5159,32 +5167,32 @@
                     planoInferior.constant = -(alturaMinModel - 50);
                     planoSuperior.constant = alturaMaxModel + 100;
                     const arrayPlanosCorte = [planoInferior, planoSuperior];
+                    const materialesPreparados = new WeakMap();
+                    function prepararMaterial(mat) {
+                        if (!mat) return mat;
+                        if (!materialesPreparados.has(mat)) {
+                            const m = mat.clone();
+                            m.clippingPlanes = arrayPlanosCorte;
+                            m.clipShadows = true;
+                            m.side = THREE.DoubleSide;
+                            m.needsUpdate = true;
+                            materialesPreparados.set(mat, m);
+                        }
+                        return materialesPreparados.get(mat);
+                    }
 
                     pisosMeshes = [[], [], [], [], []];
 
                     modeloGlobal.traverse((child) => {
                         if (child.isMesh) {
-                            if (Array.isArray(child.material)) {
-                                child.material = child.material.map(mat => {
-                                    const m = mat.clone();
-                                    m.clippingPlanes = arrayPlanosCorte;
-                                    m.clipShadows = true;
-                                    m.side = THREE.DoubleSide;
-                                    m.needsUpdate = true;
-                                    return m;
-                                });
-                            } else if (child.material) {
-                                child.material = child.material.clone();
-                                child.material.clippingPlanes = arrayPlanosCorte;
-                                child.material.clipShadows = true;
-                                child.material.side = THREE.DoubleSide;
-                                child.material.needsUpdate = true;
-                            }
+                            if (Array.isArray(child.material)) child.material = child.material.map(prepararMaterial);
+                            else if (child.material) child.material = prepararMaterial(child.material);
 
                         }
                     });
 
                     scene.add(modeloGlobal);
+                    renderPendiente = true;
 
                     layersEl.innerHTML = '';
                     
