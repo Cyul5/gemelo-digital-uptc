@@ -4873,6 +4873,39 @@
 
         let pisosMeshes = [[], [], [], [], []];
         let mallasPicking3D = [];
+        let modeloRender3D = null;
+        let cajasPicking3D = [];
+        const candidatosPicking3D = [];
+        let lotesRender3D = [];
+        function prepararRenderEstatico3D(root) {
+            root.updateMatrixWorld(true);
+            const grupo=new THREE.Group(); grupo.name='GIC render estático';
+            const lotes=new Map(), matriz=new THREE.Matrix4();
+            let total=0, instancias=0;
+            const crearPlano=o=>{const m=new THREE.Mesh(o.geometry,o.material);m.matrixAutoUpdate=false;m.matrix.copy(o.matrixWorld);m.renderOrder=o.renderOrder;m.castShadow=o.castShadow;m.receiveShadow=o.receiveShadow;grupo.add(m);lotesRender3D.push({obj:m,box:o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld)});};
+            const aptas=mallasPicking3D.every(o=>o.geometry && !o.isSkinnedMesh && !o.isInstancedMesh && !o.morphTargetInfluences?.length && o.material && !o.material.isShaderMaterial);
+            if(!aptas)return root;
+            for(const o of mallasPicking3D){
+                if(!o.geometry.boundingBox)o.geometry.computeBoundingBox();
+                let visible=true;for(let p=o;p;p=p.parent){if(!p.visible){visible=false;break;}}if(!visible)continue;
+                total++;
+                if(Array.isArray(o.material)||o.material.transparent||o.matrixWorld.determinant()<=0){crearPlano(o);continue;}
+                const key=o.geometry.uuid+'|'+o.material.uuid+'|'+o.renderOrder;
+                if(!lotes.has(key))lotes.set(key,[]);lotes.get(key).push(o);
+            }
+            for(const lista of lotes.values()){
+                if(lista.length<2){crearPlano(lista[0]);continue;}
+                const o=lista[0], mesh=new THREE.InstancedMesh(o.geometry,o.material,lista.length);
+                mesh.renderOrder=o.renderOrder;
+                lista.forEach((m,i)=>mesh.setMatrixAt(i,matriz.copy(m.matrixWorld)));
+                mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingBox();mesh.computeBoundingSphere();grupo.add(mesh);
+                lotesRender3D.push({obj:mesh,box:mesh.boundingBox.clone()});instancias+=lista.length;
+            }
+            grupo.updateMatrixWorld(true);
+            console.info('[GIC] Render agrupado:',{mallas:total,lotes:grupo.children.length,instancias});
+            window.GIC_MODEL_STATS={mallasOriginales:total,lotes:grupo.children.length,instancias};
+            return grupo;
+        }
         let pisoHoveredActual = -1;
 
         const clock = new THREE.Clock();
@@ -4976,7 +5009,7 @@
             function detenerExplosion(){
                 if(!explosion)return;
                 scene.remove(explosion);explosion.traverse(o=>{if(o.isMesh){const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>m?.dispose());}});
-                explosion=null;modeloGlobal.visible=true;estadoExtra('explode',false);renderPendiente=true;
+                explosion=null;(modeloRender3D||modeloGlobal).visible=true;estadoExtra('explode',false);renderPendiente=true;
             }
             window.GIC_CERRAR_EXPLOSION = detenerExplosion;
             function activarExplosion(){
@@ -5005,7 +5038,7 @@
                     }
                     grupo.add(copia);
                 }
-                explosion=grupo;modeloGlobal.visible=false;scene.add(grupo);estadoExtra('explode',true);
+                explosion=grupo;(modeloRender3D||modeloGlobal).visible=false;scene.add(grupo);estadoExtra('explode',true);
                 mostrarBandaPiso(-1);avisoExtra('Vista separada por cortes de piso. Desactívala para seleccionar aulas.');renderPendiente=true;
             }
             function puntoMedida(p){
@@ -5073,7 +5106,9 @@
                 mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
                 mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
                 raycaster.setFromCamera(mouse, camera);
-                const hits = raycaster.intersectObjects(mallasPicking3D, false);
+                candidatosPicking3D.length=0;
+                for(let i=0;i<mallasPicking3D.length;i++){if(raycaster.ray.intersectsBox(cajasPicking3D[i]))candidatosPicking3D.push(mallasPicking3D[i]);}
+                const hits = raycaster.intersectObjects(candidatosPicking3D, false);
                 for (const hit of hits) {
                     if (!hit.object || hit.object.visible === false) continue;
                     const pt = hit.point;
@@ -5306,6 +5341,7 @@
             window.GIC_CERRAR_EXPLOSION?.();
             planoInferior.constant = -alturaInferior;
             planoSuperior.constant = alturaSuperior;
+            for(const l of lotesRender3D)l.obj.visible=l.box.max.y>=alturaInferior && l.box.min.y<=alturaSuperior;
             renderPendiente = true;
         }
 
@@ -5369,7 +5405,10 @@
                         }
                     });
 
-                    scene.add(modeloGlobal);
+                    cajasPicking3D = mallasPicking3D.map(m=>{if(!m.geometry.boundingBox)m.geometry.computeBoundingBox();return m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld);});
+                    lotesRender3D=[];
+                    modeloRender3D=prepararRenderEstatico3D(modeloGlobal);
+                    scene.add(modeloRender3D);
                     renderPendiente = true;
 
                     layersEl.innerHTML = '';
@@ -5741,18 +5780,19 @@
                 cam.up.set(0, 0, -1); cam.position.set(c.x, alturaMaxModel + 50, c.z); cam.lookAt(c.x, 0, c.z); cam.updateMatrixWorld(true);
                 const rt = new THREE.WebGLRenderTarget(NR, NR);
                 const mat = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide, clippingPlanes: [planoInferior, planoSuperior] });
-                const pi = planoInferior.constant, ps = planoSuperior.constant, bg = scene.background, vis = scene.children.map(o => o.visible);
+                const pi = planoInferior.constant, ps = planoSuperior.constant, bg = scene.background, vis = scene.children.map(o => o.visible), visLotes=lotesRender3D.map(l=>l.obj.visible);
                 const buf = new Uint8Array(NR * NR * 4);
                 try {
-                    scene.children.forEach(o => { if (o !== modeloGlobal) o.visible = false; });
+                    scene.children.forEach(o => { o.visible = o === (modeloRender3D||modeloGlobal); });
                     planoInferior.constant = -y0; planoSuperior.constant = y1;
+                    for(const l of lotesRender3D)l.obj.visible=l.box.max.y>=y0 && l.box.min.y<=y1;
                     scene.background = new THREE.Color(0xffffff); scene.overrideMaterial = mat;
                     renderer.setRenderTarget(rt); renderer.clear(); renderer.render(scene, cam);
                     renderer.readRenderTargetPixels(rt, 0, 0, NR, NR, buf);
                 } finally {
                     renderer.setRenderTarget(null); scene.overrideMaterial = null; scene.background = bg;
                     scene.children.forEach((o, i) => { o.visible = vis[i]; });
-                    planoInferior.constant = pi; planoSuperior.constant = ps; rt.dispose(); mat.dispose();
+                    planoInferior.constant = pi; planoSuperior.constant = ps; lotesRender3D.forEach((l,i)=>l.obj.visible=visLotes[i]); rt.dispose(); mat.dispose();
                 }
                 const m = new Uint8Array(NR * NR); let n = 0;
                 for (let r = 0; r < NR; r++) for (let cc = 0; cc < NR; cc++) if (buf[((NR - 1 - r) * NR + cc) * 4] < 128) { m[r * NR + cc] = 1; n++; }
