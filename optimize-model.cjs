@@ -17,8 +17,9 @@ try {
       count++;
     }
   }
-  new vm.Script(fs.readFileSync('gic-campus.js','utf8'),{filename:'gic-campus.js'});
-  console.log('GIC syntax validation: '+(count+1)+' scripts passed.');
+  for (const name of ['gic-campus.js','gic-excel-worker.js','gic-sw.js']) { new vm.Script(fs.readFileSync(name,'utf8'),{filename:name}); count++; }
+  JSON.parse(fs.readFileSync('gic.webmanifest','utf8'));
+  console.log('GIC syntax validation: '+count+' scripts passed.');
 } finally {fs.rmSync(tmp,{recursive:true,force:true});}
 
 const original = 'EDIFICIO_AULAS_M3D.glb', optimized = 'EDIFICIO_AULAS_WEB.glb';
