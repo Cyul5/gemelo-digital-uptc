@@ -1240,9 +1240,16 @@
         // ===== ZOOM / PANEO DEL PLANO 2D =====
         let escZoom2D = 1, xZoom2D = 0, yZoom2D = 0;
         let arrastra2D = false, ultimoX2D = 0, ultimoY2D = 0, movido2D = false, zoom2DIniciado = false;
-        function aplicarZoom2D() {
+        let gicZoomAnim = null;
+        function aplicarZoom2D(suave = false) {
             const o = document.getElementById('svg-2d-object');
-            if (o) o.style.transform = 'translate(' + xZoom2D + 'px, ' + yZoom2D + 'px) scale(' + escZoom2D + ')';
+            if (o) {
+                const anterior = suave ? getComputedStyle(o).transform : null;
+                if(gicZoomAnim){gicZoomAnim.cancel();gicZoomAnim=null;}
+                const siguiente = 'translate(' + xZoom2D + 'px, ' + yZoom2D + 'px) scale(' + escZoom2D + ')';
+                o.style.transform = siguiente;
+                if(suave && o.animate && !matchMedia('(prefers-reduced-motion: reduce)').matches){gicZoomAnim=o.animate([{transform:anterior==='none'?'translate(0px,0px) scale(1)':anterior},{transform:siguiente}],{duration:135,easing:'cubic-bezier(.2,.7,.2,1)'});}
+            }
             const ind = document.getElementById('zoom2d-indicador');
             if (ind) ind.textContent = Math.round(escZoom2D * 100) + '%';
         }
@@ -1258,7 +1265,7 @@
             yZoom2D = py - (py - yZoom2D) * k;
             escZoom2D = nuevo;
             if (escZoom2D <= 1.01) { escZoom2D = 1; xZoom2D = 0; yZoom2D = 0; }
-            aplicarZoom2D();
+            aplicarZoom2D(true);
         }
         function resetZoom2D() { escZoom2D = 1; xZoom2D = 0; yZoom2D = 0; aplicarZoom2D(); }
         function iniciarZoom2D() {
@@ -1304,7 +1311,8 @@
             const aPantalla = (e) => {
                 const w = document.getElementById('svg-2d-wrapper');
                 const r = w ? w.getBoundingClientRect() : { left: 0, top: 0 };
-                return { x: r.left + xZoom2D + e.clientX * escZoom2D, y: r.top + yZoom2D + e.clientY * escZoom2D };
+                const o=document.getElementById('svg-2d-object'), b=o?.getBoundingClientRect();
+                return b && o.clientWidth && o.clientHeight ? {x:b.left+e.clientX*b.width/o.clientWidth,y:b.top+e.clientY*b.height/o.clientHeight} : { x: r.left + xZoom2D + e.clientX * escZoom2D, y: r.top + yZoom2D + e.clientY * escZoom2D };
             };
             doc.addEventListener('wheel', (e) => {
                 e.preventDefault();
