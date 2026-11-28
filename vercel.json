@@ -1,5 +1,16 @@
 {
   "framework": null,
   "buildCommand": "node optimize-model.cjs",
-  "outputDirectory": "."
+  "outputDirectory": ".",
+  "headers": [
+    {
+      "source": "/:asset(EDIFICIO_AULAS_WEB\\.glb|EDIFICIO_AULAS_M3D\\.glb|PLANTA_[1-5]_HUNZA\\.svg|PLANOS_LABORATORIOS_ARQ\\.svg|plano_uptc\\.svg)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, stale-while-revalidate=86400"
+        }
+      ]
+    }
+  ]
 }
