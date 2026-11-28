@@ -4843,7 +4843,8 @@
         let pisoHoveredActual = -1;
 
         const clock = new THREE.Clock();
-        const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
+        let URL_GLB = 'EDIFICIO_AULAS_WEB.glb';
+        const URL_GLB_ORIGINAL = 'EDIFICIO_AULAS_M3D.glb';
 
         function init3DViewer() {
             if (is3DInitialized) return true;
@@ -5263,6 +5264,12 @@
                 },
                 (error) => {
                     modeloEnCarga = false;
+                    if (URL_GLB !== URL_GLB_ORIGINAL) {
+                        console.warn('[GIC] Modelo web no disponible; usando original.', error);
+                        URL_GLB = URL_GLB_ORIGINAL;
+                        cargarModeloGLBReal();
+                        return;
+                    }
                     console.error('❌ Error al cargar GLB:', error);
                     statusEl.innerText = '❌ Error al cargar archivo GLB';
                 }
