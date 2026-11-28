@@ -960,13 +960,14 @@
             <!-- VISTA 2: MODELO 3D -->
             <div id="vista-3d" class="vista">
                 <div id="ifc-canvas-container"></div>
+                <div class="gic-viewer-caption"><span class="gic-viewer-caption-icon"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/></svg></span><div><strong>Visor 3D</strong><small>Exploración del edificio</small></div></div>
                 <div id="lab-3d-sin-modelo">
                     <div class="lab-3d-caja">
                         <h3>Modelos 3D próximamente</h3>
                     </div>
                 </div>
                 <div id="selector-edificio-3d-wrap" style="position:absolute; left:14px; bottom:14px; z-index:30; background:var(--bg-header); border:1px solid #1e293b; border-radius:8px; padding:8px 10px;">
-                    <label class="edificio-selector" style="color:#e2e8f0;">🏢 Edificio:
+                    <label class="edificio-selector" style="color:#e2e8f0;"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h1m4 0h1M9 11h1m4 0h1M9 15h1m4 0h1M11 21v-3h2v3"/></svg> Edificio:
                         <select id="select-edificio-3d" class="filter-select" onchange="fijarEdificio(this.value)">
                             <option value="hunza">Aulas Hunza</option>
                             <option value="lab">Laboratorios Ingeniería (EDILAB)</option>
@@ -1055,7 +1056,7 @@
 
         <!-- PANEL DERECHO DE DATOS -->
         <div class="sidebar-right" id="sidebar-derecha">
-            <button id="btn-volver-mapa" class="btn-regresar" onclick="irAVista('vista-mapa')">🗺️ Volver al Mapa General</button>
+            <button id="btn-volver-mapa" class="btn-regresar" onclick="irAVista('vista-mapa')"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M5 12h14"/></svg> Volver al mapa</button>
 
             <!-- ACCIONES DEL PANEL EN EL MAPA GENERAL (solo visibles en esa vista) -->
             <div id="panel-mapa-acciones">
@@ -1074,7 +1075,7 @@
 
             <!-- SECCIÓN CORTES BIM (SOLO VISIBLE EN 3D) -->
             <div id="seccion-cortes-3d" style="display:none; margin-top: 15px;">
-                <div class="panel-title">✂ Niveles (Modelo 3D)</div>
+                <div class="panel-title"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 8 9-5 9 5-9 5zM3 12l9 5 9-5M3 16l9 5 9-5"/></svg> Niveles del edificio</div>
                 <div id="ifc-status" style="font-size:12px; color:var(--text-muted); margin-bottom:10px;"><span class="loading-spinner"></span> Esperando modelo 3D...</div>
                 <div id="ifc-layers-list"></div>
             </div>
@@ -2827,18 +2828,18 @@
             }
 
             if (!nombrePiso || nombrePiso === "Edificio Completo") {
-                if(panelTitulo) panelTitulo.innerHTML = `🏢 EDIFICIO COMPLETO (3D)`;
+                if(panelTitulo) panelTitulo.innerHTML = `<svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/></svg> Edificio completo`;
                 if(panelContenido) {
                     panelContenido.innerHTML = `
                         <div style="padding:10px 0; color:var(--text-muted); font-size:12px;">
-                            <p>💡 Seleccione un nivel en el menú de aislamiento para desplegar las condiciones de <strong>Accesibilidad y Seguridad</strong> e <strong>Instalaciones y Acabados</strong> del piso.</p>
+                            <div class="gic-viewer-tip"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg><div><strong>Explora por niveles</strong><p>Selecciona un piso para consultar su accesibilidad, seguridad, instalaciones y acabados.</p></div></div>
                         </div>
                     `;
                 }
                 return;
             }
 
-            if(panelTitulo) panelTitulo.innerHTML = `🏢 ${nombrePiso.toUpperCase()}`;
+            if(panelTitulo) panelTitulo.innerHTML = `<svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 8 9-5 9 5-9 5zM3 12l9 5 9-5M3 16l9 5 9-5"/></svg> ${nombrePiso}`;
 
             const numeroPisoStr = String(nombrePiso).replace(/[^0-9]/g, '');
 
@@ -5198,7 +5199,7 @@
                     
                     const divControles = document.createElement('div');
                     divControles.innerHTML = `
-                        <button class="btn-nivel active" data-tipo="max">Ver Edificio Completo</button>
+                        <button class="btn-nivel active" data-tipo="max"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/></svg><span class="gic-floor-label">Edificio completo</span></button>
                         <hr style="border-color:#1e293b; margin:8px 0;">
                         <p style="margin:4px 0; color:var(--text-muted); font-size:11px;">Aislar Piso:</p>
                         <div id="botones-pisos-container"></div>
@@ -5211,7 +5212,8 @@
                     nombresPisos.forEach((nombre, idx) => {
                         const btn = document.createElement('button');
                         btn.className = 'btn-nivel';
-                        btn.innerText = `🏢 ${nombre}`;
+                        btn.innerHTML = '<svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 8 9-5 9 5-9 5zM3 12l9 5 9-5M3 16l9 5 9-5"/></svg><span class="gic-floor-label"></span><span class="gic-floor-chevron" aria-hidden="true">›</span>';
+                        btn.querySelector('.gic-floor-label').textContent = nombre;
                         btn.addEventListener('click', () => {
                             document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
                             btn.classList.add('active');
@@ -5249,7 +5251,7 @@
                         controls.update();
                     }
 
-                    statusEl.innerText = '🟢 Modelo 3D Cargado';
+                    statusEl.innerHTML = '<span class="gic-model-ready" role="status"><span class="gic-model-dot"></span> Modelo listo</span>';
                     yaCargado = true;
                     modeloEnCarga = false;
                 },
