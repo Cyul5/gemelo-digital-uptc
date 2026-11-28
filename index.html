@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#070d19">
+    <meta name="theme-color" content="#070d19"><link rel="manifest" href="gic.webmanifest">
     <script>
         // Detección de celular, independiente del ancho de la ventana.
         // Algunos navegadores móviles dibujan la página a ~980 px («Sitio de escritorio»): ahí un @media por ancho nunca se activa.
@@ -1420,7 +1420,20 @@
                 if (!response.ok) throw new Error("No se pudo cargar el archivo Excel.");
 
                 const arrayBuffer = await response.arrayBuffer();
-                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                const workbook = await (async()=>{
+                    if(typeof Worker==='undefined')return XLSX.read(arrayBuffer,{type:'array'});
+                    let w;
+                    try {
+                        w=new Worker('gic-excel-worker.js');
+                        return await new Promise((resolve,reject)=>{
+                            const t=setTimeout(()=>reject(new Error('Worker timeout')),20000);
+                            w.onmessage=e=>{clearTimeout(t);e.data.ok?resolve(e.data.wb):reject(new Error(e.data.error));};
+                            w.onerror=e=>{clearTimeout(t);reject(e);};
+                            const copy=arrayBuffer.slice(0);w.postMessage(copy,[copy]);
+                        });
+                    }catch(e){return XLSX.read(arrayBuffer,{type:'array'});}
+                    finally{w?.terminate();}
+                })();
                 excelBufferGlobal = arrayBuffer;
                 excelWorkbookGlobal = workbook;
                 galeriaFotos = null; galeriaPromesa = null;
@@ -8129,5 +8142,6 @@
     })();
     </script>
     <script src="gic-campus.js"></script>
+<script>if('serviceWorker' in navigator && window.isSecureContext) window.addEventListener('load',()=>navigator.serviceWorker.register('gic-sw.js').catch(e=>console.warn('[GIC] Cache no disponible',e)));</script>
 </body>
 </html>
