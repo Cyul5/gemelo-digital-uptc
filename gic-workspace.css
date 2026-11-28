@@ -66,3 +66,11 @@ html.gic-portal.movil .gic-ws-metric,html.gic-portal.movil .gic-report-type,html
 html.gic-portal.movil .gic-ws-metric strong{font-size:22px}
 @media(max-width:760px){.gic-ws-two{grid-template-columns:1fr}.gic-ws-quick,.gic-ws-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:420px){.gic-ws-filters{grid-template-columns:1fr}.gic-header-action{min-width:26px!important;padding:3px!important}.gic-header-action svg{width:15px;height:15px}}
+
+.gic-space-tabs{padding:12px 0 14px;border-bottom:1px solid #304158;margin-bottom:12px}
+.gic-space-tabs[hidden]{display:none!important}
+.gic-space-context{font-size:11px;color:#a8b9cc;margin-bottom:8px;overflow-wrap:anywhere}
+.gic-space-actions{display:flex;flex-wrap:wrap;gap:5px}
+.gic-space-actions .gic-ws-button{min-height:30px;font-size:11px;padding:5px 8px;margin:0;color:#e2e8f0;background:#172b42;border-color:#304158}
+.gic-space-actions .gic-ws-button[aria-pressed=true]{color:#7dd3fc;border-color:#0284c7;background:#0c4160}
+.gic-ws-table .gic-ws-button{min-height:28px;padding:4px 7px;margin:0}
