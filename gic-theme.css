@@ -421,3 +421,13 @@ html.gic-portal.movil .gic-plan-key{font-size:10px}
 @media(max-width:420px){.gic-campus-metric strong{font-size:19px}#gic-campus-body{padding:12px}.gic-campus-dialog .gic-campus-heading{padding:12px}.gic-view-presets button{padding:5px}}
 
 #vista-3d:has(#lab-3d-sin-modelo.show) .gic-3d-tools{display:none!important}
+
+.gic-nav-cube{position:relative;flex:none;width:86px;height:70px;margin:3px 8px 3px 0;perspective:180px}
+.gic-nav-cube button{position:absolute;min-height:0;width:50px;height:40px;padding:0;border-radius:2px;font-size:9px;background:#254761;border-color:#56768f}
+.gic-nav-cube .cube-front{left:6px;top:25px;transform:skewY(10deg)}
+.gic-nav-cube .cube-right{left:56px;top:25px;width:26px;transform:skewY(-30deg);background:#16334d}
+.gic-nav-cube .cube-top{left:17px;top:3px;height:27px;width:49px;transform:skewX(-38deg);background:#35617e}
+.gic-3d-tools .gic-extended-row button{width:auto;padding:5px 9px}
+#gic-extended-status{max-width:330px;line-height:1.45;color:#bae6fd;font-size:11px;padding:6px;border-left:2px solid #00b4d8}
+#gic-extended-status[hidden]{display:none}
+html.gic-portal.movil .gic-nav-cube{display:none}
