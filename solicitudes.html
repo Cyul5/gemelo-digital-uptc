@@ -167,7 +167,6 @@ const sb = supabase.createClient(SUPABASE_URL, KEY);
 const $ = id => document.getElementById(id);
 let yo = null, miRol = 'usuario', maquinas = [];
 // Simulación: código único para crear/entrar como gestor (en producción sería una tabla/código en servidor).
-const CODIGO_GESTOR = 'LAB2026';
 let rolAcceso = 'solicitante';
 
 // ---------- Control de tiempo de sesión (cierre automático por inactividad) ----------
@@ -249,7 +248,7 @@ window.addEventListener('message', (e) => {
 function fijarRolAcceso(r) {
   rolAcceso = r;
   const esG = r === 'gestor';
-  $('codigo-wrap').style.display = esG ? 'block' : 'none';
+  $('codigo-wrap').style.display = 'none';
   $('tab-solicitante').className = esG ? 'sec' : '';
   $('tab-gestor').className = esG ? '' : 'sec';
   if (!esG) { const c = $('codigo'); if (c) c.value = ''; }
@@ -330,32 +329,18 @@ async function sesion(){
   }
 }
 async function login(){
-  if (rolAcceso === 'gestor' && $('codigo').value.trim() !== CODIGO_GESTOR) {
-    $('auth-msg').className = 'msg err'; $('auth-msg').textContent = 'Código gestor incorrecto.'; return;
-  }
   const { error } = await sb.auth.signInWithPassword({ email: $('email').value, password: $('pwd').value });
   if (error) { $('auth-msg').className = 'msg err'; $('auth-msg').textContent = error.message; return; }
-  // Si entró como gestor con código, promover su perfil a gestor si aún es usuario
-  if (rolAcceso === 'gestor') {
-    const { data: u } = await sb.auth.getUser();
-    if (u && u.user) {
-      const { data: p } = await sb.from('profiles').select('role').eq('id', u.user.id).single();
-      if (p && p.role === 'usuario') await sb.from('profiles').update({ role: 'gestor' }).eq('id', u.user.id);
-    }
-  }
   $('auth-msg').className = 'msg ok'; $('auth-msg').textContent = '';
-  sesion();
+  await sesion();
 }
 async function registro(){
-  if (rolAcceso === 'gestor' && $('codigo').value.trim() !== CODIGO_GESTOR) {
-    $('auth-msg').className = 'msg err'; $('auth-msg').textContent = 'Código gestor incorrecto. Solo el personal asignado puede crear cuentas de gestor.'; return;
+  if (rolAcceso === 'gestor') {
+    $('auth-msg').className='msg err'; $('auth-msg').textContent='Las cuentas de gestor deben ser autorizadas por un administrador. Regístrate como solicitante y solicita la asignación de rol.'; return;
   }
   const { data, error } = await sb.auth.signUp({ email: $('email').value, password: $('pwd').value, options: { data: { full_name: $('nombre').value } } });
   if (error) { $('auth-msg').className = 'msg err'; $('auth-msg').textContent = error.message; return; }
-  if (rolAcceso === 'gestor' && data && data.session) {
-    await sb.from('profiles').update({ role: 'gestor' }).eq('id', data.session.user.id);
-  }
-  if (data && data.session) { $('auth-msg').className = 'msg ok'; $('auth-msg').textContent = '✔ Cuenta creada. Entrando…'; await sesion(); }
+  if (data && data.session) { $('auth-msg').className = 'msg ok'; $('auth-msg').textContent = 'Cuenta creada. Entrando…'; await sesion(); }
   else { $('auth-msg').className = 'msg ok'; $('auth-msg').textContent = 'Cuenta creada. Revisa tu correo para confirmar y vuelve a entrar.'; }
 }
 async function salir(){ await sb.auth.signOut(); try { localStorage.removeItem(CLAVE_ACTIVIDAD); } catch (e) {} sesion(); }
@@ -392,17 +377,17 @@ async function descargar(ruta){
 async function listarMias(){
   const { data } = await sb.from('requests').select('*, machines(name)').eq('user_id', yo.id).order('created_at', { ascending: false });
   $('lista').innerHTML = (data || []).map(r =>
-    `<div class="item"><b>${r.title}</b> · ${r.machines?.name || ''} <span class="tag ${r.status}">${r.status}</span><br>
+    `<div class="item"><b>${gicSafeText(r.title)}</b> · ${gicSafeText(r.machines?.name || '')} <span class="tag ${r.status}">${r.status}</span><br>
      <small>${new Date(r.created_at).toLocaleString()}${r.file_name ? ' · 📎 ' + r.file_name + '' : ''}${r.file_url ? ' · <a href="#" onclick="descargar(\'' + r.file_url + '\');return false">Descargar</a>' : ''}</small><br>
-     <small style="color:#64748b">${r.notes || ''}</small></div>`
+     <small style="color:#64748b">${gicSafeText(r.notes || '')}</small></div>`
   ).join('') || '<p class="ayuda">Sin solicitudes aún.</p>';
 }
 async function listarBandeja(){
   const { data } = await sb.from('requests').select('*, machines(name), profiles(email)').order('created_at', { ascending: false }).limit(100);
   $('bandeja').innerHTML = (data || []).map(r =>
-    `<div class="item"><b>${r.title}</b> · ${r.machines?.name || ''} <span class="tag ${r.status}">${r.status}</span><br>
+    `<div class="item"><b>${gicSafeText(r.title)}</b> · ${gicSafeText(r.machines?.name || '')} <span class="tag ${r.status}">${r.status}</span><br>
      <small>✉️ ${r.profiles?.email || 'sin correo'} · ${new Date(r.created_at).toLocaleString()}${r.file_name ? ' · 📎 ' + r.file_name : ''}${r.file_url ? ' · <a href="#" onclick="descargar(\'' + r.file_url + '\');return false">Descargar archivo</a>' : ''}</small><br>
-     <small style="color:#64748b">${r.notes || ''}</small><br>
+     <small style="color:#64748b">${gicSafeText(r.notes || '')}</small><br>
      <span class="fila-btn" style="margin-top:6px">
        <button onclick="cambiarEstado('${r.id}','aprobado')">Aprobar</button>
        <button class="sec" onclick="cambiarEstado('${r.id}','en_proceso')">En proceso</button>
@@ -424,10 +409,11 @@ async function guardarMantenimiento(){
   $('maint-msg').textContent = error ? error.message : '✔ Mantenimiento guardado.';
   if (!error) listarMantenimiento();
 }
+function gicSafeText(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function listarMantenimiento(){
   const { data } = await sb.from('maintenance_logs').select('*, machines(name)').order('created_at', { ascending: false }).limit(50);
   $('lista-maint').innerHTML = '<b style="font-size:13px">Últimos mantenimientos</b>' + ((data || []).map(r =>
-    `<div class="item"><b>${r.title}</b> · ${r.machines?.name || ''} <span class="tag">${r.type}</span><br><small>${new Date(r.created_at).toLocaleString()} · ${r.description || ''}</small></div>`
+    `<div class="item"><b>${gicSafeText(r.title)}</b> · ${gicSafeText(r.machines?.name || '')} <span class="tag">${gicSafeText(r.type)}</span><br><small>${new Date(r.created_at).toLocaleString()} · ${gicSafeText(r.description || '')}</small></div>`
   ).join('') || '<p class="ayuda">Sin registros.</p>');
 }
 async function guardarInventario(){
@@ -443,7 +429,7 @@ async function guardarInventario(){
 async function listarInventario(){
   const { data } = await sb.from('inventory_logs').select('*, machines(name)').order('created_at', { ascending: false }).limit(50);
   $('lista-inv').innerHTML = '<b style="font-size:13px">Últimos consumos</b>' + ((data || []).map(r =>
-    `<div class="item"><b>${r.material_name}</b> · ${r.quantity_used} ${r.unit || ''} · ${r.machines?.name || ''} <span class="tag">${r.material_type}</span><br><small>${new Date(r.created_at).toLocaleString()} · ${r.notes || ''}</small></div>`
+    `<div class="item"><b>${gicSafeText(r.material_name)}</b> · ${gicSafeText(r.quantity_used)} ${gicSafeText(r.unit || '')} · ${gicSafeText(r.machines?.name || '')} <span class="tag">${gicSafeText(r.material_type)}</span><br><small>${new Date(r.created_at).toLocaleString()} · ${gicSafeText(r.notes || '')}</small></div>`
   ).join('') || '<p class="ayuda">Sin registros.</p>');
 }
 sb.auth.onAuthStateChange(() => sesion());
