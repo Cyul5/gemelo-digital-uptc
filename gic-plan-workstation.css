@@ -89,3 +89,8 @@ html.gic-portal.movil .gic-pw-panel-toggle span{display:none}
 html.gic-portal.movil .gic-pw-quick{top:42px;right:5px}
 html.gic-portal.movil .gic-pw-mini{width:85px;height:63px;bottom:46px}
 @media(max-width:560px){.gic-pw-compare-grid{grid-template-columns:1fr}.gic-pw-compare-grid img{height:34vh}.gic-pw-layerbar{width:100%}.gic-pw-status{font-size:10px}}
+
+.gic-pw-select[hidden]{display:none!important}
+html.gic-pw-active:not(.movil) #sidebar-derecha .gic-pw-resize{position:absolute;left:0;top:0;bottom:0;width:7px;height:auto;margin:0;border:0;border-left:2px solid transparent;z-index:5}
+html.gic-pw-active:not(.movil) #sidebar-derecha .gic-pw-resize:hover,html.gic-pw-active:not(.movil) #sidebar-derecha .gic-pw-resize:focus-visible{border-left-color:#38bdf8}
+@media(prefers-color-scheme:dark){.gic-portal[data-gic-theme=auto] .gic-workspace .gic-pw-select{background:#14283d;color:#e2e8f0;border-color:#36526b}}
