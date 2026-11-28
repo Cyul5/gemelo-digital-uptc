@@ -1,0 +1,1 @@
+self.onmessage = e => {try {if(!self.XLSX) importScripts('https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js');const wb=XLSX.read(e.data,{type:'array'});self.postMessage({ok:true,wb});}catch(err){self.postMessage({ok:false,error:String(err)});}};
