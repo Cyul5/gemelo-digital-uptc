@@ -961,9 +961,9 @@
             <div id="vista-3d" class="vista">
                 <div id="ifc-canvas-container"></div>
 <div id="gic-3d-tools" class="gic-3d-tools" hidden aria-label="Herramientas del visor 3D">
-<div class="gic-view-presets" role="group" aria-label="Orientación del modelo"><button type="button" data-view="iso" title="Isométrica">ISO</button><button type="button" data-view="front" title="Frontal">Frente</button><button type="button" data-view="back" title="Posterior">Atrás</button><button type="button" data-view="left" title="Izquierda">Izq.</button><button type="button" data-view="right" title="Derecha">Der.</button><button type="button" data-view="top" title="Superior">Superior</button></div>
+<div class="gic-view-presets" role="group" aria-label="Orientación del modelo"><div class="gic-nav-cube" aria-label="Cubo de orientación"><button type="button" data-view="top" class="cube-top" title="Vista superior">SUP</button><button type="button" data-view="front" class="cube-front" title="Vista frontal">FRENTE</button><button type="button" data-view="right" class="cube-right" title="Vista derecha">DER</button></div><button type="button" data-view="iso" title="Isométrica">ISO</button><button type="button" data-view="front" title="Frontal">Frente</button><button type="button" data-view="back" title="Posterior">Atrás</button><button type="button" data-view="left" title="Izquierda">Izq.</button><button type="button" data-view="right" title="Derecha">Der.</button><button type="button" data-view="top" title="Superior">Superior</button></div>
 <div class="gic-tool-row"><button type="button" data-tool="fit" title="Centrar modelo" aria-label="Centrar modelo"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button><button type="button" data-tool="grid" aria-pressed="true" title="Cuadrícula" aria-label="Cuadrícula"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg></button><button type="button" data-tool="cut" aria-pressed="false" title="Corte vertical" aria-label="Corte vertical"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l16 16M4 20 20 4"/><circle cx="5" cy="5" r="2"/><circle cx="5" cy="19" r="2"/></svg></button><button type="button" data-tool="capture" title="Capturar imagen" aria-label="Capturar imagen"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="4"/><path d="m8 6 2-3h4l2 3"/></svg></button><button type="button" data-tool="full" title="Pantalla completa" aria-label="Pantalla completa"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button><label title="Calidad gráfica"><select id="gic-quality" aria-label="Calidad gráfica"><option value="auto">Auto</option><option value="low">Fluidez</option><option value="medium">Equilibrio</option><option value="high">Calidad</option></select></label></div>
-<label id="gic-cut-row" hidden>Posición del corte <input type="range" id="gic-cut-slider" min="0" max="100" value="50" aria-label="Posición del corte vertical"></label>
+<div class="gic-tool-row gic-extended-row"><button type="button" data-extra="explode" aria-pressed="false" title="Separar plantas">Separar pisos</button><button type="button" data-extra="measure" aria-pressed="false" title="Medir entre dos puntos">Medir</button><button type="button" data-extra="walk" aria-pressed="false" title="Inspección libre experimental">Recorrido</button></div><div id="gic-extended-status" role="status" aria-live="polite" hidden></div><label id="gic-cut-row" hidden>Posición del corte <input type="range" id="gic-cut-slider" min="0" max="100" value="50" aria-label="Posición del corte vertical"></label>
 </div>
                 <div class="gic-viewer-caption"><span class="gic-viewer-caption-icon"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/></svg></span><div><strong>Visor 3D</strong><small>Exploración del edificio</small></div></div>
                 <div id="lab-3d-sin-modelo">
@@ -4930,8 +4930,75 @@
             const orientaciones = {iso:[1,.75,1],front:[0,0,1],back:[0,0,-1],left:[-1,0,0],right:[1,0,0],top:[0,1,.001]};
             const giroActual = new THREE.Quaternion(), giroObjetivo = new THREE.Quaternion(), eje = new THREE.Vector3(0,0,1), direccion = new THREE.Vector3();
             const tools = document.getElementById('gic-3d-tools');
+            const extraStatus = document.getElementById('gic-extended-status');
+            let explosion = null, modoMedir = false, puntosMedida = [], marcasMedida = null, recorrido = false;
+            const teclasRecorrido = new Set();
+            const pasosCamara = new THREE.Vector3(), avanceCamara = new THREE.Vector3(), lateralCamara = new THREE.Vector3();
+            function avisoExtra(t){extraStatus.hidden=!t;extraStatus.textContent=t||'';}
+            function estadoExtra(k,on){tools.querySelector('[data-extra="'+k+'"]').setAttribute('aria-pressed',String(on));}
+            function limpiarMedida(){
+                if(marcasMedida){scene.remove(marcasMedida);marcasMedida.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});marcasMedida=null;}
+                puntosMedida=[];renderPendiente=true;
+            }
+            function detenerExplosion(){
+                if(!explosion)return;
+                scene.remove(explosion);explosion.traverse(o=>{if(o.isMesh){const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>m?.dispose());}});
+                explosion=null;modeloGlobal.visible=true;estadoExtra('explode',false);renderPendiente=true;
+            }
+            function activarExplosion(){
+                if(explosion){detenerExplosion();avisoExtra('');return;}
+                if(!bboxModelo)return;
+                limpiarMedida();modoMedir=false;estadoExtra('measure',false);
+                if(recorrido)salirRecorrido();
+                // Each floor uses a clipped copy sharing original geometry; no mesh is physically cut or modified.
+                const grupo=new THREE.Group(), separacion=Math.max((alturaMaxModel-alturaMinModel)*.13,1);
+                for(let i=0;i<5;i++){
+                    const r=rangoPiso(i);const bajo=Math.max(r.base,alturaMinModel),alto=Math.min(r.techo,alturaMaxModel);
+                    if(alto<=bajo)continue;
+                    const copia=modeloGlobal.clone(true), offset=i*separacion;
+                    copia.position.y+=offset;
+                    const planes=[new THREE.Plane(new THREE.Vector3(0,1,0),-bajo-offset),new THREE.Plane(new THREE.Vector3(0,-1,0),alto+offset)];
+                    const cache=new Map();
+                    const material=m=>{if(!cache.has(m)){const n=m.clone();n.clippingPlanes=planes;cache.set(m,n);}return cache.get(m);};
+                    copia.traverse(o=>{if(o.isMesh){o.material=Array.isArray(o.material)?o.material.map(material):material(o.material);}});
+                    grupo.add(copia);
+                }
+                explosion=grupo;modeloGlobal.visible=false;scene.add(grupo);estadoExtra('explode',true);
+                mostrarBandaPiso(-1);avisoExtra('Vista separada por cortes de piso. Desactívala para seleccionar aulas.');renderPendiente=true;
+            }
+            function puntoMedida(p){
+                if(puntosMedida.length===2)limpiarMedida();
+                if(!marcasMedida){marcasMedida=new THREE.Group();scene.add(marcasMedida);}
+                puntosMedida.push(p.clone());
+                const radio=Math.max(bboxModelo.getSize(new THREE.Vector3()).length()*.003,.02);
+                const punto=new THREE.Mesh(new THREE.SphereGeometry(radio,12,8),new THREE.MeshBasicMaterial({color:0x00b4d8,depthTest:false}));punto.position.copy(p);marcasMedida.add(punto);
+                if(puntosMedida.length===2){const g=new THREE.BufferGeometry().setFromPoints(puntosMedida);marcasMedida.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:0x0284c7,depthTest:false})));avisoExtra('Distancia: '+puntosMedida[0].distanceTo(puntosMedida[1]).toFixed(3)+' unidades del modelo (escala métrica no verificada).');}
+                else avisoExtra('Selecciona el segundo punto.');renderPendiente=true;
+            }
+            function salirRecorrido(){recorrido=false;teclasRecorrido.clear();estadoExtra('walk',false);avisoExtra('');}
+            function alternarRecorrido(){if(recorrido){salirRecorrido();return;}detenerExplosion();modoMedir=false;estadoExtra('measure',false);limpiarMedida();recorrido=true;estadoExtra('walk',true);avisoExtra('Inspección libre experimental: W/A/S/D o flechas. Arrastra para orientar. No es una ruta peatonal validada.');}
+            window.addEventListener('keydown',e=>{if(!recorrido||!document.getElementById('vista-3d').classList.contains('activa')||/INPUT|SELECT|TEXTAREA|BUTTON/.test(e.target.tagName))return;const k=e.key.toLowerCase();if(k==='escape'){salirRecorrido();return;}if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)){e.preventDefault();teclasRecorrido.add(k);}});
+            window.addEventListener('keyup',e=>teclasRecorrido.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>teclasRecorrido.clear());
+            function moverRecorrido(dt){
+                if(!recorrido||!teclasRecorrido.size)return;
+                camera.getWorldDirection(avanceCamara);avanceCamara.y=0;if(avanceCamara.lengthSq()<.00001)return;avanceCamara.normalize();lateralCamara.crossVectors(avanceCamara,camera.up).normalize();
+                pasosCamara.set(0,0,0);
+                if(teclasRecorrido.has('w')||teclasRecorrido.has('arrowup'))pasosCamara.add(avanceCamara);
+                if(teclasRecorrido.has('s')||teclasRecorrido.has('arrowdown'))pasosCamara.sub(avanceCamara);
+                if(teclasRecorrido.has('d')||teclasRecorrido.has('arrowright'))pasosCamara.add(lateralCamara);
+                if(teclasRecorrido.has('a')||teclasRecorrido.has('arrowleft'))pasosCamara.sub(lateralCamara);
+                if(!pasosCamara.lengthSq())return;
+                pasosCamara.normalize().multiplyScalar(dt*Math.max(alturaMaxModel-alturaMinModel,1)*.35);
+                camera.position.add(pasosCamara);controls.target.add(pasosCamara);renderPendiente=true;
+            }
+            tools.addEventListener('click',e=>{const b=e.target.closest('[data-extra]');if(!b||!modeloGlobal)return;
+                if(b.dataset.extra==='explode')activarExplosion();
+                if(b.dataset.extra==='measure'){detenerExplosion();if(recorrido)salirRecorrido();modoMedir=!modoMedir;estadoExtra('measure',modoMedir);limpiarMedida();avisoExtra(modoMedir?'Selecciona dos puntos visibles del modelo.':'');}
+                if(b.dataset.extra==='walk')alternarRecorrido();
+            });
             function orientar(v, centrar) {
                 if (!bboxModelo) return;
+                if(recorrido)salirRecorrido();
                 if (centrar) controls.target.copy(bboxModelo.getCenter(new THREE.Vector3()));
                 direccionObjetivo = new THREE.Vector3(...orientaciones[v]).normalize();
                 const max = bboxModelo.getSize(new THREE.Vector3()).length();
@@ -4959,7 +5026,7 @@
             // El piso se decide SIEMPRE por la altura del punto tocado (no por la malla),
             // porque una misma malla del modelo puede abarcar varios pisos.
             function pisoBajoCursor(clientX, clientY) {
-                if (!modeloGlobal) return null;
+                if (!modeloGlobal || explosion || recorrido) return null;
                 const rect = container.getBoundingClientRect();
                 mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
                 mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
@@ -4971,7 +5038,7 @@
                     if (planoInferior && planoInferior.distanceToPoint(pt) < -0.01) continue;
                     if (planoSuperior && planoSuperior.distanceToPoint(pt) < -0.01) continue;
                     if (corteVertical.distanceToPoint(pt) < -0.01) continue;
-                    return { idx: indicePisoPorAltura(pt.y), y: pt.y - alturaMinModel };
+                    return { idx: indicePisoPorAltura(pt.y), y: pt.y - alturaMinModel, point: pt.clone() };
                 }
                 return null;
             }
@@ -4999,6 +5066,7 @@
                 if (dist > 5) return;
                 const res = pisoBajoCursor(e.clientX, e.clientY);
                 if (!res) return;
+                if(modoMedir){puntoMedida(res.point);return;}
                 console.log('[GIC] Clic 3D · altura', res.y.toFixed(2), '→', NOMBRES_PISOS_3D[res.idx], '| límites:', limitesPisos);
                 toast3D('Altura ' + res.y.toFixed(2) + ' → ' + NOMBRES_PISOS_3D[res.idx]);
                 if (window.irAVista2DPiso) window.irAVista2DPiso(NOMBRES_PISOS_3D[res.idx]);
@@ -5018,6 +5086,7 @@
                 if (document.hidden || !document.getElementById("vista-3d")?.classList.contains("activa")) return;
                 animFrameId = requestAnimationFrame(animate);
                 const dt = Math.min(clock.getDelta(), 0.05);
+                moverRecorrido(dt);
                 controls.dampingFactor = 1 - Math.pow(1 - 0.085, dt * 60);
                 if (zoomObjetivo !== null) {
                     zoomOffset.copy(camera.position).sub(controls.target);
@@ -5051,6 +5120,7 @@
 
             function sincronizarRender() {
                 const visible = !document.hidden && document.getElementById('vista-3d').classList.contains('activa');
+                if(!visible){teclasRecorrido.clear();if(recorrido)salirRecorrido();}
                 if (visible && animFrameId === null) { renderPendiente = true; animFrameId = requestAnimationFrame(animate); }
                 else if (!visible && animFrameId !== null) { cancelAnimationFrame(animFrameId); animFrameId = null; }
             }
