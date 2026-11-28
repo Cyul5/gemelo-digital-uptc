@@ -137,3 +137,58 @@ html.gic-portal.movil .gic-ws-metric strong{font-size:22px}
 @media(max-width:1100px){.gic-home-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.gic-home-hero{gap:16px}}
 @media(max-width:760px){.gic-home-hero{grid-template-columns:1fr;padding:22px;gap:8px}.gic-home-brand{margin-bottom:17px}.gic-home-art{padding:8px 0 0}.gic-home-mapframe{max-height:205px}.gic-home-buildings{grid-template-columns:1fr}.gic-home-building-body p{min-height:0}.gic-home-footer{align-items:flex-start;flex-direction:column}.gic-home-metric{padding:12px}.gic-home-metric-top svg:first-child{width:17px;height:17px}.gic-home-metric-top{font-size:10px}.gic-home-hero h1{font-size:clamp(30px,7vw,44px)}}
 @media(max-width:380px){.gic-home-metric-top svg:last-child{display:none}.gic-home-cta{width:100%;justify-content:flex-start}.gic-home-cta svg:last-child{margin-left:auto}}
+
+/* Technical drafting workspace — blue/cyan identity; compact controls preserve the canvas. */
+.gic-portal #vista-2d{background:#e8eff6;padding:clamp(9px,1.15vw,18px)}
+.gic-portal #vista-2d .gic-plan-toolbar{padding:0;gap:0!important;overflow:hidden;border:1px solid #cbd9e7;border-radius:12px;box-shadow:none;margin-bottom:10px!important}
+.gic-plan-context-line{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 14px;background:#102840;color:#a9c9e0;font-size:10px;box-sizing:border-box}
+.gic-plan-breadcrumb{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gic-plan-mode{font-size:10px;white-space:nowrap;color:#b8e9fc;background:#1d4059;padding:3px 7px;border:1px solid #3a607b;border-radius:5px}
+.gic-portal #vista-2d .gic-plan-toolbar>div:nth-child(2){padding:10px 14px 8px;box-sizing:border-box;width:100%}
+.gic-portal #vista-2d .gic-plan-kicker{font-size:9px;letter-spacing:.13em;color:#075985}
+.gic-portal #titulo-vista-2d{font-size:clamp(17px,1.65vw,24px)!important;letter-spacing:-.035em}
+.gic-portal #titulo-vista-2d+p{margin-top:3px;font-size:11px!important}
+.gic-portal #vista-2d .gic-plan-controls{display:flex!important;align-items:center;gap:7px!important;padding:0 14px 9px;width:100%;box-sizing:border-box}
+.gic-portal #vista-2d .gic-plan-controls .m-opc{min-width:0;max-width:100%;gap:5px!important}
+.gic-portal #vista-2d .gic-plan-controls .filter-select{min-height:32px;font-size:12px;padding:5px 7px;max-width:100%;border-color:#c5d6e5}
+.gic-portal #vista-2d .gic-plan-controls .btn-informe,.gic-portal #vista-2d .gic-plan-controls .btn-regresar{min-height:32px;font-size:12px;padding:6px 10px}
+.gic-plan-command-label{flex-basis:100%;font-size:9px;letter-spacing:.11em;color:#64748b;font-weight:750;border-top:1px solid #dce6ef;padding-top:7px}
+.gic-portal #vista-2d #info-archivo-2d{font-size:10px;flex:1;min-width:150px;max-width:none}
+.gic-portal #vista-2d .gic-plan-legend{width:100%;padding:7px 14px;background:#f2f7fb;box-sizing:border-box;border-top:1px solid #d9e4ee;gap:6px}
+.gic-plan-keys{gap:5px}
+.gic-plan-key{padding:3px 6px;border:1px solid #d5e1eb;background:#fff;border-radius:5px;color:#405a71;font-size:10px}
+.gic-plan-key i{width:9px;height:9px;border-radius:2px}
+.gic-plan-cross-nav{display:flex;gap:5px;flex-wrap:wrap}
+.gic-plan-extra{display:inline-flex;align-items:center;gap:5px;min-height:29px;background:#fff;color:#075985;border-color:#c5d6e5;font-size:11px}
+.gic-plan-extra[hidden]{display:none!important}
+.gic-plan-extra:hover{border-color:#0284c7;background:#e8f4fc}
+.gic-portal #vista-2d #svg-2d-wrapper{position:relative;border:1px solid #becfdf;border-radius:12px;box-shadow:0 2px 6px #0f27400a;overflow:hidden}
+#svg-2d-wrapper[data-plan-state]::before{content:attr(data-plan-state) " / " attr(data-plan-level);position:absolute;z-index:4;top:9px;left:10px;pointer-events:none;background:#102840e8;color:#e0f2fe;border-radius:5px;padding:5px 8px;font-size:10px;font-weight:650;letter-spacing:.025em}
+.gic-portal .zoom2d-controles{padding:5px;gap:5px;border-radius:10px;background:#102840;box-shadow:0 3px 10px #0b132430}
+.gic-portal .zoom2d-indicador{min-width:42px;border-radius:5px;padding:5px 3px;background:#172e48;text-align:center;font-variant-numeric:tabular-nums}
+.gic-portal #vista-2d .zoom2d-controles button:focus-visible,.gic-portal #vista-2d button:focus-visible{outline:2px solid #0284c7;outline-offset:2px}
+.gic-plan-technical{margin-top:16px;border-top:1px solid #304158;padding-top:14px}
+.gic-plan-technical[hidden]{display:none!important}
+.gic-plan-panel-label{font-size:10px;color:#a9c7df;text-transform:uppercase;letter-spacing:.09em;margin:0 0 9px;font-weight:750}
+.gic-plan-mini-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.gic-plan-mini-stat{display:flex;flex-direction:column;gap:7px;background:#14283d;border:1px solid #2c455d;border-radius:8px;padding:12px;min-width:0}
+.gic-plan-mini-stat small{font-size:10px;color:#bdd0e1}
+.gic-plan-mini-stat strong{font-size:25px;line-height:1.1;color:#7dd3fc;font-variant-numeric:tabular-nums}
+.gic-plan-source{font-size:10px;color:#9bb1c7;line-height:1.5;margin:9px 0 15px}
+.gic-plan-quick{display:grid;gap:6px}
+.gic-plan-quick button{justify-content:flex-start;background:#14283d;border-color:#36526b;color:#bae6fd;padding:9px 11px}
+.gic-plan-quick button:hover{background:#0c4160}
+.gic-portal .gic-space-context{background:#14283d;border:1px solid #36526b;padding:8px;border-radius:6px;color:#bae6fd}
+html.gic-portal.movil #vista-2d .gic-plan-toolbar{padding:0;gap:0!important}
+html.gic-portal.movil .gic-plan-context-line{padding:5px 9px;gap:5px;font-size:9px;flex-wrap:nowrap!important}
+html.gic-portal.movil .gic-plan-mode{display:none}
+html.gic-portal.movil #vista-2d .gic-plan-toolbar>div:nth-child(2){padding:7px 9px}
+html.gic-portal.movil #vista-2d .gic-plan-controls{padding:0 9px 7px;gap:5px!important}
+html.gic-portal.movil .gic-plan-command-label{display:none}
+html.gic-portal.movil #vista-2d .gic-plan-controls>button{min-height:36px;font-size:11px}
+html.gic-portal.movil #vista-2d .gic-plan-legend{padding:5px 8px;gap:5px!important}
+html.gic-portal.movil .gic-plan-cross-nav{gap:4px}
+html.gic-portal.movil .gic-plan-extra{font-size:10px;min-height:30px;padding:4px 6px}
+html.gic-portal.movil .gic-plan-keys{width:100%}
+html.gic-portal.movil #svg-2d-wrapper[data-plan-state]::before{font-size:9px;top:5px;left:5px;padding:3px 5px}
+@media(max-width:440px){html.gic-portal.movil #vista-2d:not(.filtros-abiertos) .gic-plan-cross-nav{display:none}html.gic-portal.movil .gic-plan-key{font-size:9px}}
