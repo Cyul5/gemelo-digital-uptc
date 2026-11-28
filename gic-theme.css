@@ -431,3 +431,39 @@ html.gic-portal.movil .gic-plan-key{font-size:10px}
 #gic-extended-status{max-width:330px;line-height:1.45;color:#bae6fd;font-size:11px;padding:6px;border-left:2px solid #00b4d8}
 #gic-extended-status[hidden]{display:none}
 html.gic-portal.movil .gic-nav-cube{display:none}
+
+/* Compact, collapsible workspace and live camera orientation cube. */
+.gic-portal #gic-3d-tools{top:16px;left:16px;width:max-content;max-width:calc(100% - 155px);padding:0;gap:0;border-radius:12px}
+.gic-portal #gic-3d-tools:not([hidden])~.gic-viewer-caption{display:none}
+.gic-portal #gic-tools-toggle{display:flex;align-items:center;gap:10px;width:100%;min-height:48px;padding:9px 12px;text-align:left;background:transparent;border:0;color:#f8fafc}
+#gic-tools-toggle>.gic-ui-icon:first-child{width:24px;height:24px;color:#7dd3fc}
+#gic-tools-toggle span{flex:1;font-size:13px;font-weight:750;white-space:nowrap}
+#gic-tools-toggle small{display:block;color:#a8b9cc;font-size:10px;font-weight:500;margin-top:2px}
+#gic-tools-toggle>.gic-ui-icon:last-child{width:16px;height:16px;color:#a8b9cc;transition:transform .18s}
+#gic-tools-toggle[aria-expanded=true]>.gic-ui-icon:last-child{transform:rotate(180deg)}
+#gic-tools-content{display:grid;gap:8px;padding:9px;border-top:1px solid #293a50;max-width:350px}
+#gic-tools-content[hidden]{display:none!important}
+.gic-tools-label{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#94a3b8}
+#gic-orientation{position:absolute;z-index:31;right:16px;top:76px;display:grid;justify-items:center;gap:2px;width:116px;padding:5px;background:#0b1324ed;border:1px solid #34465c;border-radius:12px;color:#e2e8f0;box-shadow:0 4px 14px #0f172a24}
+#gic-orientation[hidden],#vista-3d:has(#lab-3d-sin-modelo.show) #gic-orientation{display:none!important}
+.gic-cube-scene{position:relative;width:108px;height:105px;perspective:600px;display:grid;place-items:center;isolation:isolate}
+.gic-cube-rotor{position:relative;width:56px;height:56px;transform-style:preserve-3d;will-change:transform}
+.gic-cube-face{position:absolute;inset:0;display:grid;place-items:center;width:56px;height:56px;padding:1px;background:#254761;color:#f1f5f9;border:1px solid #7393ac;border-radius:2px;font:700 8px system-ui;letter-spacing:.025em;text-transform:uppercase;backface-visibility:hidden;cursor:pointer;box-shadow:inset 0 0 12px #07152530}
+.gic-cube-face:hover{background:#0369a1;border-color:#7dd3fc;color:#fff}
+.gic-cube-face.face-front{transform:translateZ(28px)}
+.gic-cube-face.face-back{transform:rotateY(180deg) translateZ(28px);background:#1e405a}
+.gic-cube-face.face-right{transform:rotateY(90deg) translateZ(28px);background:#1c3850}
+.gic-cube-face.face-left{transform:rotateY(-90deg) translateZ(28px);background:#21425b}
+.gic-cube-face.face-top{transform:rotateX(90deg) translateZ(28px);background:#35617e}
+.gic-cube-face.face-bottom{transform:rotateX(-90deg) translateZ(28px);background:#16334d}
+.gic-cube-actions{display:flex;gap:4px;width:100%}
+.gic-cube-actions button,.gic-cube-actions select{min-width:0;min-height:28px;background:#17283e;color:#e2e8f0;border:1px solid #34465c;border-radius:6px;font:600 10px system-ui;padding:3px 5px;cursor:pointer}
+.gic-cube-actions select{flex:1;width:0}
+.gic-cube-actions button:hover{border-color:#38bdf8;background:#0c4160}
+html.gic-portal.movil #gic-3d-tools{top:10px;left:10px;max-width:calc(100% - 120px)}
+html.gic-portal.movil #gic-tools-toggle{min-height:42px;padding:6px 9px}
+html.gic-portal.movil #gic-orientation{top:62px;right:10px;width:92px;padding:3px}
+html.gic-portal.movil .gic-cube-scene{width:84px;height:80px;perspective:600px}
+html.gic-portal.movil .gic-cube-rotor{scale:.76}
+html.gic-portal.movil .gic-cube-actions button,html.gic-portal.movil .gic-cube-actions select{font-size:9px;padding:2px}
+@media(prefers-reduced-motion:reduce){#gic-tools-toggle>.gic-ui-icon:last-child{transition:none}}
