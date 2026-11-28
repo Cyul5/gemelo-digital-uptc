@@ -4958,6 +4958,7 @@
                 scene.remove(explosion);explosion.traverse(o=>{if(o.isMesh){const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>m?.dispose());}});
                 explosion=null;modeloGlobal.visible=true;estadoExtra('explode',false);renderPendiente=true;
             }
+            window.GIC_CERRAR_EXPLOSION = detenerExplosion;
             function activarExplosion(){
                 if(explosion){detenerExplosion();avisoExtra('');return;}
                 if(!bboxModelo)return;
@@ -5281,6 +5282,7 @@
 
         function aislarRangoAltura(alturaInferior, alturaSuperior) {
             if (!planoInferior || !planoSuperior) return;
+            window.GIC_CERRAR_EXPLOSION?.();
             planoInferior.constant = -alturaInferior;
             planoSuperior.constant = alturaSuperior;
             renderPendiente = true;
