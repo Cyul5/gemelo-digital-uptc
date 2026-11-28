@@ -865,13 +865,14 @@
     <link rel="stylesheet" href="gic-workspace.css">
     <link rel="stylesheet" href="gic-controls.css">
     <link rel="stylesheet" href="gic-plan-workstation.css">
+    <link rel="stylesheet" href="gic-loading.css">
 </head>
 <body>
 
     <!-- PANTALLA DE CARGA -->
     <div id="gic-loader" role="status" aria-live="polite" aria-label="Cargando UPTC GIC">
         <img class="gl-logo" decoding="async" src="LOGO_COMPLETO.png" alt="UPTC GIC" onerror="this.style.display='none'">
-        <div class="gl-barra"><i></i></div>
+        <div class="gl-carga-titulo">Preparando el gemelo digital</div><div class="gl-barra"><i></i></div><div class="gl-carga-sub">Infraestructura · Cartografía · Información del campus</div>
         <div class="gl-creditos">Por: <b>Cristin Pinzon</b> y <b>Yeimy Rodriguez</b></div>
     </div>
     <script>
@@ -882,7 +883,7 @@
                 var l0 = document.getElementById('gic-loader'); if (l0 && l0.parentNode) l0.parentNode.removeChild(l0);
                 return;
             }
-            var inicio = Date.now(), MIN = 350, MAX = 9000, cerrado = false;
+            var inicio = Date.now(), MIN = 0, MAX = 9000, cerrado = false;
             function cerrar() {
                 if (cerrado) return; cerrado = true;
                 var l = document.getElementById('gic-loader'); if (!l) return;
@@ -1432,6 +1433,7 @@
 
         async function cargarExcelRealRepo() {
             const statusTag = document.getElementById('excel-status-tag');
+            if(statusTag)statusTag.innerHTML='<span class="dot" style="background:#eab308"></span> Leyendo Excel...';
             try {
                 const response = await fetch('Plantilla_Levantamiento_Edificio.xlsx');
                 if (!response.ok) throw new Error("No se pudo cargar el archivo Excel.");
@@ -2294,22 +2296,30 @@
             return u;
         }
         function cargarMiniaturaPerezosa(img, f) {
+            img.classList.add('gic-photo-pending');
+            const mostrar=()=>img.classList.remove('gic-photo-pending');
+            img.addEventListener('load',()=>{if(img.getAttribute('src')!==PIXEL_VACIO)mostrar();});
+            img.addEventListener('error',mostrar);
             img.src = (f.zip && miniUrls[f.medio]) || (f.zip ? PIXEL_VACIO : f.src);
             if (!f.zip) { img.loading = 'lazy'; return; }
             if (miniUrls[f.medio]) return;
-            const poner = () => miniaturaDeFoto(f).then(u => { if (img.isConnected) img.src = u; }).catch(() => { img.alt = 'Sin vista previa'; });
+            const poner = () => miniaturaDeFoto(f).then(u => { if (img.isConnected) img.src = u; }).catch(() => { img.alt = 'Sin vista previa'; mostrar(); });
             if (observadorMini) { img.__foto = f; img.__poner = poner; observadorMini.observe(img); } else poner();
         }
         function mostrarFotoEnVisor(f, im) {
             const tok = ++tokenVisor; medioVisor = f.medio;
+            window.GIC_LOADING?.photo('loading');
+            im.onload=()=>{if(tok===tokenVisor)window.GIC_LOADING?.photo('ready');};
+            im.onerror=()=>{if(tok===tokenVisor)window.GIC_LOADING?.photo('error');};
             if (!f.zip) { im.style.opacity = ''; im.src = f.src; return; }
             im.style.opacity = '0.5';
+            im.onload=null;
             im.src = miniUrls[f.medio] || PIXEL_VACIO;
             urlCompletaFoto(f).then(u => {
                 if (tok !== tokenVisor) return;
-                im.onload = () => { if (tok === tokenVisor) im.style.opacity = ''; };
+                im.onload = () => { if (tok === tokenVisor) { im.style.opacity = ''; window.GIC_LOADING?.photo('ready'); } };
                 im.src = u;
-            }).catch(err => { if (tok === tokenVisor) { im.style.opacity = ''; console.error('[GIC] No se pudo abrir la foto', err); } });
+            }).catch(err => { if (tok === tokenVisor) { im.style.opacity = ''; window.GIC_LOADING?.photo('error'); console.error('[GIC] No se pudo abrir la foto', err); } });
         }
 
         function iniciarConstruccionGaleria() {
@@ -2364,7 +2374,7 @@
                 return;
             }
             if (galeriaFotos) { renderizarGaleria(); return; }
-            grid.innerHTML = '<div class="galeria-msg">⏳ Leyendo las fotos del Excel…</div>';
+            grid.innerHTML = '<div class="galeria-msg gic-loading-gallery-label" role="status">Preparando las evidencias fotográficas…</div>'+Array.from({length:8},()=>'<div class="gic-loading-photo-card" aria-hidden="true"><div></div><i></i><i></i></div>').join('');
             esperarExcelFotos().then(() => {
                 if (typeof JSZip === 'undefined') throw new Error('No se pudo cargar la librería JSZip (revisa tu conexión a internet).');
                 return iniciarConstruccionGaleria();
@@ -5393,10 +5403,12 @@
             const layersEl = document.getElementById('ifc-layers-list');
 
             statusEl.innerHTML = '<span class="loading-spinner"></span> Cargando modelo 3D...';
+            window.GIC_LOADING?.model('loading',null,'Descargando el modelo arquitectónico');
 
             gltfLoader.load(
                 URL_GLB,
                 (gltf) => {
+                    window.GIC_LOADING?.model('loading',null,'Preparando geometrías y materiales');
                     modeloGlobal = gltf.scene;
                     modeloGlobal.updateMatrixWorld(true);
 
@@ -5509,6 +5521,7 @@
                     statusEl.innerHTML = '<span class="gic-model-ready" role="status"><span class="gic-model-dot"></span> Modelo listo</span>';
                     yaCargado = true;
                     modeloEnCarga = false;
+                    window.GIC_LOADING?.model('ready');
                     document.getElementById('gic-3d-tools').hidden=false;
                     document.getElementById('gic-orientation').hidden=false;
                 },
@@ -5516,6 +5529,7 @@
                     if (xhr.lengthComputable && xhr.total > 0) {
                         const pct = Math.round((xhr.loaded / xhr.total) * 100);
                         statusEl.innerHTML = `<span class="loading-spinner"></span> Cargando: ${pct}%`;
+                        window.GIC_LOADING?.model('loading',pct,pct===100?'Procesando geometría':'Descargando el modelo arquitectónico');
                     }
                 },
                 (error) => {
@@ -5528,6 +5542,7 @@
                     }
                     console.error('❌ Error al cargar GLB:', error);
                     statusEl.innerText = '❌ Error al cargar archivo GLB';
+                    window.GIC_LOADING?.model('error',null,'No se pudo cargar el modelo 3D.');
                 }
             );
         }
@@ -8248,5 +8263,6 @@
 <script>if('serviceWorker' in navigator && window.isSecureContext) window.addEventListener('load',()=>navigator.serviceWorker.register('gic-sw.js').catch(e=>console.warn('[GIC] Cache no disponible',e)));</script>
     <script src="gic-workspace.js"></script>
     <script src="gic-plan-workstation.js"></script>
+    <script src="gic-loading.js"></script>
 </body>
 </html>
