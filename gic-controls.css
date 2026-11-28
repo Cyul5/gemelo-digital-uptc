@@ -1,0 +1,51 @@
+
+/* GIC interaction system: native controls, consistent focus and restrained motion. */
+:root.gic-portal,:root.gic-solicitudes{--gic-control-radius:9px;--gic-control-accent:#0284c7;--gic-control-ring:#38bdf8;--gic-control-ease:cubic-bezier(.2,.7,.2,1);--gic-control-duration:150ms;--gic-arrow:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%230369a1' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 8 4 4 4-4'/%3E%3C/svg%3E");--gic-arrow-dark:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%237dd3fc' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 8 4 4 4-4'/%3E%3C/svg%3E")}
+:is(.gic-portal,.gic-solicitudes) :is(button,input,select,textarea){box-sizing:border-box;font-family:inherit}
+:is(.gic-portal,.gic-solicitudes) :is(button,select,input,textarea,a.btn-edificio-accion){transition:background-color var(--gic-control-duration) var(--gic-control-ease),border-color var(--gic-control-duration) var(--gic-control-ease),color var(--gic-control-duration) var(--gic-control-ease),box-shadow var(--gic-control-duration) var(--gic-control-ease)}
+:is(.gic-portal,.gic-solicitudes) :is(button,input,select,textarea,a.btn-edificio-accion):focus-visible{outline:2px solid var(--gic-control-accent);outline-offset:3px}
+:is(.gic-portal,.gic-solicitudes) :is(button,input,select,textarea):disabled{cursor:not-allowed;opacity:.55}
+:is(.gic-portal,.gic-solicitudes) :is(button,a.btn-edificio-accion){border-radius:var(--gic-control-radius);-webkit-tap-highlight-color:transparent}
+:is(.gic-portal,.gic-solicitudes) button:not(:disabled):active{filter:brightness(.91)}
+:is(.gic-portal,.gic-solicitudes) :is(input[type=checkbox],input[type=radio],input[type=range]){accent-color:#0284c7;cursor:pointer}
+:is(.gic-portal,.gic-solicitudes) :is(input[type=checkbox],input[type=radio]){width:16px;height:16px;flex:none;vertical-align:middle}
+:is(.gic-portal,.gic-solicitudes) input[type=range]{padding:0;max-width:100%;min-height:24px}
+:is(.gic-portal,.gic-solicitudes) :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=hidden]):not([type=file]):not([type=color]):not([type=button]):not([type=submit]),textarea,select){border-radius:var(--gic-control-radius);line-height:1.35;max-width:100%}
+:is(.gic-portal,.gic-solicitudes) :is(input,textarea)::placeholder{color:#64748b;opacity:1}
+:is(.gic-portal,.gic-solicitudes) select:not([multiple]):not([size]){appearance:none;-webkit-appearance:none;background-image:var(--gic-arrow);background-position:right 8px center;background-size:19px 19px;background-repeat:no-repeat;padding-right:30px!important;cursor:pointer}
+:is(.gic-portal,.gic-solicitudes) select option{background:#fff;color:#172b42}
+.gic-portal :is(#sidebar-derecha,#galeria-overlay,#gic-3d-tools,#gic-orientation,.gic-campus-dialog,#selector-edificio-3d-wrap) select:not([multiple]):not([size]){background-image:var(--gic-arrow-dark);color-scheme:dark}
+.gic-portal :is(#sidebar-derecha,#galeria-overlay,#gic-3d-tools,#gic-orientation,.gic-campus-dialog,#selector-edificio-3d-wrap) select option{background:#142137;color:#e2e8f0}
+.gic-portal[data-gic-theme=dark] .gic-workspace select:not([multiple]):not([size]){background-image:var(--gic-arrow-dark);color-scheme:dark}
+.gic-portal[data-gic-theme=dark] .gic-workspace select option{background:#142137;color:#e2e8f0}
+.gic-portal :is(#sidebar-derecha,#galeria-overlay,.gic-campus-dialog) :is(input,textarea)::placeholder{color:#a8b9cc}
+.gic-portal #vista-2d :is(select,input:not([type=checkbox]):not([type=range]),textarea){background-color:#f8fafc;color:#172b42;border:1px solid #b8cddd;min-height:36px}
+.gic-portal #vista-2d select:hover{border-color:#0284c7}
+.gic-portal #vista-2d :is(select,input,textarea):focus-visible{border-color:#0284c7;box-shadow:0 0 0 3px #0284c71a;outline:1px solid #0284c7;outline-offset:1px}
+.gic-portal #vista-2d .gic-plan-extra[aria-pressed=true]{background:#0c4160;color:#fff;border-color:#0284c7}
+.gic-portal .gic-plan-extra svg{vertical-align:middle}
+.gic-portal :is(.nav-btn,.gic-home-cta,.gic-home-link,.gic-home-metric,.gic-report-type,.galeria-card,.gic-campus-result,.btn-nivel,.gic-plan-extra,.gic-ws-button){transition:background-color 150ms,border-color 150ms,color 150ms,box-shadow 150ms}
+@media(hover:hover) and (pointer:fine){
+ .gic-portal :is(.gic-home-metric,.gic-report-type,.gic-home-building,.galeria-card):hover{border-color:#0284c7;box-shadow:0 4px 12px #0284c712}
+ .gic-portal :is(.gic-plan-extra,.gic-ws-button,.gic-home-link):hover{border-color:#0284c7}
+}
+.gic-solicitudes :is(input,select,textarea){border:1px solid #b8cddd;background-color:#f8fafc;color:#172b42}
+.gic-solicitudes :is(input,select,textarea):focus-visible{border-color:#0284c7;box-shadow:0 0 0 3px #0284c71a}
+.gic-solicitudes button:not(.sec):not(.peligro):not(.ok){background-color:#0369a1}
+.gic-solicitudes button:not(.sec):not(.peligro):not(.ok):hover{background-color:#075985}
+:is(.gic-portal,.gic-solicitudes) input[type=file]{max-width:100%;font-size:12px}
+:is(.gic-portal,.gic-solicitudes) input[type=file]::file-selector-button{font:inherit;font-weight:650;color:#075985;background:#eaf3fa;border:1px solid #c5d6e5;padding:7px 11px;border-radius:7px;margin-right:8px;cursor:pointer}
+@keyframes gic-ui-enter{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes gic-ui-fade{from{opacity:0}to{opacity:1}}
+@keyframes gic-ui-dialog{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(prefers-reduced-motion:no-preference){
+ .gic-portal .vista.activa:is(#vista-gic-home,#vista-gic-reports)>.gic-ws-title,.gic-portal .vista.activa .gic-home-hero,.gic-portal #vista-2d.activa .gic-plan-toolbar{animation:gic-ui-enter 190ms var(--gic-control-ease) both}
+ .gic-portal .vista.activa .gic-home-metrics,.gic-portal .vista.activa .gic-report-types{animation:gic-ui-enter 230ms var(--gic-control-ease) both}
+ .gic-portal #gic-tools-content:not([hidden]){animation:gic-ui-enter 150ms var(--gic-control-ease) both}
+ .gic-portal #galeria-overlay.show{animation:gic-ui-fade 160ms ease-out both}
+ .gic-portal .gic-campus-dialog[open]{animation:gic-ui-dialog 180ms var(--gic-control-ease) both}
+ .gic-portal .gic-space-tabs:not([hidden]){animation:gic-ui-fade 160ms ease-out both}
+}
+@media(prefers-reduced-motion:reduce){
+ :is(.gic-portal,.gic-solicitudes) :is(button,input,select,textarea,.gic-home-hero,.gic-home-metrics,.gic-plan-toolbar,.gic-report-types,#gic-tools-content,#galeria-overlay,.gic-campus-dialog,.gic-space-tabs){animation:none!important;transition:none!important}
+}

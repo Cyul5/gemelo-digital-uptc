@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="gic-portal">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#070d19">
+    <meta name="theme-color" content="#070d19"><link rel="manifest" href="gic.webmanifest">
     <script>
         // Detección de celular, independiente del ancho de la ventana.
         // Algunos navegadores móviles dibujan la página a ~980 px («Sitio de escritorio»): ahí un @media por ancho nunca se activa.
@@ -861,12 +861,15 @@
     html.embebido body { background: #0b1324; }
     html.movil .zoom2d-controles { display: none !important; }   /* en celular se usan los botones +/− oscuros del módulo táctil */
 </style>
+    <link rel="stylesheet" href="gic-theme.css">
+    <link rel="stylesheet" href="gic-workspace.css">
+    <link rel="stylesheet" href="gic-controls.css">
 </head>
 <body>
 
     <!-- PANTALLA DE CARGA -->
     <div id="gic-loader" role="status" aria-live="polite" aria-label="Cargando UPTC GIC">
-        <img class="gl-logo" src="LOGO_COMPLETO.png" alt="UPTC GIC" onerror="this.style.display='none'">
+        <img class="gl-logo" decoding="async" src="LOGO_COMPLETO.png" alt="UPTC GIC" onerror="this.style.display='none'">
         <div class="gl-barra"><i></i></div>
         <div class="gl-creditos">Por: <b>Cristin Pinzon</b> y <b>Yeimy Rodriguez</b></div>
     </div>
@@ -878,7 +881,7 @@
                 var l0 = document.getElementById('gic-loader'); if (l0 && l0.parentNode) l0.parentNode.removeChild(l0);
                 return;
             }
-            var inicio = Date.now(), MIN = 1800, MAX = 9000, cerrado = false;
+            var inicio = Date.now(), MIN = 350, MAX = 9000, cerrado = false;
             function cerrar() {
                 if (cerrado) return; cerrado = true;
                 var l = document.getElementById('gic-loader'); if (!l) return;
@@ -894,13 +897,13 @@
     <!-- HEADER TOP -->
     <header>
         <div class="header-left">
-            <span class="brand"><img class="brand-logo" src="LOGO_ISOTIPO.png" alt="" onerror="this.style.display='none'">UPTC GIC</span>
+            <span class="brand"><img class="brand-logo" decoding="async" src="LOGO_ISOTIPO.png" alt="" onerror="this.style.display='none'">UPTC GIC</span>
             <span class="tag">Gestor de Información del Campus</span>
             <span class="sub-title" id="breadcrumb">Sede Central (Plano General)</span>
         </div>
 
-        <div class="header-right">
-            <button class="btn-ayuda" onclick="abrirBienvenida()" title="Ver la guía de uso">❓ Ayuda</button>
+        <div class="header-right"><button type="button" id="gic-open-search" class="btn-ayuda" title="Buscar en el campus (Ctrl+K)"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg> <span>Buscar</span></button><button type="button" id="gic-open-dashboard" class="btn-ayuda" title="Resumen del campus"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v11h-6v-7H9v7H3z"/></svg> <span>Resumen</span></button>
+            <button class="btn-ayuda" onclick="abrirBienvenida()" title="Ver la guía de uso"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 1 1 4 3c-1 .5-1 1-1 2m0 3h.01"/></svg> Ayuda</button>
             <div class="excel-status" id="excel-status-tag">
                 <span class="dot" style="background:#eab308;"></span> Leyendo Excel...
             </div>
@@ -909,10 +912,10 @@
 
     <div class="app-body">
         <!-- BARRA IZQUIERDA -->
-        <div class="sidebar-left">
-            <button class="nav-btn active" id="btn-nav-mapa" title="Plano General" onclick="irAVista('vista-mapa')">🌐</button>
-            <button class="nav-btn" id="btn-nav-3d" title="Modelo 3D" onclick="irAVista('vista-3d')">🏢</button>
-            <button class="nav-btn" id="btn-nav-2d" title="Planos 2D" onclick="irAVista2DPiso(pisoActual2D)">📐</button>
+        <div class="sidebar-left" role="navigation" aria-label="Vistas del campus">
+            <button class="nav-btn active" id="btn-nav-mapa" title="Plano General" onclick="irAVista('vista-mapa')"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15"/></svg><span class="gic-nav-label">Mapa</span></button>
+            <button class="nav-btn" id="btn-nav-3d" title="Modelo 3D" onclick="irAVista('vista-3d')"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/></svg><span class="gic-nav-label">Modelo 3D</span></button>
+            <button class="nav-btn" id="btn-nav-2d" title="Planos 2D" onclick="irAVista2DPiso(pisoActual2D)"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 10h11v11M14 10h7M8 3v7"/></svg><span class="gic-nav-label">Planos</span></button>
         </div>
 
         <!-- AREA CENTRAL -->
@@ -926,7 +929,7 @@
                 <div id="menus-mapa">
                 <div id="panel-edificios">
                     <button id="btn-lista-edificios" type="button">
-                        <span>🏛️ Edificios del campus <span id="contador-edificios" style="color:#94a3b8;font-weight:400;"></span></span>
+                        <span><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 8 9-5 9 5M4 9h16M6 10v8m6-8v8m6-8v8M3 21h18"/></svg> Edificios del campus <span id="contador-edificios" style="color:#94a3b8;font-weight:400;"></span></span>
                         <span class="flecha">▾</span>
                     </button>
                     <div id="lista-edificios-box">
@@ -937,7 +940,7 @@
                 </div>
                 <div id="panel-capas">
                     <button id="btn-lista-capas" type="button">
-                        <span>🗂️ Capas del mapa <span id="contador-capas" style="color:#94a3b8;font-weight:400;"></span></span>
+                        <span><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h7l2 2h9v11H3zM5 7V4h12l2 3"/></svg> Capas del mapa <span id="contador-capas" style="color:#94a3b8;font-weight:400;"></span></span>
                         <span class="flecha">▾</span>
                     </button>
                     <div id="selector-mapas" role="group" aria-label="Capas del mapa">
@@ -959,44 +962,56 @@
             <!-- VISTA 2: MODELO 3D -->
             <div id="vista-3d" class="vista">
                 <div id="ifc-canvas-container"></div>
+<div id="gic-3d-tools" class="gic-3d-tools" hidden aria-label="Herramientas del visor 3D">
+<button type="button" id="gic-tools-toggle" aria-expanded="false" aria-controls="gic-tools-content"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/></svg><span>Visor 3D <small>Herramientas</small></span><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+<div id="gic-tools-content" hidden><div class="gic-tools-label">Visualización</div>
+<div class="gic-tool-row"><button type="button" data-tool="fit" title="Centrar modelo" aria-label="Centrar modelo"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button><button type="button" data-tool="grid" aria-pressed="true" title="Cuadrícula" aria-label="Cuadrícula"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg></button><button type="button" data-tool="cut" aria-pressed="false" title="Corte vertical" aria-label="Corte vertical"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l16 16M4 20 20 4"/><circle cx="5" cy="5" r="2"/><circle cx="5" cy="19" r="2"/></svg></button><button type="button" data-tool="capture" title="Capturar imagen" aria-label="Capturar imagen"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="4"/><path d="m8 6 2-3h4l2 3"/></svg></button><button type="button" data-tool="full" title="Pantalla completa" aria-label="Pantalla completa"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button><label title="Calidad gráfica"><select id="gic-quality" aria-label="Calidad gráfica"><option value="auto">Auto</option><option value="low">Fluidez</option><option value="medium">Equilibrio</option><option value="high">Calidad</option></select></label></div>
+<div class="gic-tool-row gic-extended-row"><button type="button" data-extra="explode" aria-pressed="false" title="Separar plantas">Separar pisos</button><button type="button" data-extra="measure" aria-pressed="false" title="Medir entre dos puntos">Medir</button><button type="button" data-extra="walk" aria-pressed="false" title="Inspección libre experimental">Recorrido</button></div><div id="gic-extended-status" role="status" aria-live="polite" hidden></div><label id="gic-cut-row" hidden>Posición del corte <input type="range" id="gic-cut-slider" min="0" max="100" value="50" aria-label="Posición del corte vertical"></label>
+</div>
+</div>
+<div id="gic-orientation" hidden aria-label="Orientación del modelo">
+  <div class="gic-cube-scene"><div id="gic-cube-rotor" class="gic-cube-rotor"><button type="button" class="gic-cube-face face-front" data-view="front" title="Vista frente" aria-label="Vista frente" tabindex="-1">Frente</button><button type="button" class="gic-cube-face face-back" data-view="back" title="Vista atrás" aria-label="Vista atrás" tabindex="-1">Atrás</button><button type="button" class="gic-cube-face face-left" data-view="left" title="Vista izquierda" aria-label="Vista izquierda" tabindex="-1">Izquierda</button><button type="button" class="gic-cube-face face-right" data-view="right" title="Vista derecha" aria-label="Vista derecha" tabindex="-1">Derecha</button><button type="button" class="gic-cube-face face-top" data-view="top" title="Vista superior" aria-label="Vista superior" tabindex="-1">Superior</button><button type="button" class="gic-cube-face face-bottom" data-view="bottom" title="Vista inferior" aria-label="Vista inferior" tabindex="-1">Inferior</button></div></div>
+  <div class="gic-cube-actions"><button type="button" data-view="iso" title="Vista isométrica">ISO</button><select id="gic-view-select" aria-label="Seleccionar orientación"><option value="">Vistas</option><option value="iso">Isométrica</option><option value="front">Frontal</option><option value="back">Posterior</option><option value="left">Izquierda</option><option value="right">Derecha</option><option value="top">Superior</option><option value="bottom">Inferior</option></select></div>
+</div>
+                <div class="gic-viewer-caption"><span class="gic-viewer-caption-icon"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/></svg></span><div><strong>Visor 3D</strong><small>Exploración del edificio</small></div></div>
                 <div id="lab-3d-sin-modelo">
                     <div class="lab-3d-caja">
                         <h3>Modelos 3D próximamente</h3>
                     </div>
                 </div>
                 <div id="selector-edificio-3d-wrap" style="position:absolute; left:14px; bottom:14px; z-index:30; background:var(--bg-header); border:1px solid #1e293b; border-radius:8px; padding:8px 10px;">
-                    <label class="edificio-selector" style="color:#e2e8f0;">🏢 Edificio:
+                    <label class="edificio-selector" style="color:#e2e8f0;"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h1m4 0h1M9 11h1m4 0h1M9 15h1m4 0h1M11 21v-3h2v3"/></svg> Edificio:
                         <select id="select-edificio-3d" class="filter-select" onchange="fijarEdificio(this.value)">
                             <option value="hunza">Aulas Hunza</option>
                             <option value="lab">Laboratorios Ingeniería (EDILAB)</option>
                         </select>
                     </label>
                 </div>
-                <button id="btn-galeria" type="button" onclick="abrirGaleria()" title="Ver todas las fotos del levantamiento">🖼️ Galería</button>
+                <button id="btn-galeria" type="button" onclick="abrirGaleria()" title="Ver todas las fotos del levantamiento"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 5-5 4 4 3-3 6 6"/></svg> Galería</button>
             </div>
 
             <!-- VISTA 3: PLANTA 2D DINÁMICA -->
             <div id="vista-2d" class="vista">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                <div class="gic-plan-toolbar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <div>
-                            <h2 id="titulo-vista-2d" style="color: #0284c7; font-size: 16px;">Planta 2D - Piso 1</h2>
-                            <p style="color: #64748b; font-size: 12px;">Haz clic en un aula para consultar el detalle completo de la misma.</p>
+                            <div class="gic-plan-kicker"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 10h11v11M14 10h7M8 3v7"/></svg> <span>VISOR TÉCNICO / PLANOS ARQUITECTÓNICOS</span></div><h2 id="titulo-vista-2d" style="color: #0284c7; font-size: 16px;">Planta 2D - Piso 1</h2>
+                            <p style="color: #64748b; font-size: 12px;">Selecciona un espacio para consultar sus datos y evidencias.</p>
                         </div>
                     </div>
                     
                     <!-- NUEVA LISTA DESPLEGABLE INDEPENDIENTE PARA PLANOS 2D -->
-                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                        <button id="btn-opc-2d" type="button" onclick="document.getElementById('vista-2d').classList.toggle('filtros-abiertos')">⚙️ Opciones</button>
+                    <div class="gic-plan-actions gic-plan-controls" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <button id="btn-opc-2d" type="button" aria-controls="panel-filtros-horario" aria-expanded="false" onclick="this.setAttribute('aria-expanded',document.getElementById('vista-2d').classList.toggle('filtros-abiertos'))"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/><circle cx="8" cy="6" r="2" fill="#0b1324"/><circle cx="15" cy="12" r="2" fill="#0b1324"/></svg> Filtros</button>
                         <div class="edificio-selector m-opc">
-                            <span>🏢 Edificio:</span>
+                            <span><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h1m4 0h1M9 11h1m4 0h1M9 15h1m4 0h1M11 21v-3h2v3"/></svg> Edificio:</span>
                             <select id="select-edificio-2d" class="filter-select" onchange="fijarEdificio(this.value)">
                                 <option value="hunza">Aulas Hunza</option>
                                 <option value="lab">Laboratorios Ingeniería (EDILAB)</option>
                             </select>
                         </div>
                         <div class="m-opc" style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #475569; font-weight: 600;">
-                            <span>🏢 Seleccionar Planta:</span>
+                            <span><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h1m4 0h1M9 11h1m4 0h1M9 15h1m4 0h1M11 21v-3h2v3"/></svg> Nivel:</span>
                             <select id="select-piso-2d" class="filter-select" style="width: 160px;" onchange="irAVista2DPiso(this.value)">
                                 <option value="Piso 1">Piso 1</option>
                                 <option value="Piso 2">Piso 2</option>
@@ -1008,7 +1023,7 @@
             <!-- MODO DE CONSULTA (ahora en la barra superior del plano 2D) -->
             <div class="panel-filtros-container m-opc" id="panel-filtros-horario">
                 <div class="filter-group">
-                    <span>📋 Consulta:</span>
+                    <span><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/><circle cx="8" cy="6" r="2" fill="#0b1324"/><circle cx="15" cy="12" r="2" fill="#0b1324"/></svg> Consulta:</span>
                     <select id="select-modo-consulta" class="filter-select" onchange="cambiarModoConsulta()">
                         <option value="inventario">Inventario & Patologías</option>
                         <option value="mobiliario">Mobiliario & Equipamiento</option>
@@ -1018,7 +1033,7 @@
 
                 <div id="grupo-controles-horario" style="display:none;">
                     <div class="filter-group" style="margin-bottom: 8px;">
-                        <span>🗓️ Día:</span>
+                        <span><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18"/></svg> Día:</span>
                         <select id="select-dia" class="filter-select" onchange="actualizarEstadoAulas2D()">
                             <option value="Lunes">Lunes</option>
                             <option value="Martes">Martes</option>
@@ -1029,24 +1044,24 @@
                         </select>
                     </div>
                     <div class="filter-group">
-                        <span>⏰ Franja:</span>
+                        <span><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> Franja:</span>
                         <select id="select-franja" class="filter-select" onchange="actualizarEstadoAulas2D()">
                         </select>
                     </div>
                 </div>
             </div>
-                        <span id="info-archivo-2d"></span>
-                        <button id="btn-informe-pdf" class="btn-informe" type="button" onclick="abrirModalInformes()" title="Descargar un informe en PDF con la información del Excel">📄 <span class="t-largo">Generar informe </span>PDF</button>
-                        <button class="btn-regresar" style="display:inline-block; margin-bottom: 0; width: auto;" onclick="irAVista('vista-3d')">⬅ Volver<span class="t-largo"> al Modelo</span> 3D</button>
+                        <div class="gic-plan-command-label">ACCIONES DEL PLANO</div><span id="info-archivo-2d"></span>
+                        <button id="btn-informe-pdf" class="btn-informe" type="button" onclick="abrirModalInformes()" title="Descargar un informe en PDF con la información del Excel"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6M9 16h6"/></svg> <span class="t-largo">Informe </span>PDF</button>
+                        <button class="btn-regresar" style="display:inline-block; margin-bottom: 0; width: auto;" onclick="irAVista('vista-3d')"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M5 12h14"/></svg> Volver<span class="t-largo"> al modelo</span> 3D</button>
                     </div>
                 </div>
                 <div class="container-svg-2d" id="svg-2d-wrapper">
                     <object id="svg-2d-object" type="image/svg+xml" data="PLANTA_1_HUNZA.svg"></object>
                     <div class="zoom2d-controles" id="zoom2d-controles">
-                        <button type="button" onclick="zoom2DPorFactor(1.25)" title="Acercar (+)">+</button>
+                        <button type="button" onclick="zoom2DPorFactor(1.25)" title="Acercar (+)" aria-label="Acercar"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>
                         <span class="zoom2d-indicador" id="zoom2d-indicador">100%</span>
-                        <button type="button" onclick="zoom2DPorFactor(0.8)" title="Alejar (−)">−</button>
-                        <button type="button" onclick="resetZoom2D()" title="Restablecer vista (100%)">⟲</button>
+                        <button type="button" onclick="zoom2DPorFactor(0.8)" title="Alejar (−)" aria-label="Alejar"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></button>
+                        <button type="button" onclick="resetZoom2D()" title="Restablecer vista (100%)" aria-label="Restablecer vista"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11a9 9 0 1 1 3 7M3 4v7h7"/></svg></button>
                     </div>
                 </div>
             </div>
@@ -1054,12 +1069,12 @@
 
         <!-- PANEL DERECHO DE DATOS -->
         <div class="sidebar-right" id="sidebar-derecha">
-            <button id="btn-volver-mapa" class="btn-regresar" onclick="irAVista('vista-mapa')">🗺️ Volver al Mapa General</button>
+            <button id="btn-volver-mapa" class="btn-regresar" onclick="irAVista('vista-mapa')"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M5 12h14"/></svg> Volver al mapa</button>
 
             <!-- ACCIONES DEL PANEL EN EL MAPA GENERAL (solo visibles en esa vista) -->
             <div id="panel-mapa-acciones">
                 <div class="pma-fila">
-                    <button type="button" class="pma-entrar" onclick="GIC_PANEL_EDIFICIO.entrar()" title="Entrar al modelo 3D del edificio">🏢 Entrar al modelo 3D</button>
+                    <button type="button" class="pma-entrar" onclick="GIC_PANEL_EDIFICIO.entrar()" title="Entrar al modelo 3D del edificio"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h1m4 0h1M9 11h1m4 0h1M9 15h1m4 0h1M11 21v-3h2v3"/></svg> Entrar al modelo 3D</button>
                     <button type="button" class="pma-cerrar" onclick="GIC_PANEL_EDIFICIO.cerrar()" title="Cerrar el panel (Esc)" aria-label="Cerrar el panel">✕</button>
                 </div>
                 <p class="pma-ayuda">Clic en el edificio: ver información · Doble clic: entrar al modelo 3D</p>
@@ -1073,7 +1088,7 @@
 
             <!-- SECCIÓN CORTES BIM (SOLO VISIBLE EN 3D) -->
             <div id="seccion-cortes-3d" style="display:none; margin-top: 15px;">
-                <div class="panel-title">✂ Niveles (Modelo 3D)</div>
+                <div class="panel-title"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 8 9-5 9 5-9 5zM3 12l9 5 9-5M3 16l9 5 9-5"/></svg> Niveles del edificio</div>
                 <div id="ifc-status" style="font-size:12px; color:var(--text-muted); margin-bottom:10px;"><span class="loading-spinner"></span> Esperando modelo 3D...</div>
                 <div id="ifc-layers-list"></div>
             </div>
@@ -1105,8 +1120,8 @@
             <div id="informe-vista-previa"></div>
             <div class="informe-acciones">
                 <button type="button" class="sec" onclick="cerrarModalInformes()">Cancelar</button>
-                <button type="button" class="btn-primario" id="informe-btn-generar" onclick="generarInformePDF()">⬇ Descargar PDF</button>
-                <button type="button" class="btn-excel" id="informe-btn-excel" onclick="generarInformeExcel()" title="Descargar el mismo informe en formato Excel (.xlsx)">⬇ Descargar Excel</button>
+                <button type="button" class="btn-primario" id="informe-btn-generar" onclick="generarInformePDF()"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg> Descargar PDF</button>
+                <button type="button" class="btn-excel" id="informe-btn-excel" onclick="generarInformeExcel()" title="Descargar el mismo informe en formato Excel (.xlsx)"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg> Descargar Excel</button>
             </div>
         </div>
     </div>
@@ -1116,25 +1131,24 @@
     <!-- GALERÍA DE FOTOS -->
     <div id="galeria-overlay" role="dialog" aria-modal="true" aria-label="Galería de fotos">
         <div class="galeria-top">
-            <h2>🖼️ Galería del levantamiento</h2>
-            <select id="galeria-filtro-origen" onchange="renderizarGaleria()">
+            <div class="gic-gallery-heading"><div><p class="gic-gallery-kicker">UPTC GIC / DOCUMENTACIÓN</p><h2><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 5-5 4 4 3-3 6 6"/></svg> Galería del levantamiento</h2><p class="gic-gallery-sub">Evidencias fotográficas del levantamiento arquitectónico</p></div><button type="button" class="galeria-cerrar" onclick="cerrarGaleria()" aria-label="Cerrar galería">Cerrar <span aria-hidden="true">×</span></button></div><div class="gic-gallery-filters">
+            <label class="gic-gallery-field"><span>Tipo de evidencia</span><select id="galeria-filtro-origen" onchange="renderizarGaleria()">
                 <option value="">Todas las hojas</option>
                 <option value="Inventario Espacios">Patologías Registradas</option>
                 <option value="Mobiliario y Equipo">Mobiliario y Equipo</option>
-            </select>
-            <select id="galeria-filtro-piso" onchange="renderizarGaleria()">
+            </select></label>
+            <label class="gic-gallery-field"><span>Nivel</span><select id="galeria-filtro-piso" onchange="renderizarGaleria()">
                 <option value="">Todos los pisos</option>
                 <option value="1">Piso 1</option><option value="2">Piso 2</option><option value="3">Piso 3</option>
                 <option value="4">Piso 4</option><option value="5">Piso 5</option>
-            </select>
-            <input id="galeria-buscar" type="text" placeholder="Buscar código o referencia..." oninput="renderizarGaleria()" autocomplete="off">
-            <span id="galeria-contador"></span>
-            <button class="galeria-cerrar" onclick="cerrarGaleria()">Cerrar ✕</button>
+            </select></label>
+            <label class="gic-gallery-field gic-gallery-search"><span>Buscar evidencia</span><input id="galeria-buscar" type="text" placeholder="Buscar código o referencia..." oninput="programarFiltroGaleria()" autocomplete="off"></label>
+            <button type="button" class="gic-gallery-reset" onclick="limpiarFiltrosGaleria()">Limpiar filtros</button></div><div class="gic-gallery-results"><span id="galeria-contador" role="status" aria-live="polite"></span><span>Selecciona una foto para ampliarla</span></div>
         </div>
         <div id="galeria-grid"></div>
     </div>
     <div id="galeria-visor">
-        <button class="visor-btn" id="visor-cerrar" onclick="cerrarVisorFoto()">✕</button>
+        <button class="visor-btn" id="visor-cerrar" onclick="cerrarVisorFoto()"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
         <button class="visor-btn" id="visor-prev" onclick="navegarVisorFoto(-1)">‹</button>
         <button class="visor-btn" id="visor-next" onclick="navegarVisorFoto(1)">›</button>
         <img id="visor-img" alt="">
@@ -1154,7 +1168,7 @@
         <div class="ficha-card">
             <div class="ficha-cab">
                 <h2 id="ficha-titulo">🩺 Ficha patológica</h2>
-                <button type="button" class="ficha-cerrar" onclick="cerrarFichaPatologica()" title="Cerrar (también con la tecla Esc)">✕ Cerrar</button>
+                <button type="button" class="ficha-cerrar" onclick="cerrarFichaPatologica()" title="Cerrar (también con la tecla Esc)"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 6 12 12M18 6 6 18"/></svg> Cerrar</button>
             </div>
             <div id="ficha-cuerpo"></div>
         </div>
@@ -1163,46 +1177,20 @@
     <!-- CARTEL DE BIENVENIDA -->
     <div id="welcome-overlay" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
         <div class="welcome-card">
-            <h1 id="welcome-title">👋 Bienvenido a <span>UPTC GIC</span></h1>
-            <p class="welcome-lead">
-                El <strong>Gestor de Información del Campus</strong> te permite explorar la sede desde el plano general
-                hasta cada aula de un edificio, y consultar su inventario, mobiliario y horarios de uso, en 4 pasos.
-            </p>
-
+            <div class="gic-welcome-brand"><img src="LOGO_ISOTIPO.png" alt="" decoding="async"><span>UPTC GIC <small>GEMELO DIGITAL DEL CAMPUS</small></span></div>
+            <h1 id="welcome-title">Explora el campus <span>en otra dimensión.</span></h1>
+            <p class="welcome-lead">Consulta edificios, modelos tridimensionales, planos, inventarios y horarios desde un único entorno interactivo.</p>
+            <div class="gic-welcome-section">GUÍA DE EXPLORACIÓN <span>4 pasos</span></div>
             <div class="welcome-steps">
-                <div class="welcome-step">
-                    <b>🌐 1. Plano general</b>
-                    Arrastra con el mouse para moverte y usa la <kbd>rueda</kbd> o los botones <kbd>+</kbd> <kbd>−</kbd> para hacer zoom.
-                    Abre la lista <strong>🏛️ Edificios del campus</strong> (arriba a la izquierda) y haz clic en uno para acercarte a él.
-                </div>
-                <div class="welcome-step">
-                    <b>🏢 2. Modelo 3D</b>
-                    Haz <strong>clic</strong> sobre el edificio <strong>Hunza (30)</strong> para ver su información (el panel queda fijo) y <strong>doble clic</strong> para entrar a su modelo 3D.
-                    Gira con clic izquierdo, desplaza con clic derecho y acerca con la <kbd>rueda</kbd>.
-                </div>
-                <div class="welcome-step">
-                    <b>🧱 3. Elegir un piso</b>
-                    En el 3D, haz clic sobre un piso del edificio para abrir su plano, o usa el panel derecho
-                    (<em>Niveles</em>) para aislar un piso o volver a ver el edificio completo.
-                </div>
-                <div class="welcome-step">
-                    <b>📐 4. Plano 2D y datos</b>
-                    Haz clic en un aula del plano para ver su ficha. Con el selector <em>Consulta</em> cambias entre
-                    inventario, mobiliario y horarios (día y franja) para ver qué aulas están libres u ocupadas.
-                </div>
+                <article class="welcome-step"><div class="gic-step-head"><span class="gic-step-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15"/></svg></span><span class="gic-step-number">01</span></div><b>Plano general</b><strong class="gic-step-caption">Explora el campus</strong><p>Arrastra para recorrer el mapa. Usa la rueda o los controles de zoom. En Edificios del campus, selecciona un edificio para localizarlo.</p></article>
+                <article class="welcome-step"><div class="gic-step-head"><span class="gic-step-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/></svg></span><span class="gic-step-number">02</span></div><b>Modelo 3D</b><strong class="gic-step-caption">Conoce el edificio</strong><p>Selecciona Hunza (30) para ver su información. Haz doble clic para abrir el modelo. Gira, desplaza y acerca la vista con el mouse.</p></article>
+                <article class="welcome-step"><div class="gic-step-head"><span class="gic-step-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 8 9-5 9 5-9 5zM3 12l9 5 9-5M3 16l9 5 9-5"/></svg></span><span class="gic-step-number">03</span></div><b>Niveles</b><strong class="gic-step-caption">Explora cada piso</strong><p>Selecciona un piso en el modelo o utiliza el panel Niveles para aislarlo. También puedes volver al edificio completo.</p></article>
+                <article class="welcome-step"><div class="gic-step-head"><span class="gic-step-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 10h11v11M14 10h7M8 3v7"/></svg></span><span class="gic-step-number">04</span></div><b>Planos y datos</b><strong class="gic-step-caption">Consulta los espacios</strong><p>Selecciona un aula para abrir su ficha. Cambia la consulta entre inventario, mobiliario y horarios de ocupación.</p></article>
             </div>
-
-            <div class="welcome-nav">
-                <strong>Barra izquierda:</strong> 🌐 Plano general &nbsp;·&nbsp; 🏢 Modelo 3D &nbsp;·&nbsp; 📐 Plano 2D<br>
-                <strong>Botones azules:</strong> «⬅ Volver al Modelo 3D» y «🗺️ Volver al Mapa General» te devuelven un paso atrás.<br>
-                <strong>❓ Ayuda</strong> (arriba a la derecha) vuelve a mostrar esta guía.<br>
-                <strong>🖼️ Galería</strong> (esquina superior derecha del Modelo 3D) muestra todas las fotos del levantamiento.<br>
-                <strong>📱 En celular:</strong> arrastra con un dedo para moverte y pellizca con dos para acercar (mapa, modelo 3D y planos). Usa la barra de abajo para cambiar de vista y desliza hacia arriba el panel «Datos» para ver niveles, filtros y fichas.
-            </div>
-
+            <details class="welcome-nav"><summary>Controles y recomendaciones de navegación</summary><p>Usa el menú lateral (inferior en celular) para cambiar entre Mapa, Modelo 3D y Planos. Los botones Volver permiten regresar a la vista anterior. Abre Ayuda para consultar esta guía y Galería para ver las fotos del levantamiento.</p><p>En celular, arrastra con un dedo y pellizca con dos para acercar. Desliza hacia arriba el panel Datos para consultar niveles, filtros y fichas.</p></details>
             <div class="welcome-footer">
                 <label><input type="checkbox" id="welcome-no-mostrar"> No volver a mostrar al entrar</label>
-                <button class="btn-primario" onclick="cerrarBienvenida()">Comenzar</button>
+                <button class="btn-primario" onclick="cerrarBienvenida()">Explorar campus <span aria-hidden="true">→</span></button>
             </div>
         </div>
     </div>
@@ -1440,7 +1428,20 @@
                 if (!response.ok) throw new Error("No se pudo cargar el archivo Excel.");
 
                 const arrayBuffer = await response.arrayBuffer();
-                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                const workbook = await (async()=>{
+                    if(typeof Worker==='undefined')return XLSX.read(arrayBuffer,{type:'array'});
+                    let w;
+                    try {
+                        w=new Worker('gic-excel-worker.js');
+                        return await new Promise((resolve,reject)=>{
+                            const t=setTimeout(()=>reject(new Error('Worker timeout')),20000);
+                            w.onmessage=e=>{clearTimeout(t);e.data.ok?resolve(e.data.wb):reject(new Error(e.data.error));};
+                            w.onerror=e=>{clearTimeout(t);reject(e);};
+                            const copy=arrayBuffer.slice(0);w.postMessage(copy,[copy]);
+                        });
+                    }catch(e){return XLSX.read(arrayBuffer,{type:'array'});}
+                    finally{w?.terminate();}
+                })();
                 excelBufferGlobal = arrayBuffer;
                 excelWorkbookGlobal = workbook;
                 galeriaFotos = null; galeriaPromesa = null;
@@ -1935,12 +1936,18 @@
                     } else if (!selectPiso2D.querySelector('option[value="Piso 5 / Cubierta"]')) {
                         selectPiso2D.innerHTML = '<option value="Piso 1">Piso 1</option><option value="Piso 2">Piso 2</option><option value="Piso 3">Piso 3</option><option value="Piso 4">Piso 4</option><option value="Piso 5 / Cubierta">Piso 5 / Cubierta</option>';
                     }
-                    selectPiso2D.value = "Piso 1";
+                    selectPiso2D.value = esLab2d ? "Piso 1" : pisoActual2D;
                 }
 
                 aulaSeleccionadaActual = null;
                 mostrarResumenPlanta2D();
                 if (!esLab2d) setTimeout(actualizarEstadoAulas2D, 150);
+            } else if (idVista === 'vista-gic-home' || idVista === 'vista-gic-reports') {
+                if(sidebarDerecha) sidebarDerecha.classList.remove('visible');
+                if(btnVolver) btnVolver.style.display = 'none';
+                if(seccionCortes) seccionCortes.style.display = 'none';
+                if(panelFiltros) panelFiltros.style.display = 'none';
+                if(breadcrumb) breadcrumb.innerText = idVista === 'vista-gic-home' ? 'Inicio / Gestión del campus' : 'Análisis / Centro de reportes';
             } else {
                 if(sidebarDerecha) sidebarDerecha.classList.remove('visible');
                 if(btnVolver) btnVolver.style.display = 'none';
@@ -2235,7 +2242,7 @@
             return new Blob([await entrada.async('blob')], { type: f.mime || 'image/jpeg' });
         }
         async function crearMiniatura(blob) {
-            const L = 400;
+            const L = ES_MOVIL_FOTOS ? 256 : 384;
             const cv = document.createElement('canvas'); cv.width = L; cv.height = L;
             const cx = cv.getContext('2d'); cx.fillStyle = '#0f172a'; cx.fillRect(0, 0, L, L);
             let fuente = null, w = 0, h = 0, liberar = () => {};
@@ -2250,8 +2257,8 @@
             const lado = Math.min(w, h), sx = (w - lado) / 2, sy = (h - lado) / 2;
             cx.drawImage(fuente, sx, sy, lado, lado, 0, 0, L, L);
             liberar();
-            const b = await new Promise(ok => cv.toBlob(ok, 'image/jpeg', 0.82));
-            return b ? URL.createObjectURL(b) : cv.toDataURL('image/jpeg', 0.82);
+            const b = await new Promise(ok => cv.toBlob(ok, 'image/jpeg', 0.76));
+            return b ? URL.createObjectURL(b) : cv.toDataURL('image/jpeg', 0.76);
         }
         function miniaturaDeFoto(f, img) {
             if (!f.zip) return Promise.resolve(f.src);
@@ -2360,10 +2367,15 @@
         }
 
         function cerrarGaleria() {
+            clearTimeout(filtroGaleriaTimer);
+            if (observadorMini) observadorMini.disconnect();
             cerrarVisorFoto();
             document.getElementById('galeria-overlay').classList.remove('show');
         }
 
+        let filtroGaleriaTimer;
+        function programarFiltroGaleria() { clearTimeout(filtroGaleriaTimer); filtroGaleriaTimer = setTimeout(renderizarGaleria, 160); }
+        function limpiarFiltrosGaleria() { clearTimeout(filtroGaleriaTimer); ['galeria-filtro-origen','galeria-filtro-piso','galeria-buscar'].forEach(id => document.getElementById(id).value = ''); renderizarGaleria(); }
         function renderizarGaleria() {
             const grid = document.getElementById('galeria-grid');
             const cont = document.getElementById('galeria-contador');
@@ -2389,7 +2401,7 @@
             if (observadorMini) observadorMini.disconnect();
             observadorMini = ('IntersectionObserver' in window) ? new IntersectionObserver((entradas) => {
                 entradas.forEach(en => { if (en.isIntersecting) { observadorMini.unobserve(en.target); if (en.target.__poner) en.target.__poner(); } });
-            }, { root: grid, rootMargin: '700px 0px' }) : null;
+            }, { root: grid, rootMargin: '240px 0px' }) : null;
 
             if (!galeriaFotos.length) {
                 grid.innerHTML = '<div class="galeria-msg">No se encontraron fotos en las hojas «Inventario Espacios» ni «Mobiliario y Equipo».<br>Las imágenes deben estar insertadas en el Excel (flotantes o «en celda») dentro de la columna «Foto».</div>';
@@ -2400,11 +2412,13 @@
                 return;
             }
 
+            const tarjetas = document.createDocumentFragment();
             galeriaVisible.forEach((f, i) => {
-                const card = document.createElement('div');
-                card.className = 'galeria-card';
+                const card = document.createElement('button');
+                card.type = 'button'; card.className = 'galeria-card';
+                card.setAttribute('aria-label', 'Ampliar foto ' + f.codigo + (f.piso ? ', piso ' + f.piso : ''));
                 const img = document.createElement('img');
-                img.decoding = 'async'; img.alt = f.codigo; cargarMiniaturaPerezosa(img, f);
+                img.decoding = 'async'; img.alt = f.codigo; img.width = 384; img.height = 384; cargarMiniaturaPerezosa(img, f);
                 const info = document.createElement('div');
                 info.className = 'info';
                 const b = document.createElement('b'); b.textContent = f.codigo;
@@ -2417,8 +2431,9 @@
                 info.appendChild(tag);
                 card.appendChild(img); card.appendChild(info);
                 card.addEventListener('click', () => abrirVisorFoto(i));
-                grid.appendChild(card);
+                tarjetas.appendChild(card);
             });
+            grid.appendChild(tarjetas);
         }
 
         function abrirVisorFoto(i) {
@@ -2537,7 +2552,7 @@
             info.classList.remove('alerta');
             const esLabV = (typeof edificioActual !== 'undefined' && edificioActual === 'lab');
             const archivo = esLabV ? (cfgEdificioActual().planos["Piso 1"] || "PLANOS_LABORATORIOS_ARQ.svg") : ((pisoActual2D in archivosPorPiso) ? archivosPorPiso[pisoActual2D] : (MAPA_ARCHIVOS_PISOS[pisoActual2D] || ''));
-            let txt = '📄 ' + (archivo || 'sin plano asignado');
+            let txt = 'Plano: ' + (archivo || 'sin plano asignado');
             if (esLabV) { info.textContent = txt + ' · LAB ARQ (plano único)'; return; }
             try {
                 if (obj && obj.contentDocument) {
@@ -2570,7 +2585,7 @@
                 wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#64748b;font-size:14px;text-align:center;padding:20px;">No hay un plano SVG asociado a este piso.<br>Revisa los archivos PLANTA_X_HUNZA.svg / PLANOS_LABORATORIOS_ARQ.svg o fuerza la asignación en ARCHIVOS_PISOS_FORZADOS.</div>';
             } else if (wrapper) {
                 wrapper.innerHTML = `<object id="svg-2d-object" type="image/svg+xml" data="${archivoSVG}" style="width:100%; height:100%; border:none; object-fit:contain; background-color:#ffffff;"></object>` +
-                    '<div class="zoom2d-controles" id="zoom2d-controles"><button type="button" onclick="zoom2DPorFactor(1.25)" title="Acercar (+)">+</button><span class="zoom2d-indicador" id="zoom2d-indicador">100%</span><button type="button" onclick="zoom2DPorFactor(0.8)" title="Alejar (−)">−</button><button type="button" onclick="resetZoom2D()" title="Restablecer vista (100%)">⟲</button></div>';
+                    '<div class="zoom2d-controles" id="zoom2d-controles"><button type="button" onclick="zoom2DPorFactor(1.25)" title="Acercar (+)" aria-label="Acercar"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button><span class="zoom2d-indicador" id="zoom2d-indicador">100%</span><button type="button" onclick="zoom2DPorFactor(0.8)" title="Alejar (−)" aria-label="Alejar"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></button><button type="button" onclick="resetZoom2D()" title="Restablecer vista (100%)" aria-label="Restablecer vista"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11a9 9 0 1 1 3 7M3 4v7h7"/></svg></button></div>';
 
                 if (typeof window.resetZoom2D === 'function') window.resetZoom2D();
                 if (typeof window.iniciarZoom2D === 'function') window.iniciarZoom2D();
@@ -2592,7 +2607,7 @@
             }
 
             const info = document.getElementById('info-archivo-2d');
-            if (info) { info.classList.remove('alerta'); info.textContent = '📄 ' + (archivoSVG || 'sin plano asignado'); }
+            if (info) { info.classList.remove('alerta'); info.textContent = 'Plano: ' + (archivoSVG || 'sin plano asignado'); }
 
             const titulo2d = document.getElementById('titulo-vista-2d');
             if (titulo2d) titulo2d.innerText = (typeof edificioActual !== 'undefined' && edificioActual === 'lab') ? ('Planta 2D - LAB ARQ · ' + nombreEdificioActual()) : (`Planta 2D - ${pisoActual2D}`);
@@ -2641,10 +2656,18 @@
 
             const elementosAulas = svgDoc.querySelectorAll('[id^="A-"], [id^="a-"], [id^="L-"], [id^="l-"], [id*="HUNZA"]');
 
+            if(!svgDoc.getElementById('gic-plan-interaction-style')){const style=svgDoc.createElementNS('http://www.w3.org/2000/svg','style');style.id='gic-plan-interaction-style';style.textContent='.gic-plan-space:hover,.gic-plan-space:focus-visible{stroke:#0369a1!important;stroke-width:3px!important;outline:none}.gic-plan-space.gic-plan-selected{stroke:#075985!important;stroke-width:3px!important;stroke-dasharray:5 2!important}@media(prefers-reduced-motion:reduce){.gic-plan-space{transition:none!important}}';svgDoc.documentElement.append(style);}
             elementosAulas.forEach(elAula => {
                 const codigoAula = elAula.id.toUpperCase();
                 elAula.style.cursor = 'pointer';
-                elAula.style.transition = 'all 0.3s';
+                elAula.style.transition = 'fill .15s, stroke .15s';
+                elAula.classList.add('gic-plan-space');
+                elAula.setAttribute('tabindex','0');
+                elAula.setAttribute('role','button');
+                elAula.setAttribute('aria-label','Consultar espacio '+codigoAula);
+                elAula.classList.toggle('gic-plan-selected',codigoAula===aulaSeleccionadaActual);
+                elAula.setAttribute('aria-pressed',String(codigoAula===aulaSeleccionadaActual));
+                if(!elAula.querySelector(':scope > title')){const title=svgDoc.createElementNS('http://www.w3.org/2000/svg','title');title.textContent=codigoAula+' · '+(buscarRegistroPorCodigo(registrosInventarioExcel,codigoAula)?.uso||'Consultar ficha');elAula.prepend(title);}
 
                 if (modoConsulta === "horarios") {
                     const infoHorario = consultarHorarioAula(codigoAula, diaSeleccionado, franjaSeleccionada);
@@ -2676,8 +2699,10 @@
                 elAula.onclick = (e) => {
                     e.stopPropagation();
                     aulaSeleccionadaActual = codigoAula;
+                    elementosAulas.forEach(el=>{const selected=el===elAula;el.classList.toggle('gic-plan-selected',selected);el.setAttribute('aria-pressed',String(selected));});
                     mostrarDetalleAulaPanel(codigoAula);
                 };
+                elAula.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();elAula.onclick(e);}};
             });
 
             if (aulaSeleccionadaActual) {
@@ -2717,16 +2742,16 @@
             const modo = selModo ? selModo.value : "inventario";
             
             const panelTitulo = document.getElementById('panel-derecho-titulo');
-            if(panelTitulo) panelTitulo.innerHTML = `📊 ${pisoActual2D} - Resumen`;
+            if(panelTitulo) panelTitulo.innerHTML = `<svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 8 9-5 9 5-9 5zM3 12l9 5 9-5M3 16l9 5 9-5"/></svg> ${pisoActual2D} · Resumen`;
 
             let htmlContenido = `
                 <div class="info-group">
-                    <div class="info-label">Planta Seleccionada:</div>
+                    <div class="info-label">Planta seleccionada</div>
                     <div class="info-val">${pisoActual2D}</div>
                 </div>
                 <div class="info-group">
-                    <div class="info-label">Espacios Registrados:</div>
-                    <div class="info-val">${totalAulas || 'Calculando...'}</div>
+                    <div class="info-label">Espacios registrados</div>
+                    <div class="info-val">${totalAulas ?? 'Calculando...'}</div>
                 </div>
             `;
 
@@ -2744,9 +2769,7 @@
             }
 
             htmlContenido += `
-                <div style="margin-top: 15px; font-size: 11px; color: var(--text-muted); border-top: 1px solid #1e293b; padding-top: 10px;">
-                    💡 <em>Haz clic sobre cualquier aula en el plano interactivo para consultar sus detalles.</em>
-                </div>
+                <div class="gic-viewer-tip gic-plan-tip"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg><div><strong>Consulta interactiva</strong><p>Selecciona un aula en el plano para abrir sus datos.</p></div></div>
             `;
 
             const panelContenido = document.getElementById('panel-contenido');
@@ -2852,18 +2875,18 @@
             }
 
             if (!nombrePiso || nombrePiso === "Edificio Completo") {
-                if(panelTitulo) panelTitulo.innerHTML = `🏢 EDIFICIO COMPLETO (3D)`;
+                if(panelTitulo) panelTitulo.innerHTML = `<svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/></svg> Edificio completo`;
                 if(panelContenido) {
                     panelContenido.innerHTML = `
                         <div style="padding:10px 0; color:var(--text-muted); font-size:12px;">
-                            <p>💡 Seleccione un nivel en el menú de aislamiento para desplegar las condiciones de <strong>Accesibilidad y Seguridad</strong> e <strong>Instalaciones y Acabados</strong> del piso.</p>
+                            <div class="gic-viewer-tip"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg><div><strong>Explora por niveles</strong><p>Selecciona un piso para consultar su accesibilidad, seguridad, instalaciones y acabados.</p></div></div>
                         </div>
                     `;
                 }
                 return;
             }
 
-            if(panelTitulo) panelTitulo.innerHTML = `🏢 ${nombrePiso.toUpperCase()}`;
+            if(panelTitulo) panelTitulo.innerHTML = `<svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 8 9-5 9 5-9 5zM3 12l9 5 9-5M3 16l9 5 9-5"/></svg> ${nombrePiso}`;
 
             const numeroPisoStr = String(nombrePiso).replace(/[^0-9]/g, '');
 
@@ -4511,7 +4534,8 @@
                 if (!handle || !panel) return;
                 const v = (typeof vistaActualGlobal !== 'undefined') ? vistaActualGlobal : '';
                 const nombre = v === 'vista-3d' ? 'Niveles y datos' : v === 'vista-2d' ? 'Consulta y datos' : 'Datos';
-                handle.querySelector('.txt').textContent = panel.classList.contains('expandido') ? '▼ Ocultar panel' : '▲ ' + nombre;
+                handle.querySelector('.txt').textContent = panel.classList.contains('expandido') ? 'Ocultar panel' : nombre;
+                handle.setAttribute('aria-expanded', String(panel.classList.contains('expandido')));
             }
             function fijar(abierto) {
                 if (!panel) return;
@@ -4520,9 +4544,10 @@
             }
             function construirPanel() {
                 if (!panel || $('sheet-handle')) return;
-                handle = document.createElement('div');
+                handle = document.createElement('button');
+                handle.type = 'button';
                 handle.id = 'sheet-handle';
-                handle.innerHTML = '<span class="barra"></span><span class="txt">▲ Datos</span>';
+                handle.innerHTML = '<span class="barra"></span><span class="txt">Datos</span>';
                 panel.insertBefore(handle, panel.firstChild);
                 handle.addEventListener('click', () => fijar(!panel.classList.contains('expandido')));
                 let y0 = null;
@@ -4671,7 +4696,7 @@
                 if (vista && !$('plan-zoom-ctl')) {
                     const c = document.createElement('div');
                     c.id = 'plan-zoom-ctl';
-                    c.innerHTML = '<button type="button" data-z="in" aria-label="Acercar">+</button><button type="button" data-z="out" aria-label="Alejar">&minus;</button><button type="button" data-z="reset" aria-label="Restablecer">&#8634;</button>';
+                    c.innerHTML = '<button type="button" data-z="in" aria-label="Acercar"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button><button type="button" data-z="out" aria-label="Alejar"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></button><button type="button" data-z="reset" aria-label="Restablecer"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11a9 9 0 1 1 3 7M3 4v7h7"/></svg></button>';
                     c.addEventListener('click', (e) => {
                         const b = e.target.closest('button'); if (!b) return;
                         const w2 = $('svg-2d-wrapper');
@@ -4784,6 +4809,8 @@
         let gltfLoader = null;
         let is3DInitialized = false;
         let yaCargado = false;
+        let modeloEnCarga = false;
+        let renderPendiente = true;
         let animFrameId = null;
         let modeloGlobal = null;
         let planoInferior = null, planoSuperior = null;
@@ -4841,6 +4868,7 @@
         // Banda translúcida que marca el rango de alturas del piso bajo el cursor
         function mostrarBandaPiso(idx) {
             if (!scene) return;
+            renderPendiente = true;
             if (!bandaPiso) {
                 bandaPiso = new THREE.Mesh(
                     new THREE.BoxGeometry(1, 1, 1),
@@ -4862,10 +4890,45 @@
         }
 
         let pisosMeshes = [[], [], [], [], []];
+        let mallasPicking3D = [];
+        let modeloRender3D = null;
+        let cajasPicking3D = [];
+        const candidatosPicking3D = [];
+        let lotesRender3D = [];
+        function prepararRenderEstatico3D(root) {
+            root.updateMatrixWorld(true);
+            const grupo=new THREE.Group(); grupo.name='GIC render estático';
+            const lotes=new Map(), matriz=new THREE.Matrix4();
+            let total=0, instancias=0;
+            const crearPlano=o=>{const m=new THREE.Mesh(o.geometry,o.material);m.matrixAutoUpdate=false;m.matrix.copy(o.matrixWorld);m.renderOrder=o.renderOrder;m.castShadow=o.castShadow;m.receiveShadow=o.receiveShadow;grupo.add(m);lotesRender3D.push({obj:m,box:o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld)});};
+            const aptas=mallasPicking3D.every(o=>o.geometry && !o.isSkinnedMesh && !o.isInstancedMesh && !o.morphTargetInfluences?.length && o.material && !o.material.isShaderMaterial);
+            if(!aptas)return root;
+            for(const o of mallasPicking3D){
+                if(!o.geometry.boundingBox)o.geometry.computeBoundingBox();
+                let visible=true;for(let p=o;p;p=p.parent){if(!p.visible){visible=false;break;}}if(!visible)continue;
+                total++;
+                if(Array.isArray(o.material)||o.material.transparent||o.matrixWorld.determinant()<=0){crearPlano(o);continue;}
+                const key=o.geometry.uuid+'|'+o.material.uuid+'|'+o.renderOrder;
+                if(!lotes.has(key))lotes.set(key,[]);lotes.get(key).push(o);
+            }
+            for(const lista of lotes.values()){
+                if(lista.length<2){crearPlano(lista[0]);continue;}
+                const o=lista[0], mesh=new THREE.InstancedMesh(o.geometry,o.material,lista.length);
+                mesh.renderOrder=o.renderOrder;
+                lista.forEach((m,i)=>mesh.setMatrixAt(i,matriz.copy(m.matrixWorld)));
+                mesh.instanceMatrix.needsUpdate=true;mesh.computeBoundingBox();mesh.computeBoundingSphere();grupo.add(mesh);
+                lotesRender3D.push({obj:mesh,box:mesh.boundingBox.clone()});instancias+=lista.length;
+            }
+            grupo.updateMatrixWorld(true);
+            console.info('[GIC] Render agrupado:',{mallas:total,lotes:grupo.children.length,instancias});
+            window.GIC_MODEL_STATS={mallasOriginales:total,lotes:grupo.children.length,instancias};
+            return grupo;
+        }
         let pisoHoveredActual = -1;
 
         const clock = new THREE.Clock();
-        const URL_GLB = 'EDIFICIO_AULAS_M3D.glb';
+        let URL_GLB = 'EDIFICIO_AULAS_WEB.glb';
+        const URL_GLB_ORIGINAL = 'EDIFICIO_AULAS_M3D.glb';
 
         function init3DViewer() {
             if (is3DInitialized) return true;
@@ -4884,8 +4947,8 @@
             camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 3000);
 
             renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, document.documentElement.classList.contains("movil") ? 1.5 : 2));
             renderer.setSize(width, height);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.outputColorSpace = THREE.SRGBColorSpace;
             renderer.localClippingEnabled = true;
 
@@ -4893,33 +4956,32 @@
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
+            controls.dampingFactor = 0.085;
             controls.enableZoom = false;
-            controls.rotateSpeed = 0.4;
-            controls.panSpeed = 0.4;
+            controls.rotateSpeed = 0.65;
+            controls.panSpeed = 0.7;
             controls.minDistance = 2.0;
             controls.maxDistance = 1000.0;
 
+            // Smooth exponential zoom: wheel and touch share the same target.
+            let zoomObjetivo = null;
+            const zoomOffset = new THREE.Vector3();
+            const reducirMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            function solicitarZoom(factor) {
+                actividad3D();
+                direccionObjetivo = null;
+                const actual = camera.position.distanceTo(controls.target);
+                zoomObjetivo = THREE.MathUtils.clamp((zoomObjetivo ?? actual) * factor, controls.minDistance, controls.maxDistance);
+                renderPendiente = true;
+            }
+            window.GIC_ZOOM_3D = solicitarZoom;
             renderer.domElement.addEventListener('wheel', (event) => {
                 event.preventDefault();
                 event.stopPropagation();
-
-                const direction = new THREE.Vector3();
-                camera.getWorldDirection(direction);
-
-                const dir = Math.sign(event.deltaY);
-                const dist = camera.position.distanceTo(controls.target);
-                const step = Math.max(0.5, dist * 0.05);
-
-                if (dir > 0) {
-                    if (dist < controls.maxDistance) {
-                        camera.position.addScaledVector(direction, -step);
-                    }
-                } else {
-                    if (dist > controls.minDistance) {
-                        camera.position.addScaledVector(direction, step);
-                    }
-                }
+                direccionObjetivo = null;
+                const unidad = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? container.clientHeight : 1;
+                const delta = THREE.MathUtils.clamp(event.deltaY * unidad, -240, 240);
+                solicitarZoom(Math.exp(delta * 0.0018));
             }, { passive: false });
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
@@ -4932,6 +4994,121 @@
             const gridHelper = new THREE.GridHelper(300, 60, 0x00b4d8, 0xcbd5e1);
             gridHelper.position.y = -0.01;
             scene.add(gridHelper);
+            const corteVertical = new THREE.Plane(new THREE.Vector3(1,0,0), 1e6);
+            window.GIC_CORTE_VERTICAL = corteVertical;
+            let direccionObjetivo = null, distanciaVista = null, capturaPendiente = false;
+            let perfil = 'auto', escalaActual = renderer.getPixelRatio(), muestraFPS = 0, cuadrosFPS = 0;
+            let calidadMovimiento=.85, ultimaActividad=0, arrastrando3D=false, ultimoFrame=0;
+            function ajustarEscala(n){n=Math.max(.5,Math.min(window.devicePixelRatio||1,n));if(Math.abs(n-escalaActual)>.03){escalaActual=n;renderer.setPixelRatio(n);renderPendiente=true;}}
+            function actividad3D(){ultimaActividad=performance.now();}
+            const orientaciones = {iso:[1,.75,1],front:[0,0,1],back:[0,0,-1],left:[-1,0,0],right:[1,0,0],top:[0,1,.001],bottom:[0,-1,.001]};
+            const giroActual = new THREE.Quaternion(), giroObjetivo = new THREE.Quaternion(), eje = new THREE.Vector3(0,0,1), direccion = new THREE.Vector3();
+            const tools = document.getElementById('gic-3d-tools');
+            const toolsToggle=document.getElementById('gic-tools-toggle'), toolsContent=document.getElementById('gic-tools-content');
+            const orientation=document.getElementById('gic-orientation'), rotor=document.getElementById('gic-cube-rotor'), viewSelect=document.getElementById('gic-view-select');
+            const cubeQ=new THREE.Quaternion(), cubeMatrix=new THREE.Matrix4();
+            function actualizarCubo(){
+                const m=cubeMatrix.makeRotationFromQuaternion(cubeQ.copy(camera.quaternion).invert()).elements;
+                // Map Three.js Y-up to CSS Y-down, keeping X and Z.
+                const signos=[1,-1,1,1];
+                const css=Array.from(m,(v,i)=>Number((v*signos[i%4]*signos[Math.floor(i/4)]).toFixed(6)));
+                rotor.style.transform='matrix3d('+css.join(',')+')';
+            }
+            toolsToggle.addEventListener('click',()=>{const abrir=toolsContent.hidden;toolsContent.hidden=!abrir;toolsToggle.setAttribute('aria-expanded',String(abrir));});
+            orientation.addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b&&modeloGlobal)orientar(b.dataset.view,false);});
+            viewSelect.addEventListener('change',()=>{if(viewSelect.value&&modeloGlobal)orientar(viewSelect.value,false);viewSelect.value='';});
+
+            const extraStatus = document.getElementById('gic-extended-status');
+            let explosion = null, modoMedir = false, puntosMedida = [], marcasMedida = null, recorrido = false;
+            const teclasRecorrido = new Set();
+            const pasosCamara = new THREE.Vector3(), avanceCamara = new THREE.Vector3(), lateralCamara = new THREE.Vector3();
+            function avisoExtra(t){extraStatus.hidden=!t;extraStatus.textContent=t||'';}
+            function estadoExtra(k,on){tools.querySelector('[data-extra="'+k+'"]').setAttribute('aria-pressed',String(on));}
+            function limpiarMedida(){
+                if(marcasMedida){scene.remove(marcasMedida);marcasMedida.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});marcasMedida=null;}
+                puntosMedida=[];renderPendiente=true;
+            }
+            function detenerExplosion(){
+                if(!explosion)return;
+                scene.remove(explosion);explosion.traverse(o=>{if(o.isMesh){const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>m?.dispose());}});
+                explosion=null;(modeloRender3D||modeloGlobal).visible=true;estadoExtra('explode',false);renderPendiente=true;
+            }
+            window.GIC_CERRAR_EXPLOSION = detenerExplosion;
+            function activarExplosion(){
+                if(explosion){detenerExplosion();avisoExtra('');return;}
+                if(!bboxModelo)return;
+                limpiarMedida();modoMedir=false;estadoExtra('measure',false);
+                if(recorrido)salirRecorrido();
+                // Each floor uses a clipped copy sharing original geometry; no mesh is physically cut or modified.
+                const grupo=new THREE.Group(), separacion=Math.max((alturaMaxModel-alturaMinModel)*.13,1);
+                for(let i=0;i<5;i++){
+                    const r=rangoPiso(i);const bajo=Math.max(r.base,alturaMinModel),alto=Math.min(r.techo,alturaMaxModel);
+                    if(alto<=bajo)continue;
+                    const copia=new THREE.Group(), offset=i*separacion;
+                    copia.position.y=offset;
+                    const planes=[new THREE.Plane(new THREE.Vector3(0,1,0),-bajo-offset),new THREE.Plane(new THREE.Vector3(0,-1,0),alto+offset)];
+                    const cache=new Map(), box=new THREE.Box3();
+                    const material=m=>{if(!m)return m;if(!cache.has(m)){const n=m.clone();n.clippingPlanes=planes;cache.set(m,n);}return cache.get(m);};
+                    modeloGlobal.updateMatrixWorld(true);
+                    for(const o of mallasPicking3D){
+                        if(!o.geometry || o.isSkinnedMesh || o.isInstancedMesh)continue;
+                        if(!o.geometry.boundingBox)o.geometry.computeBoundingBox();
+                        box.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld);
+                        if(box.max.y<bajo || box.min.y>alto)continue;
+                        const mesh=new THREE.Mesh(o.geometry,Array.isArray(o.material)?o.material.map(material):material(o.material));
+                        mesh.matrixAutoUpdate=false;mesh.matrix.copy(o.matrixWorld);copia.add(mesh);
+                    }
+                    grupo.add(copia);
+                }
+                explosion=grupo;(modeloRender3D||modeloGlobal).visible=false;scene.add(grupo);estadoExtra('explode',true);
+                mostrarBandaPiso(-1);avisoExtra('Vista separada por cortes de piso. Desactívala para seleccionar aulas.');renderPendiente=true;
+            }
+            function puntoMedida(p){
+                if(puntosMedida.length===2)limpiarMedida();
+                if(!marcasMedida){marcasMedida=new THREE.Group();scene.add(marcasMedida);}
+                puntosMedida.push(p.clone());
+                const radio=Math.max(bboxModelo.getSize(new THREE.Vector3()).length()*.003,.02);
+                const punto=new THREE.Mesh(new THREE.SphereGeometry(radio,12,8),new THREE.MeshBasicMaterial({color:0x00b4d8,depthTest:false}));punto.position.copy(p);marcasMedida.add(punto);
+                if(puntosMedida.length===2){const g=new THREE.BufferGeometry().setFromPoints(puntosMedida);marcasMedida.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:0x0284c7,depthTest:false})));avisoExtra('Distancia: '+puntosMedida[0].distanceTo(puntosMedida[1]).toFixed(3)+' unidades del modelo (escala métrica no verificada).');}
+                else avisoExtra('Selecciona el segundo punto.');renderPendiente=true;
+            }
+            function salirRecorrido(){recorrido=false;teclasRecorrido.clear();estadoExtra('walk',false);avisoExtra('');}
+            function alternarRecorrido(){if(recorrido){salirRecorrido();return;}detenerExplosion();modoMedir=false;estadoExtra('measure',false);limpiarMedida();recorrido=true;estadoExtra('walk',true);avisoExtra('Inspección libre experimental: W/A/S/D o flechas. Arrastra para orientar. No es una ruta peatonal validada.');}
+            window.addEventListener('keydown',e=>{if(!recorrido||!document.getElementById('vista-3d').classList.contains('activa')||/INPUT|SELECT|TEXTAREA|BUTTON/.test(e.target.tagName))return;const k=e.key.toLowerCase();if(k==='escape'){salirRecorrido();return;}if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)){e.preventDefault();teclasRecorrido.add(k);}});
+            window.addEventListener('keyup',e=>teclasRecorrido.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>teclasRecorrido.clear());
+            function moverRecorrido(dt){
+                if(!recorrido||!teclasRecorrido.size)return;
+                camera.getWorldDirection(avanceCamara);avanceCamara.y=0;if(avanceCamara.lengthSq()<.00001)return;avanceCamara.normalize();lateralCamara.crossVectors(avanceCamara,camera.up).normalize();
+                pasosCamara.set(0,0,0);
+                if(teclasRecorrido.has('w')||teclasRecorrido.has('arrowup'))pasosCamara.add(avanceCamara);
+                if(teclasRecorrido.has('s')||teclasRecorrido.has('arrowdown'))pasosCamara.sub(avanceCamara);
+                if(teclasRecorrido.has('d')||teclasRecorrido.has('arrowright'))pasosCamara.add(lateralCamara);
+                if(teclasRecorrido.has('a')||teclasRecorrido.has('arrowleft'))pasosCamara.sub(lateralCamara);
+                if(!pasosCamara.lengthSq())return;
+                pasosCamara.normalize().multiplyScalar(dt*Math.max(alturaMaxModel-alturaMinModel,1)*.35);
+                camera.position.add(pasosCamara);controls.target.add(pasosCamara);renderPendiente=true;
+            }
+            tools.addEventListener('click',e=>{const b=e.target.closest('[data-extra]');if(!b||!modeloGlobal)return;
+                if(b.dataset.extra==='explode')activarExplosion();
+                if(b.dataset.extra==='measure'){detenerExplosion();if(recorrido)salirRecorrido();modoMedir=!modoMedir;estadoExtra('measure',modoMedir);limpiarMedida();avisoExtra(modoMedir?'Selecciona dos puntos visibles del modelo.':'');}
+                if(b.dataset.extra==='walk')alternarRecorrido();
+            });
+            function orientar(v, centrar) {
+                if (!bboxModelo) return;
+                if(recorrido)salirRecorrido();
+                if (centrar) controls.target.copy(bboxModelo.getCenter(new THREE.Vector3()));
+                direccionObjetivo = new THREE.Vector3(...orientaciones[v]).normalize();
+                const max = bboxModelo.getSize(new THREE.Vector3()).length();
+                distanciaVista = centrar ? THREE.MathUtils.clamp(max * 1.35,controls.minDistance,controls.maxDistance) : camera.position.distanceTo(controls.target);
+                zoomObjetivo = null; renderPendiente = true;
+            }
+            controls.addEventListener('start', () => { direccionObjetivo = null;arrastrando3D=true;actividad3D(); });
+            controls.addEventListener('end',()=>{arrastrando3D=false;actividad3D();});
+            function calidad(p) { perfil=p; muestraFPS=cuadrosFPS=0;ajustarEscala(p==='low'?.75:p==='medium'?1:p==='high'?2:1.25);renderPendiente=true; }
+            tools.addEventListener('click', e => { const b=e.target.closest('button'); if(!b || !modeloGlobal)return; if(b.dataset.view){orientar(b.dataset.view,false);return;} switch(b.dataset.tool){case 'fit':orientar('iso',true);break;case 'grid':gridHelper.visible=!gridHelper.visible;b.setAttribute('aria-pressed',String(gridHelper.visible));break;case 'cut':{const activo=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',String(activo));document.getElementById('gic-cut-row').hidden=!activo;corteVertical.constant=activo ? -(bboxModelo.min.x+bboxModelo.max.x)/2 : 1e6;document.getElementById('gic-cut-slider').value=50;break;}case 'capture':capturaPendiente=true;break;case 'full':{const v=document.getElementById('vista-3d');if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{});else v.requestFullscreen?.().catch(()=>{});break;}}renderPendiente=true; });
+            document.getElementById('gic-quality').addEventListener('change', e=>calidad(e.target.value));
+            document.getElementById('gic-cut-slider').addEventListener('input',e=>{if(bboxModelo){corteVertical.constant=-THREE.MathUtils.lerp(bboxModelo.min.x,bboxModelo.max.x,Number(e.target.value)/100);renderPendiente=true;}});
+            calidad('auto');
 
             planoInferior = new THREE.Plane(new THREE.Vector3(0, 1, 0), -1000);
             planoSuperior = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1000);
@@ -4947,23 +5124,29 @@
             // El piso se decide SIEMPRE por la altura del punto tocado (no por la malla),
             // porque una misma malla del modelo puede abarcar varios pisos.
             function pisoBajoCursor(clientX, clientY) {
-                if (!modeloGlobal) return null;
+                if (!modeloGlobal || explosion || recorrido) return null;
                 const rect = container.getBoundingClientRect();
                 mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
                 mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
                 raycaster.setFromCamera(mouse, camera);
-                const hits = raycaster.intersectObject(modeloGlobal, true);
+                candidatosPicking3D.length=0;
+                for(let i=0;i<mallasPicking3D.length;i++){if(raycaster.ray.intersectsBox(cajasPicking3D[i]))candidatosPicking3D.push(mallasPicking3D[i]);}
+                const hits = raycaster.intersectObjects(candidatosPicking3D, false);
                 for (const hit of hits) {
                     if (!hit.object || hit.object.visible === false) continue;
                     const pt = hit.point;
                     if (planoInferior && planoInferior.distanceToPoint(pt) < -0.01) continue;
                     if (planoSuperior && planoSuperior.distanceToPoint(pt) < -0.01) continue;
-                    return { idx: indicePisoPorAltura(pt.y), y: pt.y - alturaMinModel };
+                    if (corteVertical.distanceToPoint(pt) < -0.01) continue;
+                    return { idx: indicePisoPorAltura(pt.y), y: pt.y - alturaMinModel, point: pt.clone() };
                 }
                 return null;
             }
 
+            let ultimoPicking = 0;
             container.addEventListener('pointermove', (e) => {
+                if (e.pointerType === 'touch' || e.buttons || performance.now() - ultimoPicking < 100) return;
+                ultimoPicking = performance.now();
                 const res = pisoBajoCursor(e.clientX, e.clientY);
                 const nuevo = res ? res.idx : -1;
                 container.style.cursor = res ? 'pointer' : 'default';
@@ -4978,10 +5161,12 @@
             });
 
             container.addEventListener('pointerup', (e) => {
+                if (e.button !== 0 || !e.isPrimary) return;
                 const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
                 if (dist > 5) return;
                 const res = pisoBajoCursor(e.clientX, e.clientY);
                 if (!res) return;
+                if(modoMedir){puntoMedida(res.point);return;}
                 console.log('[GIC] Clic 3D · altura', res.y.toFixed(2), '→', NOMBRES_PISOS_3D[res.idx], '| límites:', limitesPisos);
                 toast3D('Altura ' + res.y.toFixed(2) + ' → ' + NOMBRES_PISOS_3D[res.idx]);
                 if (window.irAVista2DPiso) window.irAVista2DPiso(NOMBRES_PISOS_3D[res.idx]);
@@ -4992,18 +5177,61 @@
                     camera.aspect = container.clientWidth / container.clientHeight;
                     camera.updateProjectionMatrix();
                     renderer.setSize(container.clientWidth, container.clientHeight);
+                    renderPendiente = true;
                 }
             });
 
             function animate() {
+                animFrameId = null;
+                if (document.hidden || !document.getElementById("vista-3d")?.classList.contains("activa")) return;
                 animFrameId = requestAnimationFrame(animate);
-                clock.getDelta();
-                controls.update();
-                renderer.render(scene, camera);
+                const ahora=performance.now();const dtReal=ultimoFrame?(ahora-ultimoFrame)/1000:0;ultimoFrame=ahora;
+                const dt = Math.min(clock.getDelta(), 0.05);
+                const moviendo=arrastrando3D||zoomObjetivo!==null||!!direccionObjetivo||teclasRecorrido.size>0||ahora-ultimaActividad<300;
+                if(perfil==='auto')ajustarEscala(moviendo?calidadMovimiento:1.25);
+                moverRecorrido(dt);
+                controls.dampingFactor = 1 - Math.pow(1 - 0.085, dt * 60);
+                if (zoomObjetivo !== null) {
+                    zoomOffset.copy(camera.position).sub(controls.target);
+                    const actual = zoomOffset.length();
+                    if (actual > 0) {
+                        const siguiente = reducirMovimiento ? zoomObjetivo : THREE.MathUtils.lerp(actual, zoomObjetivo, 1 - Math.exp(-14 * dt));
+                        const terminado = Math.abs(siguiente - zoomObjetivo) < Math.max(0.001, zoomObjetivo * 0.0005);
+                        camera.position.copy(controls.target).add(zoomOffset.setLength(terminado ? zoomObjetivo : siguiente));
+                        if (terminado) zoomObjetivo = null;
+                        renderPendiente = true;
+                    }
+                }
+                if(direccionObjetivo){
+                    direccion.copy(camera.position).sub(controls.target);
+                    const distancia=direccion.length(); direccion.normalize();
+                    giroActual.setFromUnitVectors(eje,direccion); giroObjetivo.setFromUnitVectors(eje,direccionObjetivo);
+                    const t=reducirMovimiento?1:1-Math.exp(-12*dt);
+                    giroActual.slerp(giroObjetivo,t); direccion.copy(eje).applyQuaternion(giroActual);
+                    const d=THREE.MathUtils.lerp(distancia,distanciaVista,t);
+                    if(direccion.angleTo(direccionObjetivo)<.003 && Math.abs(d-distanciaVista)<.02){direccion.copy(direccionObjetivo);camera.position.copy(controls.target).addScaledVector(direccion,distanciaVista);direccionObjetivo=null;}else camera.position.copy(controls.target).addScaledVector(direccion,d);
+                    renderPendiente=true;
+                }
+                const cambio = controls.update();
+                if (cambio || renderPendiente || capturaPendiente) {
+                    actualizarCubo();
+                    renderer.render(scene, camera);
+                    if(capturaPendiente){capturaPendiente=false;renderer.domElement.toBlob(blob=>{if(!blob)return;const u=URL.createObjectURL(blob), a=document.createElement('a');a.href=u;a.download='UPTC-GIC-3D.png';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);},'image/png');}
+                    renderPendiente = false;
+                    if(perfil==='auto' && moviendo && dtReal>0 && dtReal<.5){muestraFPS+=dtReal;cuadrosFPS++;if(muestraFPS>=1.2){const fps=cuadrosFPS/muestraFPS;calidadMovimiento=fps<43?Math.max(.55,calidadMovimiento-.1):fps>57?Math.min(1,calidadMovimiento+.05):calidadMovimiento;muestraFPS=cuadrosFPS=0;}}else if(!moviendo){muestraFPS=cuadrosFPS=0;}
+                    window.GIC_RENDER_STATS={drawCalls:renderer.info.render.calls,triangulos:renderer.info.render.triangles,escala:renderer.getPixelRatio()};
+                }
             }
 
-            if (animFrameId) cancelAnimationFrame(animFrameId);
-            animate();
+            function sincronizarRender() {
+                const visible = !document.hidden && document.getElementById('vista-3d').classList.contains('activa');
+                if(!visible){ultimoFrame=0;arrastrando3D=false;teclasRecorrido.clear();if(recorrido)salirRecorrido();}
+                if (visible && animFrameId === null) { renderPendiente = true; animFrameId = requestAnimationFrame(animate); }
+                else if (!visible && animFrameId !== null) { cancelAnimationFrame(animFrameId); animFrameId = null; }
+            }
+            new MutationObserver(sincronizarRender).observe(document.getElementById('vista-3d'), {attributes:true, attributeFilter:['class']});
+            document.addEventListener('visibilitychange', sincronizarRender);
+            sincronizarRender();
 
             gltfLoader = new GLTFLoader();
             const dracoLoader = new DRACOLoader();
@@ -5137,13 +5365,17 @@
 
         function aislarRangoAltura(alturaInferior, alturaSuperior) {
             if (!planoInferior || !planoSuperior) return;
+            window.GIC_CERRAR_EXPLOSION?.();
             planoInferior.constant = -alturaInferior;
             planoSuperior.constant = alturaSuperior;
+            for(const l of lotesRender3D)l.obj.visible=l.box.max.y>=alturaInferior && l.box.min.y<=alturaSuperior;
+            renderPendiente = true;
         }
 
         function cargarModeloGLBReal() {
-            if (yaCargado) return;
+            if (yaCargado || modeloEnCarga) return;
             if (!init3DViewer()) return;
+            modeloEnCarga = true;
 
             const statusEl = document.getElementById('ifc-status');
             const layersEl = document.getElementById('ifc-layers-list');
@@ -5173,39 +5405,44 @@
 
                     planoInferior.constant = -(alturaMinModel - 50);
                     planoSuperior.constant = alturaMaxModel + 100;
-                    const arrayPlanosCorte = [planoInferior, planoSuperior];
+                    const arrayPlanosCorte = [planoInferior, planoSuperior, window.GIC_CORTE_VERTICAL].filter(Boolean);
+                    const materialesPreparados = new WeakMap();
+                    function prepararMaterial(mat) {
+                        if (!mat) return mat;
+                        if (!materialesPreparados.has(mat)) {
+                            const m = mat.clone();
+                            m.clippingPlanes = arrayPlanosCorte;
+                            m.clipShadows = true;
+                            m.side = THREE.DoubleSide;
+                            m.needsUpdate = true;
+                            materialesPreparados.set(mat, m);
+                        }
+                        return materialesPreparados.get(mat);
+                    }
 
                     pisosMeshes = [[], [], [], [], []];
 
+                    mallasPicking3D = [];
                     modeloGlobal.traverse((child) => {
                         if (child.isMesh) {
-                            if (Array.isArray(child.material)) {
-                                child.material = child.material.map(mat => {
-                                    const m = mat.clone();
-                                    m.clippingPlanes = arrayPlanosCorte;
-                                    m.clipShadows = true;
-                                    m.side = THREE.DoubleSide;
-                                    m.needsUpdate = true;
-                                    return m;
-                                });
-                            } else if (child.material) {
-                                child.material = child.material.clone();
-                                child.material.clippingPlanes = arrayPlanosCorte;
-                                child.material.clipShadows = true;
-                                child.material.side = THREE.DoubleSide;
-                                child.material.needsUpdate = true;
-                            }
+                            mallasPicking3D.push(child);
+                            if (Array.isArray(child.material)) child.material = child.material.map(prepararMaterial);
+                            else if (child.material) child.material = prepararMaterial(child.material);
 
                         }
                     });
 
-                    scene.add(modeloGlobal);
+                    cajasPicking3D = mallasPicking3D.map(m=>{if(!m.geometry.boundingBox)m.geometry.computeBoundingBox();return m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld);});
+                    lotesRender3D=[];
+                    modeloRender3D=prepararRenderEstatico3D(modeloGlobal);
+                    scene.add(modeloRender3D);
+                    renderPendiente = true;
 
                     layersEl.innerHTML = '';
                     
                     const divControles = document.createElement('div');
                     divControles.innerHTML = `
-                        <button class="btn-nivel active" data-tipo="max">Ver Edificio Completo</button>
+                        <button class="btn-nivel active" data-tipo="max"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5v8l-9 5-9-5V8zM3 8l9 5 9-5M12 13v8"/></svg><span class="gic-floor-label">Edificio completo</span></button>
                         <hr style="border-color:#1e293b; margin:8px 0;">
                         <p style="margin:4px 0; color:var(--text-muted); font-size:11px;">Aislar Piso:</p>
                         <div id="botones-pisos-container"></div>
@@ -5218,7 +5455,8 @@
                     nombresPisos.forEach((nombre, idx) => {
                         const btn = document.createElement('button');
                         btn.className = 'btn-nivel';
-                        btn.innerText = `🏢 ${nombre}`;
+                        btn.innerHTML = '<svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 8 9-5 9 5-9 5zM3 12l9 5 9-5M3 16l9 5 9-5"/></svg><span class="gic-floor-label"></span><span class="gic-floor-chevron" aria-hidden="true">›</span>';
+                        btn.querySelector('.gic-floor-label').textContent = nombre;
                         btn.addEventListener('click', () => {
                             document.querySelectorAll('.btn-nivel').forEach(b => b.classList.remove('active'));
                             btn.classList.add('active');
@@ -5256,8 +5494,11 @@
                         controls.update();
                     }
 
-                    statusEl.innerText = '🟢 Modelo 3D Cargado';
+                    statusEl.innerHTML = '<span class="gic-model-ready" role="status"><span class="gic-model-dot"></span> Modelo listo</span>';
                     yaCargado = true;
+                    modeloEnCarga = false;
+                    document.getElementById('gic-3d-tools').hidden=false;
+                    document.getElementById('gic-orientation').hidden=false;
                 },
                 (xhr) => {
                     if (xhr.lengthComputable && xhr.total > 0) {
@@ -5266,6 +5507,13 @@
                     }
                 },
                 (error) => {
+                    modeloEnCarga = false;
+                    if (URL_GLB !== URL_GLB_ORIGINAL) {
+                        console.warn('[GIC] Modelo web no disponible; usando original.', error);
+                        URL_GLB = URL_GLB_ORIGINAL;
+                        cargarModeloGLBReal();
+                        return;
+                    }
                     console.error('❌ Error al cargar GLB:', error);
                     statusEl.innerText = '❌ Error al cargar archivo GLB';
                 }
@@ -5559,18 +5807,19 @@
                 cam.up.set(0, 0, -1); cam.position.set(c.x, alturaMaxModel + 50, c.z); cam.lookAt(c.x, 0, c.z); cam.updateMatrixWorld(true);
                 const rt = new THREE.WebGLRenderTarget(NR, NR);
                 const mat = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide, clippingPlanes: [planoInferior, planoSuperior] });
-                const pi = planoInferior.constant, ps = planoSuperior.constant, bg = scene.background, vis = scene.children.map(o => o.visible);
+                const pi = planoInferior.constant, ps = planoSuperior.constant, bg = scene.background, vis = scene.children.map(o => o.visible), visLotes=lotesRender3D.map(l=>l.obj.visible);
                 const buf = new Uint8Array(NR * NR * 4);
                 try {
-                    scene.children.forEach(o => { if (o !== modeloGlobal) o.visible = false; });
+                    scene.children.forEach(o => { o.visible = o === (modeloRender3D||modeloGlobal); });
                     planoInferior.constant = -y0; planoSuperior.constant = y1;
+                    for(const l of lotesRender3D)l.obj.visible=l.box.max.y>=y0 && l.box.min.y<=y1;
                     scene.background = new THREE.Color(0xffffff); scene.overrideMaterial = mat;
                     renderer.setRenderTarget(rt); renderer.clear(); renderer.render(scene, cam);
                     renderer.readRenderTargetPixels(rt, 0, 0, NR, NR, buf);
                 } finally {
                     renderer.setRenderTarget(null); scene.overrideMaterial = null; scene.background = bg;
                     scene.children.forEach((o, i) => { o.visible = vis[i]; });
-                    planoInferior.constant = pi; planoSuperior.constant = ps; rt.dispose(); mat.dispose();
+                    planoInferior.constant = pi; planoSuperior.constant = ps; lotesRender3D.forEach((l,i)=>l.obj.visible=visLotes[i]); rt.dispose(); mat.dispose();
                 }
                 const m = new Uint8Array(NR * NR); let n = 0;
                 for (let r = 0; r < NR; r++) for (let cc = 0; cc < NR; cc++) if (buf[((NR - 1 - r) * NR + cc) * 4] < 128) { m[r * NR + cc] = 1; n++; }
@@ -5779,9 +6028,7 @@
                     if (dedos.size === 2) {
                         const d = separacion();
                         if (dPrev > 0 && d > 0) {
-                            const desde = camera.position.clone().sub(controls.target);
-                            const largo = Math.min(controls.maxDistance, Math.max(controls.minDistance, desde.length() * (dPrev / d)));
-                            camera.position.copy(controls.target).add(desde.setLength(largo));
+                            if (window.GIC_ZOOM_3D) window.GIC_ZOOM_3D(dPrev / d);
                         }
                         dPrev = d;
                     }
@@ -6273,7 +6520,7 @@
                     (it.cod === 62 ?
                         '<div class="gic-ed-acciones">' +
                         '<button type="button" class="btn-edificio-accion" onclick="fijarEdificio(\'lab\'); irAVista2DPiso(pisoActual2D);">📐 Entrar al plano 2D (PLANOS_LABORATORIOS_ARQ.svg)</button>' +
-                        '<button type="button" class="btn-edificio-accion sec" onclick="fijarEdificio(\'lab\'); irAVista(\'vista-3d\');">🏢 Modelo 3D (próximamente)</button>' +
+                        '<button type="button" class="btn-edificio-accion sec" onclick="fijarEdificio(\'lab\'); irAVista(\'vista-3d\');"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h1m4 0h1M9 11h1m4 0h1M9 15h1m4 0h1M11 21v-3h2v3"/></svg> Modelo 3D (próximamente)</button>' +
                         '<a class="btn-edificio-accion" style="text-align:center;text-decoration:none" href="solicitudes.html" target="_blank" rel="noopener">📝 Solicitar turno / subir archivo</a>' +
                         '<div style="font-size:11px;color:#94a3b8;line-height:1.4;">En el plano 2D: clic en <b>LAB ARQ</b> y luego en <b>IMPRESORA 3D / PLOTER 1 / PLOTER 2 / ROUTER</b> para abrir su ficha técnica.</div>' +
                         '</div>' : '');
@@ -6818,7 +7065,7 @@
                 '<a id="maquina-link" class="ficha-link" href="#" target="_blank" rel="noopener noreferrer">📄 Abrir ficha técnica (PDF)</a>' +
                 '<span class="url-txt" id="maquina-url"></span>' +
                 '<div id="maquina-aviso" style="display:none;font-size:11.5px;color:#b45309;margin-top:10px;line-height:1.45;"></div>' +
-                '<div><button type="button" class="maquina-cerrar" id="maquina-cerrar">✕ Cerrar</button></div>' +
+                '<div><button type="button" class="maquina-cerrar" id="maquina-cerrar"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 6 12 12M18 6 6 18"/></svg> Cerrar</button></div>' +
                 '</div>';
             document.body.appendChild(ov);
             ov.addEventListener('click', (e) => { if (e.target === ov) cerrarFichaMaquina(); });
@@ -7254,7 +7501,7 @@
                 ov.id = 'gl-sim-overlay'; ov.className = 'gl-overlay'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
                 ov.innerHTML =
                     '<div class="gl-card">' +
-                    '<div class="gl-top"><h2>🧪 Simulador de máquinas · LAB ARQ</h2><button type="button" class="gl-btn" id="sim-cerrar">✕ Cerrar</button></div>' +
+                    '<div class="gl-top"><h2>🧪 Simulador de máquinas · LAB ARQ</h2><button type="button" class="gl-btn" id="sim-cerrar"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 6 12 12M18 6 6 18"/></svg> Cerrar</button></div>' +
                     '<div class="gl-aviso">Simulación didáctica: no se conecta a equipos reales. Sirve para practicar el flujo de trabajo de cada máquina.</div>' +
                     '<div class="gl-tabs" id="sim-tabs"></div>' +
                     '<div class="gl-sim-grid">' +
@@ -7289,7 +7536,7 @@
                 $('sim-panel-izq').innerHTML =
                     '<div class="gl-bloque"><div class="gl-etq">Máquina</div><div class="gl-eq"><b>' + esc(P.etiqueta) + '</b> · ' + esc(P.equipo) + '</div>' +
                     '<label class="gl-campo"><span>Conexión</span><select class="gl-in" id="sim-conexion">' + P.conexiones.map((c, i) => '<option value="' + i + '"' + (i === e.conexion ? ' selected' : '') + '>' + esc(c) + '</option>').join('') + '</select></label>' +
-                    '<div class="gl-fila"><button type="button" class="gl-btn pri" id="sim-conectar">🔌 Conectar</button><button type="button" class="gl-btn" id="sim-desconectar">Desconectar</button></div></div>' +
+                    '<div class="gl-fila"><button type="button" class="gl-btn pri" id="sim-conectar"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-12 0zm6 9v4"/></svg> Conectar</button><button type="button" class="gl-btn" id="sim-desconectar">Desconectar</button></div></div>' +
                     '<div class="gl-bloque"><div class="gl-etq">Software: ' + esc(P.software) + ' <span class="gl-ref">(referencial)</span></div>' +
                     '<label class="gl-campo"><span>' + (P.tipo === 'fdm' ? 'Modelo 3D de demostración' : 'Diseño de demostración') + '</span><select class="gl-in" id="sim-modelo">' + pats.map(k => '<option value="' + k + '"' + (e.modeloSel === k ? ' selected' : '') + '>' + esc(nombreModelo(id, k)) + '</option>').join('') + '</select></label>' +
                     '<div class="gl-fila"><label class="gl-btn gl-archivo">📂 Cargar archivo<input type="file" id="sim-archivo" accept=".gcode,.stl,.3mf,.dxf,.svg,.plt,.hpgl,.ai,.pdf"></label><span id="sim-archivo-nombre" class="gl-ref"></span></div>' +
@@ -7517,15 +7764,15 @@
             function abrirLista() {
                 const opt = (arr, v) => '<option value="">Todos</option>' + arr.map(a => '<option' + (a === v ? ' selected' : '') + '>' + esc(a) + '</option>').join('');
                 const ov = mostrar('gl-inv-overlay',
-                    '<div class="gl-top"><h2>📦 Inventario del laboratorio <span class="gl-ref" id="inv-cuenta"></span></h2><button type="button" class="gl-btn" data-a="cerrar">✕ Cerrar</button></div>' +
+                    '<div class="gl-top"><h2><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4v10l-9 4-9-4zM3 7l9 5 9-5m-9 5v9M7 5l10 5"/></svg> Inventario del laboratorio <span class="gl-ref" id="inv-cuenta"></span></h2><button type="button" class="gl-btn" data-a="cerrar"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 6 12 12M18 6 6 18"/></svg> Cerrar</button></div>' +
                     '<div class="gl-barra">' +
                       '<input class="gl-in" id="inv-q" type="search" placeholder="Buscar código, nombre, serial…" value="' + esc(filtro.q) + '">' +
                       '<select class="gl-in" id="inv-tipo">' + opt(Object.keys(TIPOS), filtro.tipo) + '</select>' +
                       '<select class="gl-in" id="inv-estado">' + opt(ESTADOS, filtro.estado) + '</select></div>' +
                     '<div class="gl-fila gl-envolver" style="margin-bottom:10px">' +
-                      '<button type="button" class="gl-btn pri" data-a="nuevo">➕ Nuevo</button><button type="button" class="gl-btn" data-a="escanear">📷 Escanear</button>' +
+                      '<button type="button" class="gl-btn pri" data-a="nuevo"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> Nuevo</button><button type="button" class="gl-btn" data-a="escanear"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="4"/><path d="m8 6 2-3h4l2 3"/></svg> Escanear</button>' +
                       '<button type="button" class="gl-btn" data-a="etiquetas-sel">🖨 Etiquetas (marcados)</button><button type="button" class="gl-btn" data-a="etiquetas-todos">🖨 Etiquetas (todos)</button>' +
-                      '<button type="button" class="gl-btn" data-a="exp-json">⬇ JSON</button><button type="button" class="gl-btn" data-a="exp-xlsx">⬇ Excel</button>' +
+                      '<button type="button" class="gl-btn" data-a="exp-json"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg> JSON</button><button type="button" class="gl-btn" data-a="exp-xlsx"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg> Excel</button>' +
                       '<label class="gl-btn gl-archivo">⬆ Importar<input type="file" id="inv-importar" accept=".json,.xlsx,.xls"></label><button type="button" class="gl-btn" data-a="config">⚙ Enlace del QR</button></div>' +
                     '<div class="gl-tabla-w"><table class="gl-tabla"><thead><tr><th></th><th>Código</th><th>Nombre</th><th>Tipo</th><th>Estado</th><th>Ubicación</th></tr></thead><tbody id="inv-filas"></tbody></table></div>' +
                     '<div class="gl-ref" style="margin-top:8px">Los cambios se guardan en este navegador. Para publicarlos en la página usa «⬇ JSON» y sube el archivo <b>' + ARCHIVO_REPO + '</b> al repositorio.</div>');
@@ -7549,7 +7796,7 @@
                 const dato = (l, v) => v ? '<div class="gl-dato"><span>' + l + '</span><b>' + esc(v) + '</b></div>' : '';
                 const ub = (it.x !== null && it.y !== null) ? 'Marcado en el plano (' + it.x.toFixed(0) + ', ' + it.y.toFixed(0) + ')' : (it.zona ? 'Zona del plano: ' + it.zona : 'Sin ubicar en el plano');
                 mostrar('gl-ficha-overlay',
-                    '<div class="gl-top"><h2>' + esc(it.nombre) + '</h2><button type="button" class="gl-btn" data-a="cerrar-ficha">✕ Cerrar</button></div>' +
+                    '<div class="gl-top"><h2>' + esc(it.nombre) + '</h2><button type="button" class="gl-btn" data-a="cerrar-ficha"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 6 12 12M18 6 6 18"/></svg> Cerrar</button></div>' +
                     '<div class="gl-ficha-grid"><div class="gl-codigos">' +
                       '<div class="gl-qr">' + (qr || '<div class="gl-ref">No se pudo cargar la librería de QR.</div>') + '</div>' +
                       '<div class="gl-barras">' + (br || '') + '</div>' +
@@ -7560,11 +7807,11 @@
                       '<div class="gl-fila gl-envolver" style="margin-top:10px">' +
                         '<button type="button" class="gl-btn pri" data-a="ver-plano">🗺 Ver en el plano</button><button type="button" class="gl-btn" data-a="ubicar">📍 Ubicar en el plano</button>' +
                         '<button type="button" class="gl-btn" data-a="editar">✏ Editar</button><button type="button" class="gl-btn" data-a="etiqueta">🖨 Etiqueta</button>' +
-                        '<button type="button" class="gl-btn" data-a="copiar">🔗 Copiar enlace</button>' + (esMaq ? '<button type="button" class="gl-btn" data-a="simular">🔌 Simular conexión</button>' : '') +
+                        '<button type="button" class="gl-btn" data-a="copiar">🔗 Copiar enlace</button>' + (esMaq ? '<button type="button" class="gl-btn" data-a="simular"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-12 0zm6 9v4"/></svg> Simular conexión</button>' : '') +
                         '<button type="button" class="gl-btn peligro" data-a="eliminar">🗑 Eliminar</button></div></div></div>' +
                     '<div class="gl-etq" style="margin-top:14px">Historial</div>' +
                     '<div class="gl-fila gl-envolver"><select class="gl-in" id="ev-tipo" style="max-width:150px">' + EVENTOS.map(e => '<option>' + e + '</option>').join('') + '</select>' +
-                    '<input class="gl-in" id="ev-nota" placeholder="Detalle del evento…" style="flex:1;min-width:140px"><button type="button" class="gl-btn" data-a="evento">➕ Registrar</button></div>' +
+                    '<input class="gl-in" id="ev-nota" placeholder="Detalle del evento…" style="flex:1;min-width:140px"><button type="button" class="gl-btn" data-a="evento"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> Registrar</button></div>' +
                     '<div class="gl-hist">' + (it.historial.slice().reverse().map(h => '<div class="gl-h"><b>' + esc(h.t) + '</b> · ' + esc(fmtFecha(h.f)) + ' — ' + esc(h.n) + '</div>').join('') || '<div class="gl-h gl-ref">Sin eventos.</div>') + '</div>');
                 seleccionado = it.id; pintarMarcadores();
             }
@@ -7573,7 +7820,7 @@
                 const f = (k, l, t, extra) => '<label class="gl-campo"><span>' + l + '</span><input class="gl-in" id="f-' + k + '" type="' + (t || 'text') + '" value="' + esc(it[k]) + '" ' + (extra || '') + '></label>';
                 const zonas = zonasDelPlano().map(z => '<option value="' + esc(z) + '">').join('');
                 mostrar('gl-ficha-overlay',
-                    '<div class="gl-top"><h2>' + (nuevo ? '➕ Nuevo mueble o equipo' : '✏ Editar ' + esc(it.id)) + '</h2><button type="button" class="gl-btn" data-a="cancelar-edicion">✕ Cancelar</button></div>' +
+                    '<div class="gl-top"><h2>' + (nuevo ? '➕ Nuevo mueble o equipo' : '✏ Editar ' + esc(it.id)) + '</h2><button type="button" class="gl-btn" data-a="cancelar-edicion"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 6 12 12M18 6 6 18"/></svg> Cancelar</button></div>' +
                     '<div class="gl-form">' +
                       '<label class="gl-campo"><span>Código ' + (nuevo ? '(se genera solo; puedes cambiarlo)' : '(no editable: ya está impreso en la etiqueta)') + '</span><input class="gl-in" id="f-id" value="' + esc(it.id) + '"' + (nuevo ? '' : ' disabled') + '></label>' +
                       f('nombre', 'Nombre *') +
@@ -7694,12 +7941,12 @@
                 const it = buscar(codigo);
                 if (it) { cerrarTodo(); irAlMueble(it.id); return true; }
                 const r = $('scan-resultado');
-                if (r) r.innerHTML = '⚠ El código <b>' + esc(codigo) + '</b> no está registrado. <button type="button" class="gl-btn" data-a="nuevo-con-codigo" data-c="' + esc(codigo) + '">➕ Crear con este código</button>';
+                if (r) r.innerHTML = '⚠ El código <b>' + esc(codigo) + '</b> no está registrado. <button type="button" class="gl-btn" data-a="nuevo-con-codigo" data-c="' + esc(codigo) + '"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> Crear con este código</button>';
                 return false;
             }
             async function abrirScanner() {
                 const ov = mostrar('gl-scan-overlay',
-                    '<div class="gl-top"><h2>📷 Escanear código</h2><button type="button" class="gl-btn" data-a="cerrar-scan">✕ Cerrar</button></div>' +
+                    '<div class="gl-top"><h2><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="4"/><path d="m8 6 2-3h4l2 3"/></svg> Escanear código</h2><button type="button" class="gl-btn" data-a="cerrar-scan"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 6 12 12M18 6 6 18"/></svg> Cerrar</button></div>' +
                     '<div class="gl-ref" style="margin-bottom:8px">Apunta la cámara al QR o al código de barras de la etiqueta. También puedes usar un lector USB/Bluetooth o escribir el código.</div>' +
                     '<video id="scan-video" playsinline muted></video><div id="scan-estado" class="gl-ref" style="margin:6px 0"></div>' +
                     '<div class="gl-fila"><input class="gl-in" id="scan-manual" placeholder="Código (p. ej. LAB-MES-001) y Enter" autocomplete="off"><button type="button" class="gl-btn pri" data-a="scan-buscar">Buscar</button></div>' +
@@ -7843,7 +8090,7 @@
             function construirHerramientas() {
                 const v = $('vista-2d'); if (!v || $('lab-tools')) return;
                 const d = document.createElement('div'); d.id = 'lab-tools';
-                d.innerHTML = '<button type="button" data-a="inv">📦 Inventario</button><button type="button" data-a="sim">🧪 Simulador</button><button type="button" data-a="scan">📷 Escanear</button>';
+                d.innerHTML = '<button type="button" data-a="inv"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m3 7 9-4 9 4v10l-9 4-9-4zM3 7l9 5 9-5m-9 5v9M7 5l10 5"/></svg> Inventario</button><button type="button" data-a="sim">🧪 Simulador</button><button type="button" data-a="scan"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="4"/><path d="m8 6 2-3h4l2 3"/></svg> Escanear</button>';
                 v.appendChild(d);
                 d.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.a === 'inv') abrirLista(); else if (b.dataset.a === 'sim') window.GIC_SIM.abrir(); else abrirScanner(); });
                 const t = $('titulo-vista-2d'); if (t) new MutationObserver(actualizarHerramientas).observe(t, { childList: true, characterData: true, subtree: true });
@@ -7859,7 +8106,7 @@
                 const card = document.querySelector('#maquina-overlay .maquina-card');
                 if (card && !$('gl-maq-sim')) {
                     const d = document.createElement('div'); d.id = 'gl-maq-sim'; d.style.marginTop = '10px';
-                    d.innerHTML = '<button type="button" class="gl-btn pri">🔌 Simular conexión y trabajo</button>';
+                    d.innerHTML = '<button type="button" class="gl-btn pri"><svg class="gic-ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-12 0zm6 9v4"/></svg> Simular conexión y trabajo</button>';
                     card.insertBefore(d, card.querySelector('div:last-child'));
                     d.firstChild.addEventListener('click', () => { const id = idMaquinaDeTexto(($('maquina-titulo') || {}).textContent); const cerrar = $('maquina-cerrar'); if (cerrar) cerrar.click(); window.GIC_SIM.abrir(id || undefined); });
                 }
@@ -7947,7 +8194,9 @@
             function arrancar() {
                 enganchar();
                 const obs = $('panel-contenido'); if (obs) new MutationObserver(alCambiarPanel).observe(obs, { childList: true });
-                const ob2 = document.body; new MutationObserver(alCambiarPanel).observe(ob2, { childList: true });
+                const ob2 = document.body; new MutationObserver((records) => {
+                    if (records.some(record => Array.from(record.addedNodes).some(node => node.nodeType === 1 && (node.id === "maquina-overlay" || node.querySelector("#maquina-overlay"))))) alCambiarPanel();
+                }).observe(ob2, { childList: true });
                 alCambiarPanel();
                 listoIniciar = iniciar().then(() => {
                     const lanzar = () => setTimeout(manejarEnlace, 350);
@@ -7983,5 +8232,8 @@
         });
     })();
     </script>
+    <script src="gic-campus.js"></script>
+<script>if('serviceWorker' in navigator && window.isSecureContext) window.addEventListener('load',()=>navigator.serviceWorker.register('gic-sw.js').catch(e=>console.warn('[GIC] Cache no disponible',e)));</script>
+    <script src="gic-workspace.js"></script>
 </body>
 </html>

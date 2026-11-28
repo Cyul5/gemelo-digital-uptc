@@ -1,0 +1,10 @@
+{
+  "name": "UPTC GIC · Gemelo digital",
+  "short_name": "UPTC GIC",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "theme_color": "#070d19",
+  "background_color": "#0b1324",
+  "lang": "es"
+}
