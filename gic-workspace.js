@@ -107,6 +107,42 @@ new MutationObserver(sync).observe(content,{subtree:false,childList:true});for(c
 new MutationObserver(()=>{if(home.classList.contains('activa'))renderHome();if(reports.classList.contains('activa'))renderReports();}).observe($('excel-status-tag'),{childList:true,subtree:true});
 const context=el('div','gic-space-tabs');const contextTitle=el('div','gic-space-context');context.append(contextTitle);const tabs=el('div','gic-space-actions');context.append(tabs);const panelBody=$('panel-contenido');panelBody?.parentNode.insertBefore(context,panelBody);context.hidden=true;
 function syncSpace(){const code=aulaSeleccionadaActual;const active=vistaActualGlobal==='vista-2d'&&edificioActual==='hunza'&&!!code;context.hidden=!active;if(!active)return;contextTitle.textContent='Hunza / '+pisoActual2D+' / '+code;tabs.replaceChildren();for(const [mode,label] of [['inventario','Inventario'],['mobiliario','Mobiliario'],['horarios','Horarios']]){const b=button(label,()=>{const sel=$('select-modo-consulta');if(!sel)return;sel.value=mode;cambiarModoConsulta();aulaSeleccionadaActual=code;mostrarDetalleAulaPanel(code);});b.setAttribute('aria-pressed',String($('select-modo-consulta')?.value===mode));tabs.append(b);}tabs.append(button('Fotografías',()=>{limpiarFiltrosGaleria();$('galeria-buscar').value=code;abrirGaleria();}),button('Reporte',()=>{cfg.type='integral';cfg.building='hunza';cfg.floor=String(Number(String(pisoActual2D).match(/\d+/)?.[0])||1);cfg.query=String(code);save('report',cfg);go(reports.id);}));}
+
+/* Architectural plan workspace: compact context, contextual summaries and cross-module navigation. */
+const planView=$('vista-2d'), planToolbar=planView.querySelector('.gic-plan-toolbar'), planCanvas=$('svg-2d-wrapper');
+const planContext=el('div','gic-plan-context-line'), planCrumb=el('span','gic-plan-breadcrumb'), planMode=el('span','gic-plan-mode');planContext.append(planCrumb,planMode);planToolbar.prepend(planContext);
+const planLegend=$('gic-plan-legend'), planNav=el('div','gic-plan-cross-nav');
+function planAction(label,k,fn){const b=button('',fn,'gic-plan-extra');b.append(icon(k),document.createTextNode(label));return b;}
+function floorNumber(){return Number(String(pisoActual2D).match(/\d+/)?.[0])||1;}
+function openFloorReport(){cfg.type=$('select-modo-consulta').value==='horarios'?'hor-semana':$('select-modo-consulta').value==='mobiliario'?'mob-estado':'integral';cfg.building='hunza';cfg.floor=String(floorNumber());cfg.day=$('select-dia')?.value||'todos';cfg.query='';save('report',cfg);go(reports.id);}
+function openFloorGallery(){limpiarFiltrosGaleria();$('galeria-filtro-piso').value=String(floorNumber());abrirGaleria();}
+const floorReport=planAction('Reportes del piso','report',openFloorReport),floorGallery=planAction('Galería del piso','image',openFloorGallery);planNav.append(floorReport,floorGallery);planLegend?.append(planNav);
+const technical=el('section','gic-plan-technical');technical.hidden=true;panelBody?.after(technical);
+let planFrame=0;
+function refreshPlanIdentity(){
+ planFrame=0;const active=planView.classList.contains('activa');technical.hidden=!active||edificioActual!=='hunza'||!!aulaSeleccionadaActual;if(!active)return;
+ const lab=edificioActual==='lab',floor=floorNumber(),selected=$('select-modo-consulta'),mode=selected?.selectedOptions[0]?.textContent||'Consulta arquitectónica';
+ planCrumb.textContent='Campus / '+(lab?'EDILAB':'Aulas Hunza')+' / '+pisoActual2D;planMode.textContent=lab?'Plano de laboratorio':mode;
+ planView.classList.toggle('gic-plan-lab',lab);floorReport.hidden=lab;floorGallery.hidden=lab;
+ const obj=$('svg-2d-object');let doc=null;try{doc=obj?.contentDocument;}catch{}const available=doc?.documentElement?.localName==='svg';
+ planCanvas.dataset.planState=available?'Plano activo':'Cargando plano';planCanvas.dataset.planLevel=lab?'LAB ARQ':pisoActual2D;
+ if(lab)return;
+ technical.replaceChildren();
+ if(aulaSeleccionadaActual)return;
+ const all=inventory(),floorRows=all.filter(x=>x.piso===floor),ready=isReady();
+ const statGrid=el('div','gic-plan-mini-grid');
+ for(const [label,value] of [['Espacios con inventario',ready?floorRows.length:'—'],['Con patologías',ready?floorRows.filter(x=>pathology(x.d)).length:'—']]){const m=el('div','gic-plan-mini-stat');m.append(el('small','',label),el('strong','',String(value)));statGrid.append(m);}
+ technical.append(el('h3','gic-plan-panel-label','Indicadores del levantamiento'),statGrid,el('p','gic-plan-source','Fuente: inventario Excel de Hunza. Los conteos corresponden a registros, no a todos los polígonos del plano.'));
+ const quick=el('div','gic-plan-quick');quick.append(planAction('Reporte del piso','report',openFloorReport),planAction('Evidencias fotográficas','image',openFloorGallery));technical.append(el('h3','gic-plan-panel-label','Análisis del piso'),quick);
+}
+function schedulePlanIdentity(){if(!planFrame)planFrame=requestAnimationFrame(refreshPlanIdentity);}
+new MutationObserver(schedulePlanIdentity).observe(planView,{attributes:true,attributeFilter:['class']});
+new MutationObserver(schedulePlanIdentity).observe($('panel-derecho-titulo'),{childList:true,subtree:true});
+new MutationObserver(schedulePlanIdentity).observe(planCanvas,{childList:true});
+new MutationObserver(schedulePlanIdentity).observe($('excel-status-tag'),{childList:true,subtree:true});
+planCanvas.addEventListener('load',schedulePlanIdentity,true);
+for(const id of ['select-modo-consulta','select-edificio-2d','select-piso-2d','select-dia','select-franja'])$(id)?.addEventListener('change',schedulePlanIdentity);
+schedulePlanIdentity();
 const bookmark=button('',()=>{if(vistaActualGlobal!=='vista-2d'||edificioActual!=='hunza')return;const p=Number(String(pisoActual2D).match(/\d+/)?.[0]);if(!p)return;const code=aulaSeleccionadaActual||'', label='Hunza · Piso '+p+(code?' · '+code:'');let f=read('favorites',[]);const i=f.findIndex(x=>x.p===p&&x.code===code);if(i>=0)f.splice(i,1);else f.unshift({id:'vista-2d',p,code,label});save('favorites',f.slice(0,12));bookmark.title=i>=0?'Favorito retirado':'Favorito guardado';},'gic-plan-extra');bookmark.append(icon('star'),document.createTextNode(' Favorito'));$('gic-plan-legend')?.append(bookmark);
 const panel=$('panel-derecho-titulo');new MutationObserver(()=>{syncSpace();if(vistaActualGlobal==='vista-2d'&&edificioActual==='hunza'&&aulaSeleccionadaActual){const p=Number(String(pisoActual2D).match(/\d+/)?.[0]), code=String(aulaSeleccionadaActual);if(p){let h=read('history',[]).filter(x=>!(x.p===p&&x.code===code));h.unshift({id:'vista-2d',p,code,label:'Hunza · Piso '+p+' · '+code});save('history',h.slice(0,8));}}}).observe(panel,{childList:true,subtree:true});
 for(const v of content.querySelectorAll('.vista'))new MutationObserver(syncSpace).observe(v,{attributes:true,attributeFilter:['class']});
