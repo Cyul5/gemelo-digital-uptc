@@ -4950,6 +4950,7 @@
             const zoomOffset = new THREE.Vector3();
             const reducirMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             function solicitarZoom(factor) {
+                actividad3D();
                 direccionObjetivo = null;
                 const actual = camera.position.distanceTo(controls.target);
                 zoomObjetivo = THREE.MathUtils.clamp((zoomObjetivo ?? actual) * factor, controls.minDistance, controls.maxDistance);
@@ -4979,6 +4980,9 @@
             window.GIC_CORTE_VERTICAL = corteVertical;
             let direccionObjetivo = null, distanciaVista = null, capturaPendiente = false;
             let perfil = 'auto', escalaActual = renderer.getPixelRatio(), muestraFPS = 0, cuadrosFPS = 0;
+            let calidadMovimiento=.85, ultimaActividad=0, arrastrando3D=false, ultimoFrame=0;
+            function ajustarEscala(n){n=Math.max(.5,Math.min(window.devicePixelRatio||1,n));if(Math.abs(n-escalaActual)>.03){escalaActual=n;renderer.setPixelRatio(n);renderPendiente=true;}}
+            function actividad3D(){ultimaActividad=performance.now();}
             const orientaciones = {iso:[1,.75,1],front:[0,0,1],back:[0,0,-1],left:[-1,0,0],right:[1,0,0],top:[0,1,.001],bottom:[0,-1,.001]};
             const giroActual = new THREE.Quaternion(), giroObjetivo = new THREE.Quaternion(), eje = new THREE.Vector3(0,0,1), direccion = new THREE.Vector3();
             const tools = document.getElementById('gic-3d-tools');
@@ -5080,8 +5084,9 @@
                 distanciaVista = centrar ? THREE.MathUtils.clamp(max * 1.35,controls.minDistance,controls.maxDistance) : camera.position.distanceTo(controls.target);
                 zoomObjetivo = null; renderPendiente = true;
             }
-            controls.addEventListener('start', () => { direccionObjetivo = null; });
-            function calidad(p) { perfil=p; escalaActual=Math.min(window.devicePixelRatio || 1, p==='low'?1:p==='medium'?1.35:p==='high'?2:(document.documentElement.classList.contains('movil')?1.25:1.6)); renderer.setPixelRatio(escalaActual); renderPendiente=true; }
+            controls.addEventListener('start', () => { direccionObjetivo = null;arrastrando3D=true;actividad3D(); });
+            controls.addEventListener('end',()=>{arrastrando3D=false;actividad3D();});
+            function calidad(p) { perfil=p; muestraFPS=cuadrosFPS=0;ajustarEscala(p==='low'?.75:p==='medium'?1:p==='high'?2:1.25);renderPendiente=true; }
             tools.addEventListener('click', e => { const b=e.target.closest('button'); if(!b || !modeloGlobal)return; if(b.dataset.view){orientar(b.dataset.view,false);return;} switch(b.dataset.tool){case 'fit':orientar('iso',true);break;case 'grid':gridHelper.visible=!gridHelper.visible;b.setAttribute('aria-pressed',String(gridHelper.visible));break;case 'cut':{const activo=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',String(activo));document.getElementById('gic-cut-row').hidden=!activo;corteVertical.constant=activo ? -(bboxModelo.min.x+bboxModelo.max.x)/2 : 1e6;document.getElementById('gic-cut-slider').value=50;break;}case 'capture':capturaPendiente=true;break;case 'full':{const v=document.getElementById('vista-3d');if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{});else v.requestFullscreen?.().catch(()=>{});break;}}renderPendiente=true; });
             document.getElementById('gic-quality').addEventListener('change', e=>calidad(e.target.value));
             document.getElementById('gic-cut-slider').addEventListener('input',e=>{if(bboxModelo){corteVertical.constant=-THREE.MathUtils.lerp(bboxModelo.min.x,bboxModelo.max.x,Number(e.target.value)/100);renderPendiente=true;}});
@@ -5162,7 +5167,10 @@
                 animFrameId = null;
                 if (document.hidden || !document.getElementById("vista-3d")?.classList.contains("activa")) return;
                 animFrameId = requestAnimationFrame(animate);
+                const ahora=performance.now();const dtReal=ultimoFrame?(ahora-ultimoFrame)/1000:0;ultimoFrame=ahora;
                 const dt = Math.min(clock.getDelta(), 0.05);
+                const moviendo=arrastrando3D||zoomObjetivo!==null||!!direccionObjetivo||teclasRecorrido.size>0||ahora-ultimaActividad<300;
+                if(perfil==='auto')ajustarEscala(moviendo?calidadMovimiento:1.25);
                 moverRecorrido(dt);
                 controls.dampingFactor = 1 - Math.pow(1 - 0.085, dt * 60);
                 if (zoomObjetivo !== null) {
@@ -5192,13 +5200,14 @@
                     renderer.render(scene, camera);
                     if(capturaPendiente){capturaPendiente=false;renderer.domElement.toBlob(blob=>{if(!blob)return;const u=URL.createObjectURL(blob), a=document.createElement('a');a.href=u;a.download='UPTC-GIC-3D.png';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);},'image/png');}
                     renderPendiente = false;
-                    if(perfil==='auto' && cambio && dt>0){muestraFPS+=dt;cuadrosFPS++;if(muestraFPS>=2){const fps=cuadrosFPS/muestraFPS;const techo=Math.min(window.devicePixelRatio||1,document.documentElement.classList.contains('movil')?1.25:1.6);const siguiente=fps<38?Math.max(.75,escalaActual-.15):fps>56?Math.min(techo,escalaActual+.1):escalaActual;if(Math.abs(siguiente-escalaActual)>.04){escalaActual=siguiente;renderer.setPixelRatio(escalaActual);renderPendiente=true;}muestraFPS=cuadrosFPS=0;}}
+                    if(perfil==='auto' && moviendo && dtReal>0 && dtReal<.5){muestraFPS+=dtReal;cuadrosFPS++;if(muestraFPS>=1.2){const fps=cuadrosFPS/muestraFPS;calidadMovimiento=fps<43?Math.max(.55,calidadMovimiento-.1):fps>57?Math.min(1,calidadMovimiento+.05):calidadMovimiento;muestraFPS=cuadrosFPS=0;}}else if(!moviendo){muestraFPS=cuadrosFPS=0;}
+                    window.GIC_RENDER_STATS={drawCalls:renderer.info.render.calls,triangulos:renderer.info.render.triangles,escala:renderer.getPixelRatio()};
                 }
             }
 
             function sincronizarRender() {
                 const visible = !document.hidden && document.getElementById('vista-3d').classList.contains('activa');
-                if(!visible){teclasRecorrido.clear();if(recorrido)salirRecorrido();}
+                if(!visible){ultimoFrame=0;arrastrando3D=false;teclasRecorrido.clear();if(recorrido)salirRecorrido();}
                 if (visible && animFrameId === null) { renderPendiente = true; animFrameId = requestAnimationFrame(animate); }
                 else if (!visible && animFrameId !== null) { cancelAnimationFrame(animFrameId); animFrameId = null; }
             }
