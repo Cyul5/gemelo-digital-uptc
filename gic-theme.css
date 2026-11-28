@@ -419,3 +419,5 @@ html.gic-portal.movil #vista-2d .gic-plan-toolbar>.gic-plan-legend{display:flex;
 html.gic-portal.movil .gic-plan-keys{gap:6px}
 html.gic-portal.movil .gic-plan-key{font-size:10px}
 @media(max-width:420px){.gic-campus-metric strong{font-size:19px}#gic-campus-body{padding:12px}.gic-campus-dialog .gic-campus-heading{padding:12px}.gic-view-presets button{padding:5px}}
+
+#vista-3d:has(#lab-3d-sin-modelo.show) .gic-3d-tools{display:none!important}
